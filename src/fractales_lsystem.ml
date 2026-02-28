@@ -1,9 +1,9 @@
-déf abs_val(v):
+déf abs_koch(v):
     si v < 0.0:
         retour -v
     retour v
 
-déf min_val(a, b):
+déf min_koch(a, b):
     si a < b:
         retour a
     retour b
@@ -27,17 +27,17 @@ déf koch(cx, cy, max_iter):
     soit x = cx + 0.5
     soit y = cy + 0.35
     soit echelle = 1.0
-    soit dist = abs_val(y)
+    soit dist = abs_koch(y)
     soit niveau = 0.0
-    soit nmax = min_val(max_iter, 8.0)
+    soit nmax = min_koch(max_iter, 8.0)
     tantque niveau < nmax:
         x = x * 3.0
         y = y * 3.0
         soit cellule = x - (x % 1.0)
         x = x - cellule
         si cellule == 1.0:
-            y = abs_val(y - 1.0)
-        soit d = abs_val(y - 0.5) / echelle
+            y = abs_koch(y - 1.0)
+        soit d = abs_koch(y - 0.5) / echelle
         si d < dist:
             dist = d
         echelle = echelle * 3.0

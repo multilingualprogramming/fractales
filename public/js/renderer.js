@@ -165,6 +165,12 @@ async function loadWasm() {
       env: {
         // Fourni par précaution ; la fonction arithmétique pure n'en a pas besoin
         memory: new WebAssembly.Memory({ initial: 16, maximum: 1024 }),
+        // Requis par le générateur WAT multilingual (même si non utilisés ici)
+        print_str: (_ptr, _len) => {},
+        print_f64: (_x) => {},
+        print_bool: (_b) => {},
+        print_sep: () => {},
+        print_newline: () => {},
       },
     };
 

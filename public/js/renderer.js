@@ -9,7 +9,7 @@
 
 "use strict";
 
-const WASM_URL = "mandelbrot.wasm?v=20260228r8";
+const WASM_URL = "mandelbrot.wasm?v=20260228r10";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -55,9 +55,9 @@ const VIEW_PRESETS = {
 function getMultibrotPreset(power) {
   const p = Number.isFinite(power) ? power : 5;
   // Higher powers concentrate details near the origin.
-  if (p >= 7) return { centerX: 0.0, centerY: 0.0, span: 2.1 };
-  if (p >= 5) return { centerX: 0.0, centerY: 0.0, span: 2.4 };
-  return { centerX: 0.0, centerY: 0.0, span: 2.8 };
+  if (p >= 7) return { centerX: 0.0, centerY: 0.0, span: 1.6 };
+  if (p >= 5) return { centerX: 0.0, centerY: 0.0, span: 1.8 };
+  return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
 const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
@@ -449,7 +449,13 @@ function render() {
         } else {
           iter = fn(cx, cy, max);
         }
-        const [r, g, b] = getColor(iter, max, pal);
+        let iterColor = iter;
+        if (params.fractal === "multibrot" && iter < max) {
+          // High-degree multibrot escapes in very few iterations; stretch values
+          // so the set structure stays visible instead of near-black.
+          iterColor = Math.min(max - 1, 12 + iter * 14);
+        }
+        const [r, g, b] = getColor(iterColor, max, pal);
         const i = base + px * 4;
         data[i] = r;
         data[i + 1] = g;

@@ -84,10 +84,17 @@ déf multibrot(cx, cy, max_iter, puissance):
     tantque iter < max_iter:
         si norme_carre(x, y) > rayon_echappement_carre:
             retour iter
-        soit p = complexe_puissance_re_im(x, y, puissance)
-        soit nx = p[0] + cx
-        soit ny = p[1] + cy
-        x = nx
-        y = ny
+        # Evite l'indexation de tuple (non supportee par le backend WASM actuel).
+        soit rx = 1.0
+        soit ry = 0.0
+        soit k = 0.0
+        tantque k < puissance:
+            soit tx = rx * x - ry * y
+            soit ty = rx * y + ry * x
+            rx = tx
+            ry = ty
+            k = k + 1.0
+        x = rx + cx
+        y = ry + cy
         iter = iter + 1.0
     retour iter

@@ -1,630 +1,260 @@
 #!/usr/bin/env python3
 """
-Pipeline de compilation : source multilingual français -> WebAssembly + benchmark
+Strict multilingual build pipeline (no handwritten WASM bytecode).
 
-Etapes :
-  1. Lire src/main.ml
-  2. Copier vers public/main.ml  (servi statiquement par GitHub Pages)
-  3. Transpiler vers Python via ProgramExecutor (multilingualprogramming)
-  4. Generer un binaire WebAssembly valide (encodage direct du format WASM)
-     avec 6 exports :
-       - mandelbrot(cx: f64, cy: f64, max_iter: f64) -> f64
-       - burning_ship(cx: f64, cy: f64, max_iter: f64) -> f64
-       - tricorn(cx: f64, cy: f64, max_iter: f64) -> f64
-       - julia(zx: f64, zy: f64, c_re: f64, c_im: f64, max_iter: f64) -> f64
-       - newton(zx: f64, zy: f64, max_iter: f64) -> f64
-       - phoenix(cx: f64, cy: f64, max_iter: f64) -> f64
-  5. Benchmark Python vs WASM sur une grille 200x200 avec max_iter=100
-  6. Ecrire public/benchmark.json
-
-Usage :
-  python scripts/compile_wasm.py
+Steps:
+  1. Read src/main.ml
+  2. Copy to public/main.ml
+  3. Transpile with multilingual ProgramExecutor (strict: fail on any error)
+  4. Generate WAT via official multilingual backend
+  5. Compile WAT -> WASM via wasmtime.wat2wasm
+  6. Validate required exports in generated WASM
+  5. Benchmark Python transpiled code
+  6. Write public/benchmark.json
 """
 
 import io
 import json
 import shutil
-import struct
 import sys
-import time
 from pathlib import Path
 
-# Fix Windows console encoding (UTF-8 output)
+# Ensure UTF-8 console output on Windows.
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-# ---------------------------------------------------------------------------
-# Chemins
-# ---------------------------------------------------------------------------
-ROOT   = Path(__file__).parent.parent
+ROOT = Path(__file__).parent.parent
 SRC_ML = ROOT / "src" / "main.ml"
 PUBLIC = ROOT / "public"
 PUBLIC.mkdir(parents=True, exist_ok=True)
 
-WASM_OUT  = PUBLIC / "mandelbrot.wasm"
+ML_OUT = PUBLIC / "main.ml"
+PY_OUT = PUBLIC / "mandelbrot_transpiled.py"
 BENCH_OUT = PUBLIC / "benchmark.json"
-PY_OUT    = PUBLIC / "mandelbrot_transpiled.py"
-ML_OUT    = PUBLIC / "main.ml"
+WASM_RS_OUT = PUBLIC / "wasm_intermediate.rs"
+WAT_OUT = PUBLIC / "main.wat"
+LEGACY_WASM_OUT = PUBLIC / "mandelbrot.wasm"
 
-# Parametres du benchmark
-BENCH_GRID  = 200   # 200x200 = 40 000 pixels
+BENCH_GRID = 200
 BENCH_ITERS = 100
-
 SEPARATOR = "=" * 62
 
 
-def fmt(ms):
-    """Formate une duree avec separateur de milliers."""
-    return "{:,.0f}".format(ms).replace(",", "\u202f")
-
-
-# ============================================================
-# GENERATEUR DE BINAIRE WASM
-#
-# Encode directement le format binaire WebAssembly pour 6 fonctions.
-# Signatures :
-#   type0: (f64, f64, f64) -> f64
-#   type1: (f64, f64, f64, f64, f64) -> f64
-# ============================================================
-
-def _uleb128(n):
-    """Encode un entier non signe en LEB128."""
-    result = []
-    while True:
-        byte = n & 0x7F
-        n >>= 7
-        if n:
-            byte |= 0x80
-        result.append(byte)
-        if not n:
-            break
-    return bytes(result)
-
-
-def _section(sid, content):
-    return bytes([sid]) + _uleb128(len(content)) + content
-
-
-def _f64_loop_body(kind):
-    """Genere le corps WASM (sans locals_decl) pour une fractale de type 3 params."""
-    # Indices communs
-    # params : 0=cx, 1=cy, 2=max_iter
-    # locals : 3=x, 4=y, 5=iter, 6=xtemp
-    def lget(i): return bytes([0x20]) + _uleb128(i)
-    def lset(i): return bytes([0x21]) + _uleb128(i)
-    def br(d):   return bytes([0x0C]) + _uleb128(d)
-    def brif(d): return bytes([0x0D]) + _uleb128(d)
-    def f64c(v): return bytes([0x44]) + struct.pack('<d', v)
-
-    F64_MUL    = bytes([0xA2])
-    F64_ADD    = bytes([0xA0])
-    F64_SUB    = bytes([0xA1])
-    F64_GE     = bytes([0x66])
-    F64_GT     = bytes([0x64])
-    F64_ABS    = bytes([0x99])
-    RETURN     = bytes([0x0F])
-    END        = bytes([0x0B])
-    BLOCK_VOID = bytes([0x02, 0x40])
-    LOOP_VOID  = bytes([0x03, 0x40])
-    IF_VOID    = bytes([0x04, 0x40])
-
-    body = BLOCK_VOID + LOOP_VOID
-    body += lget(5) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
-
-    # escape: x*x + y*y > 4.0
-    body += lget(3) + lget(3) + F64_MUL
-    body += lget(4) + lget(4) + F64_MUL
-    body += F64_ADD + f64c(4.0) + F64_GT
-    body += IF_VOID + lget(5) + RETURN + END
-
-    if kind == "mandelbrot":
-        # xtemp = x*x - y*y + cx
-        body += lget(3) + lget(3) + F64_MUL
-        body += lget(4) + lget(4) + F64_MUL
-        body += F64_SUB + lget(0) + F64_ADD
-        body += lset(6)
-        # y = 2*x*y + cy
-        body += f64c(2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
-        body += lset(4)
-    elif kind == "tricorn":
-        # xtemp = x*x - y*y + cx
-        body += lget(3) + lget(3) + F64_MUL
-        body += lget(4) + lget(4) + F64_MUL
-        body += F64_SUB + lget(0) + F64_ADD
-        body += lset(6)
-        # y = -2*x*y + cy
-        body += f64c(-2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
-        body += lset(4)
-    elif kind == "burning_ship":
-        # xtemp = abs(x)^2 - abs(y)^2 + cx
-        body += lget(3) + F64_ABS + lget(3) + F64_ABS + F64_MUL
-        body += lget(4) + F64_ABS + lget(4) + F64_ABS + F64_MUL
-        body += F64_SUB + lget(0) + F64_ADD
-        body += lset(6)
-        # y = 2*abs(x)*abs(y) + cy
-        body += f64c(2.0) + lget(3) + F64_ABS + F64_MUL + lget(4) + F64_ABS + F64_MUL
-        body += lget(1) + F64_ADD
-        body += lset(4)
-    else:
-        raise ValueError(f"Type de fractale inconnu: {kind}")
-
-    body += lget(6) + lset(3)  # x = xtemp
-    body += lget(5) + f64c(1.0) + F64_ADD + lset(5)  # iter += 1
-    body += br(0) + END + END
-    body += lget(5) + END
-    return body
-
-
-def _f64_loop_body_julia():
-    """Genere le corps WASM (sans locals_decl) pour julia(zx, zy, c_re, c_im, max_iter)."""
-    # params : 0=zx, 1=zy, 2=c_re, 3=c_im, 4=max_iter
-    # locals : 5=iter, 6=xtemp
-    def lget(i): return bytes([0x20]) + _uleb128(i)
-    def lset(i): return bytes([0x21]) + _uleb128(i)
-    def br(d):   return bytes([0x0C]) + _uleb128(d)
-    def brif(d): return bytes([0x0D]) + _uleb128(d)
-    def f64c(v): return bytes([0x44]) + struct.pack('<d', v)
-
-    F64_MUL    = bytes([0xA2])
-    F64_ADD    = bytes([0xA0])
-    F64_SUB    = bytes([0xA1])
-    F64_GE     = bytes([0x66])
-    F64_GT     = bytes([0x64])
-    RETURN     = bytes([0x0F])
-    END        = bytes([0x0B])
-    BLOCK_VOID = bytes([0x02, 0x40])
-    LOOP_VOID  = bytes([0x03, 0x40])
-    IF_VOID    = bytes([0x04, 0x40])
-
-    body = bytes()
-    body += f64c(0.0) + lset(5)  # iter = 0
-    body += BLOCK_VOID + LOOP_VOID
-    body += lget(5) + lget(4) + F64_GE + brif(1)  # iter >= max_iter
-
-    # escape: zx*zx + zy*zy > 4.0
-    body += lget(0) + lget(0) + F64_MUL
-    body += lget(1) + lget(1) + F64_MUL
-    body += F64_ADD + f64c(4.0) + F64_GT
-    body += IF_VOID + lget(5) + RETURN + END
-
-    # xtemp = zx*zx - zy*zy + c_re
-    body += lget(0) + lget(0) + F64_MUL
-    body += lget(1) + lget(1) + F64_MUL
-    body += F64_SUB + lget(2) + F64_ADD
-    body += lset(6)
-
-    # zy = 2*zx*zy + c_im
-    body += f64c(2.0) + lget(0) + F64_MUL + lget(1) + F64_MUL + lget(3) + F64_ADD
-    body += lset(1)
-
-    # zx = xtemp
-    body += lget(6) + lset(0)
-
-    # iter += 1
-    body += lget(5) + f64c(1.0) + F64_ADD + lset(5)
-    body += br(0) + END + END
-    body += lget(5) + END
-    return body
-
-
-def _f64_loop_body_phoenix():
-    """Genere le corps WASM (sans locals_decl) pour phoenix(cx, cy, max_iter)."""
-    # params : 0=cx, 1=cy, 2=max_iter
-    # locals : 3=x, 4=y, 5=iter, 6=x_prev, 7=y_prev, 8=xtemp, 9=ytemp
-    def lget(i): return bytes([0x20]) + _uleb128(i)
-    def lset(i): return bytes([0x21]) + _uleb128(i)
-    def br(d):   return bytes([0x0C]) + _uleb128(d)
-    def brif(d): return bytes([0x0D]) + _uleb128(d)
-    def f64c(v): return bytes([0x44]) + struct.pack("<d", v)
-
-    F64_MUL    = bytes([0xA2])
-    F64_ADD    = bytes([0xA0])
-    F64_SUB    = bytes([0xA1])
-    F64_GE     = bytes([0x66])
-    F64_GT     = bytes([0x64])
-    RETURN     = bytes([0x0F])
-    END        = bytes([0x0B])
-    BLOCK_VOID = bytes([0x02, 0x40])
-    LOOP_VOID  = bytes([0x03, 0x40])
-    IF_VOID    = bytes([0x04, 0x40])
-
-    body = BLOCK_VOID + LOOP_VOID
-    body += lget(5) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
-
-    # escape: x*x + y*y > 4.0
-    body += lget(3) + lget(3) + F64_MUL
-    body += lget(4) + lget(4) + F64_MUL
-    body += F64_ADD + f64c(4.0) + F64_GT
-    body += IF_VOID + lget(5) + RETURN + END
-
-    # xtemp = x*x - y*y + cx + (-0.5)*x_prev
-    body += lget(3) + lget(3) + F64_MUL
-    body += lget(4) + lget(4) + F64_MUL
-    body += F64_SUB + lget(0) + F64_ADD
-    body += f64c(-0.5) + lget(6) + F64_MUL + F64_ADD
-    body += lset(8)
-
-    # ytemp = 2*x*y + cy + (-0.5)*y_prev
-    body += f64c(2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
-    body += f64c(-0.5) + lget(7) + F64_MUL + F64_ADD
-    body += lset(9)
-
-    # x_prev=x ; y_prev=y ; x=xtemp ; y=ytemp
-    body += lget(3) + lset(6)
-    body += lget(4) + lset(7)
-    body += lget(8) + lset(3)
-    body += lget(9) + lset(4)
-
-    body += lget(5) + f64c(1.0) + F64_ADD + lset(5)  # iter += 1
-    body += br(0) + END + END
-    body += lget(5) + END
-    return body
-
-
-def _f64_loop_body_newton():
-    """Genere le corps WASM (sans locals_decl) pour newton(zx, zy, max_iter)."""
-    # params : 0=zx(x), 1=zy(y), 2=max_iter
-    # locals : 3=iter, 4=x2, 5=y2, 6=fx, 7=fy, 8=dfx, 9=dfy, 10=denom,
-    #          11=dx, 12=dy, 13=d1, 14=d2, 15=d3
-    def lget(i): return bytes([0x20]) + _uleb128(i)
-    def lset(i): return bytes([0x21]) + _uleb128(i)
-    def br(d):   return bytes([0x0C]) + _uleb128(d)
-    def brif(d): return bytes([0x0D]) + _uleb128(d)
-    def f64c(v): return bytes([0x44]) + struct.pack("<d", v)
-
-    F64_MUL    = bytes([0xA2])
-    F64_ADD    = bytes([0xA0])
-    F64_SUB    = bytes([0xA1])
-    F64_DIV    = bytes([0xA3])
-    F64_GE     = bytes([0x66])
-    F64_LT     = bytes([0x63])
-    RETURN     = bytes([0x0F])
-    END        = bytes([0x0B])
-    BLOCK_VOID = bytes([0x02, 0x40])
-    LOOP_VOID  = bytes([0x03, 0x40])
-    IF_VOID    = bytes([0x04, 0x40])
-
-    body = bytes()
-    body += f64c(0.0) + lset(3)  # iter = 0
-    body += BLOCK_VOID + LOOP_VOID
-    body += lget(3) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
-
-    # x2=x*x ; y2=y*y
-    body += lget(0) + lget(0) + F64_MUL + lset(4)
-    body += lget(1) + lget(1) + F64_MUL + lset(5)
-
-    # fx = x*x2 - 3*x*y2 - 1
-    body += lget(0) + lget(4) + F64_MUL
-    body += f64c(3.0) + lget(0) + F64_MUL + lget(5) + F64_MUL + F64_SUB
-    body += f64c(1.0) + F64_SUB + lset(6)
-
-    # fy = 3*x2*y - y*y2
-    body += f64c(3.0) + lget(4) + F64_MUL + lget(1) + F64_MUL
-    body += lget(1) + lget(5) + F64_MUL + F64_SUB
-    body += lset(7)
-
-    # dfx = 3*(x2-y2) ; dfy = 6*x*y
-    body += f64c(3.0) + lget(4) + lget(5) + F64_SUB + F64_MUL + lset(8)
-    body += f64c(6.0) + lget(0) + F64_MUL + lget(1) + F64_MUL + lset(9)
-
-    # denom = dfx*dfx + dfy*dfy
-    body += lget(8) + lget(8) + F64_MUL + lget(9) + lget(9) + F64_MUL + F64_ADD + lset(10)
-
-    # if denom < eps: return iter
-    body += lget(10) + f64c(1e-6) + F64_LT
-    body += IF_VOID + lget(3) + RETURN + END
-
-    # dx = (fx*dfx + fy*dfy) / denom
-    body += lget(6) + lget(8) + F64_MUL + lget(7) + lget(9) + F64_MUL + F64_ADD
-    body += lget(10) + F64_DIV + lset(11)
-    # dy = (fy*dfx - fx*dfy) / denom
-    body += lget(7) + lget(8) + F64_MUL + lget(6) + lget(9) + F64_MUL + F64_SUB
-    body += lget(10) + F64_DIV + lset(12)
-
-    # x -= dx ; y -= dy
-    body += lget(0) + lget(11) + F64_SUB + lset(0)
-    body += lget(1) + lget(12) + F64_SUB + lset(1)
-
-    # d1 = (x-1)^2 + y^2
-    body += lget(0) + f64c(1.0) + F64_SUB + lget(0) + f64c(1.0) + F64_SUB + F64_MUL
-    body += lget(1) + lget(1) + F64_MUL + F64_ADD + lset(13)
-    # d2 = (x+0.5)^2 + (y-root)^2
-    body += lget(0) + f64c(0.5) + F64_ADD + lget(0) + f64c(0.5) + F64_ADD + F64_MUL
-    body += lget(1) + f64c(0.8660254037844386) + F64_SUB
-    body += lget(1) + f64c(0.8660254037844386) + F64_SUB + F64_MUL
-    body += F64_ADD + lset(14)
-    # d3 = (x+0.5)^2 + (y+root)^2
-    body += lget(0) + f64c(0.5) + F64_ADD + lget(0) + f64c(0.5) + F64_ADD + F64_MUL
-    body += lget(1) + f64c(0.8660254037844386) + F64_ADD
-    body += lget(1) + f64c(0.8660254037844386) + F64_ADD + F64_MUL
-    body += F64_ADD + lset(15)
-
-    # if d1<eps: return iter ; idem d2,d3
-    body += lget(13) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
-    body += lget(14) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
-    body += lget(15) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
-
-    body += lget(3) + f64c(1.0) + F64_ADD + lset(3)  # iter += 1
-    body += br(0) + END + END
-    body += lget(3) + END
-    return body
-
-
-def _wrap_func_body(locals_count, body):
-    locals_decl = _uleb128(1) + _uleb128(locals_count) + bytes([0x7C])
-    func_data = locals_decl + body
-    return _uleb128(len(func_data)) + func_data
-
-
-def generate_fractals_wasm():
-    """Genere un module WASM exportant mandelbrot, burning_ship, tricorn, julia, newton, phoenix."""
-    bodies = [
-        _wrap_func_body(4, _f64_loop_body("mandelbrot")),
-        _wrap_func_body(4, _f64_loop_body("burning_ship")),
-        _wrap_func_body(4, _f64_loop_body("tricorn")),
-        _wrap_func_body(2, _f64_loop_body_julia()),
-        _wrap_func_body(13, _f64_loop_body_newton()),
-        _wrap_func_body(7, _f64_loop_body_phoenix()),
-    ]
-
-    # Type section : 2 types
-    type_content = (
-        _uleb128(2) +
-        bytes([0x60]) + _uleb128(3) + bytes([0x7C, 0x7C, 0x7C]) + _uleb128(1) + bytes([0x7C]) +
-        bytes([0x60]) + _uleb128(5) + bytes([0x7C, 0x7C, 0x7C, 0x7C, 0x7C]) + _uleb128(1) + bytes([0x7C])
-    )
-
-    # Function section : [type0, type0, type0, type1, type0, type0]
-    func_content = _uleb128(6) + _uleb128(0) + _uleb128(0) + _uleb128(0) + _uleb128(1) + _uleb128(0) + _uleb128(0)
-
-    exports = [b"mandelbrot", b"burning_ship", b"tricorn", b"julia", b"newton", b"phoenix"]
-    export_content = _uleb128(len(exports))
-    for idx, name in enumerate(exports):
-        export_content += _uleb128(len(name)) + name + bytes([0x00]) + _uleb128(idx)
-
-    code_content = _uleb128(len(bodies)) + b"".join(bodies)
-
-    return (
-        b"\x00asm\x01\x00\x00\x00" +
-        _section(0x01, type_content) +
-        _section(0x03, func_content) +
-        _section(0x07, export_content) +
-        _section(0x0A, code_content)
-    )
-
-
-# ============================================================
-# TRANSPILATION MULTILINGUAL (Python)
-# ============================================================
-
-def find_multilingual_path():
-    """Cherche le dossier source de multilingualprogramming."""
+def add_local_multilingual_repo_to_path() -> None:
+    """Prefer local sibling repo for development, if present."""
     candidates = [
         ROOT.parent / "multilingual",
         Path.home() / "Documents" / "Research" / "Workspace" / "multilingual",
     ]
-    for p in candidates:
-        if (p / "multilingualprogramming" / "__init__.py").exists():
-            return p
-    return None
+    for candidate in candidates:
+        if (candidate / "multilingualprogramming" / "__init__.py").exists():
+            if str(candidate) not in sys.path:
+                sys.path.insert(0, str(candidate))
+            return
 
 
-def try_multilingual_transpile(source):
-    """
-    Transpile le source francais via multilingualprogramming.
-    Echec => exception (pas de fallback silencieux).
-    """
-    ml_path = find_multilingual_path()
-    if ml_path and str(ml_path) not in sys.path:
-        sys.path.insert(0, str(ml_path))
-
+def transpile_strict(source: str) -> str:
+    """Transpile multilingual source to Python. Any failure raises RuntimeError."""
+    add_local_multilingual_repo_to_path()
     try:
         from multilingualprogramming import ProgramExecutor  # noqa: PLC0415
-        executor = ProgramExecutor(language="fr")
-        return executor.transpile(source)
-    except ImportError:
+    except Exception as exc:  # pragma: no cover - explicit build failure path
         raise RuntimeError(
-            "multilingualprogramming est introuvable. "
-            "Ce projet exige une transpilation reelle via multilingual."
-        ) from None
-    except Exception as exc:
+            "multilingualprogramming introuvable. Le build doit echouer."
+        ) from exc
+
+    try:
+        executor = ProgramExecutor(language="fr")
+        py_code = executor.transpile(source)
+    except Exception as exc:  # pragma: no cover - explicit build failure path
         raise RuntimeError(f"Echec de transpilation multilingual: {exc}") from exc
 
-
-# ============================================================
-# BENCHMARK
-# ============================================================
-
-def bench_python(n, max_iter):
-    """Benchmark Python pur -- rend une grille n x n."""
-    _src = (
-        "def mandelbrot(cx, cy, max_iter):\n"
-        "    x, y, it = 0.0, 0.0, 0.0\n"
-        "    while it < max_iter:\n"
-        "        if x*x + y*y > 4.0: return it\n"
-        "        x, y = x*x - y*y + cx, 2.0*x*y + cy\n"
-        "        it += 1.0\n"
-        "    return it\n"
-    )
-    ns = {}
-    exec(_src, ns)  # noqa: S102
-    fn = ns["mandelbrot"]
-    fn(-0.5, 0.0, float(max_iter))  # echauffement
-
-    start = time.perf_counter()
-    for row in range(n):
-        cy = -2.0 + row * 4.0 / n
-        for col in range(n):
-            fn(-2.5 + col * 4.0 / n, cy, float(max_iter))
-    return (time.perf_counter() - start) * 1000.0
+    if not py_code or not py_code.strip():
+        raise RuntimeError("Transpilation multilingual vide.")
+    return py_code
 
 
-def bench_wasm(wasm_path, n, max_iter):
+def emit_wasm_intermediate_if_available(source: str) -> tuple[bool, str | None]:
     """
-    Benchmark WASM avec soustraction de l'overhead de liaison Python->WASM.
-
-    L'overhead de liaison (~30 us/appel avec wasmtime) est mesure separement puis
-    soustrait pour estimer le temps de calcul pur -- c'est-a-dire le temps que le
-    navigateur obtiendrait (ou il n'y a aucun overhead de liaison Python).
-
-    Methode :
-      1. Mesurer overhead_s  : N appels avec max_iter=0 (aucun calcul WASM)
-      2. Mesurer per_call_s  : N appels avec max_iter reel sur un point interieur
-      3. compute_s = per_call_s - overhead_s   (calcul pur par pixel)
-      4. Extrapoler a n x n pixels
+    Emit Rust WASM intermediate from multilingual AST when supported.
+    Returns: (available, error_message_if_any)
     """
+    add_local_multilingual_repo_to_path()
+    try:
+        from multilingualprogramming.lexer.lexer import Lexer  # noqa: PLC0415
+        from multilingualprogramming.parser.parser import Parser  # noqa: PLC0415
+        from multilingualprogramming.codegen.wasm_generator import (  # noqa: PLC0415
+            WasmCodeGenerator,
+        )
+    except Exception as exc:
+        return (False, f"APIs WASM indisponibles: {exc}")
+
+    try:
+        lexer = Lexer(source, language="fr")
+        tokens = lexer.tokenize()
+        parser = Parser(tokens, source_language=lexer.language or "fr")
+        program = parser.parse()
+        rust_code = WasmCodeGenerator().generate(program)
+        WASM_RS_OUT.write_text(rust_code, encoding="utf-8")
+        return (True, None)
+    except Exception as exc:
+        return (False, str(exc))
+
+
+def generate_wat_and_wasm_strict(source: str) -> tuple[str, bytes]:
+    """Generate WAT with multilingual then compile to wasm bytes with wasmtime."""
+    add_local_multilingual_repo_to_path()
+    try:
+        from multilingualprogramming.lexer.lexer import Lexer  # noqa: PLC0415
+        from multilingualprogramming.parser.parser import Parser  # noqa: PLC0415
+        from multilingualprogramming.codegen.wat_generator import WATCodeGenerator  # noqa: PLC0415
+    except Exception as exc:
+        raise RuntimeError(f"APIs WAT indisponibles: {exc}") from exc
+
     try:
         import wasmtime  # noqa: PLC0415
-
-        engine = wasmtime.Engine()
-        store  = wasmtime.Store(engine)
-        module = wasmtime.Module(engine, wasm_path.read_bytes())
-        inst   = wasmtime.Instance(store, module, [])
-        fn     = inst.exports(store)["mandelbrot"]
-
-        # -- Mesure de l'overhead pur (max_iter=0 => aucune iteration WASM) --
-        N_OVHD = 20_000
-        fn(store, 0.0, 0.0, 0.0)  # echauffement
-        t0 = time.perf_counter()
-        for _ in range(N_OVHD):
-            fn(store, 0.0, 0.0, 0.0)
-        overhead_s = (time.perf_counter() - t0) / N_OVHD
-
-        # -- Mesure overhead + calcul (point interieur, max_iter iterations) --
-        N_SAMPLE = 20_000
-        fn(store, -0.5, 0.0, float(max_iter))  # echauffement
-        t0 = time.perf_counter()
-        for _ in range(N_SAMPLE):
-            fn(store, -0.5, 0.0, float(max_iter))
-        per_call_s = (time.perf_counter() - t0) / N_SAMPLE
-
-        # -- Calcul pur par pixel (overhead soustrait) --
-        compute_s = max(1e-9, per_call_s - overhead_s)
-        print(f"    Overhead liaison Python->WASM : {overhead_s * 1e6:.1f} us/appel")
-        print(f"    Calcul pur WASM par pixel     : {compute_s * 1e6:.2f} us/pixel")
-
-        # -- Extrapolation a n x n pixels --
-        return compute_s * n * n * 1000.0  # en ms
-
-    except ImportError:
-        print("    wasmtime non disponible -- benchmark WASM ignore.")
-        return None
     except Exception as exc:
-        print(f"    Benchmark WASM echoue : {exc}")
-        return None
+        raise RuntimeError(f"wasmtime introuvable pour wat2wasm: {exc}") from exc
+
+    try:
+        lexer = Lexer(source, language="fr")
+        tokens = lexer.tokenize()
+        parser = Parser(tokens, source_language=lexer.language or "fr")
+        program = parser.parse()
+        wat_text = WATCodeGenerator().generate(program)
+    except Exception as exc:
+        raise RuntimeError(f"Echec generation WAT: {exc}") from exc
+
+    try:
+        wasm_bytes = wasmtime.wat2wasm(wat_text)
+    except Exception as exc:
+        raise RuntimeError(f"Echec compilation WAT->WASM: {exc}") from exc
+
+    return wat_text, wasm_bytes
 
 
-# ============================================================
-# SCRIPT PRINCIPAL
-# ============================================================
+def validate_wasm_exports(wasm_bytes: bytes, required_exports: list[str]) -> None:
+    """Fail if one of the expected exports is absent."""
+    try:
+        import wasmtime  # noqa: PLC0415
+    except Exception as exc:
+        raise RuntimeError(f"wasmtime introuvable pour validation export: {exc}") from exc
 
-print(SEPARATOR)
-print("  Explorateur de Fractales -- Pipeline de compilation")
-print(SEPARATOR)
+    engine = wasmtime.Engine()
+    store = wasmtime.Store(engine)
+    module = wasmtime.Module(engine, wasm_bytes)
+    imports = []
+    for imp in module.imports:
+        if isinstance(imp.type, wasmtime.FuncType):
+            results_len = len(imp.type.results)
 
-# Etape 1 : Lecture du source
-print(f"\n[1] Lecture de {SRC_ML.relative_to(ROOT)}")
-if not SRC_ML.exists():
-    print(f"    ERREUR : fichier source introuvable : {SRC_ML}")
-    sys.exit(1)
-source = SRC_ML.read_text(encoding="utf-8")
-print(f"    {len(source)} caracteres, {source.count(chr(10))} lignes")
+            if results_len == 0:
+                def _stub_no_result(*_args):
+                    return None
 
-# Etape 2 : Copie vers public/
-print(f"\n[2] Copie vers {ML_OUT.relative_to(ROOT)}")
-shutil.copy(SRC_ML, ML_OUT)
-print("    Copie.")
+                imports.append(wasmtime.Func(store, imp.type, _stub_no_result))
+            elif results_len == 1:
+                def _stub_one_result(*_args):
+                    return 0
 
-# Etape 3 : Transpilation Python
-print(f"\n[3] Transpilation multilingual -> Python")
-python_code = try_multilingual_transpile(source)
-print("    Transpilation via ProgramExecutor reussie.")
-PY_OUT.write_text(python_code, encoding="utf-8")
-print(f"    Ecrit dans {PY_OUT.relative_to(ROOT)}")
-print("    Apercu :")
-for line in python_code.splitlines()[:12]:
-    print(f"      {line}")
+                imports.append(wasmtime.Func(store, imp.type, _stub_one_result))
+            else:
+                def _stub_multi_result(*_args):
+                    return tuple(0 for _ in range(results_len))
 
-# Etape 4 : Generation du binaire WASM
-print(f"\n[4] Generation du binaire WebAssembly")
-wasm_bytes = generate_fractals_wasm()
-WASM_OUT.write_bytes(wasm_bytes)
-print(f"    {len(wasm_bytes):,} octets -> {WASM_OUT.relative_to(ROOT)}")
+                imports.append(wasmtime.Func(store, imp.type, _stub_multi_result))
+        else:
+            raise RuntimeError(f"Type d'import non supporte pour validation: {imp.type}")
 
-# Validation avec wasmtime si disponible
-wasm_valid = True
-try:
-    import wasmtime  # noqa: PLC0415
-    _eng = wasmtime.Engine()
-    _sto = wasmtime.Store(_eng)
-    _mod = wasmtime.Module(_eng, wasm_bytes)
-    _ins = wasmtime.Instance(_sto, _mod, [])
-    _exp = _ins.exports(_sto)
-    _res_m = _exp["mandelbrot"](_sto, -0.5, 0.0, 100.0)
-    _res_b = _exp["burning_ship"](_sto, -1.8, -0.03, 100.0)
-    _res_t = _exp["tricorn"](_sto, -0.5, 0.0, 100.0)
-    _res_j = _exp["julia"](_sto, 0.0, 0.0, -0.8, 0.156, 100.0)
-    _res_n = _exp["newton"](_sto, 0.6, 0.2, 50.0)
-    _res_p = _exp["phoenix"](_sto, -0.4, 0.2, 100.0)
-    print(f"    Validation wasmtime : mandelbrot(-0.5, 0.0, 100.0) = {_res_m}")
-    print(f"    Validation wasmtime : burning_ship(-1.8, -0.03, 100.0) = {_res_b}")
-    print(f"    Validation wasmtime : tricorn(-0.5, 0.0, 100.0) = {_res_t}")
-    print(f"    Validation wasmtime : julia(0.0, 0.0, -0.8, 0.156, 100.0) = {_res_j}")
-    print(f"    Validation wasmtime : newton(0.6, 0.2, 50.0) = {_res_n}")
-    print(f"    Validation wasmtime : phoenix(-0.4, 0.2, 100.0) = {_res_p}")
-except ImportError:
-    print("    wasmtime absent -- validation ignoree (le navigateur chargera le binaire).")
-except Exception as exc:
-    print(f"    AVERTISSEMENT validation WASM : {exc}")
-    wasm_valid = False
+    instance = wasmtime.Instance(store, module, imports)
+    exports = instance.exports(store)
 
-# Etape 5 : Benchmark
-print(f"\n[5] Benchmark -- grille {BENCH_GRID}x{BENCH_GRID}, max_iter={BENCH_ITERS}")
+    missing = [name for name in required_exports if name not in exports]
+    if missing:
+        raise RuntimeError(f"Exports WASM manquants: {missing}")
 
-print("    Benchmark Python...")
-python_ms = bench_python(BENCH_GRID, BENCH_ITERS)
-print(f"    Python : {fmt(python_ms)} ms")
 
-print("    Benchmark WASM...")
-wasm_ms = bench_wasm(WASM_OUT, BENCH_GRID, BENCH_ITERS)
-speedup = None
-if wasm_ms is not None:
-    speedup = python_ms / wasm_ms if wasm_ms > 0 else None
-    print(f"    WASM  : {fmt(wasm_ms)} ms")
-    if speedup:
-        print(f"    Acceleration : {speedup:.0f}x")
+def main() -> None:
+    print(SEPARATOR)
+    print("  Explorateur de Fractales -- Build strict multilingual")
+    print(SEPARATOR)
 
-# Etape 6 : Ecriture de benchmark.json
-print(f"\n[6] Ecriture de {BENCH_OUT.relative_to(ROOT)}")
-benchmark = {
-    "python_ms":      round(python_ms),
-    "wasm_ms":        round(wasm_ms)   if wasm_ms  is not None else None,
-    "speedup":        round(speedup, 1) if speedup  is not None else None,
-    "grid_size":      BENCH_GRID,
-    "max_iter":       BENCH_ITERS,
-    "wasm_available": (wasm_ms is not None),
-    "wasm_estimated": (wasm_ms is not None),
-}
-BENCH_OUT.write_text(json.dumps(benchmark, indent=2, ensure_ascii=False))
-print(json.dumps(benchmark, indent=4))
+    print(f"\n[1] Lecture de {SRC_ML.relative_to(ROOT)}")
+    if not SRC_ML.exists():
+        raise RuntimeError(f"Fichier source introuvable: {SRC_ML}")
+    source = SRC_ML.read_text(encoding="utf-8")
+    print(f"    {len(source)} caracteres, {source.count(chr(10))} lignes")
 
-# Resume
-print(f"\n{SEPARATOR}")
-if wasm_ms is not None and speedup is not None:
-    print("  OK Pipeline complet reussi!")
-    print(f"    WASM : {WASM_OUT.relative_to(ROOT)}  ({len(wasm_bytes):,} octets)")
-    print(f"    JSON : {BENCH_OUT.relative_to(ROOT)}")
-    print(f"    PY   : {PY_OUT.relative_to(ROOT)}")
+    print(f"\n[2] Copie vers {ML_OUT.relative_to(ROOT)}")
+    shutil.copy(SRC_ML, ML_OUT)
+    print("    Copie.")
+
+    if LEGACY_WASM_OUT.exists():
+        LEGACY_WASM_OUT.unlink()
+        print(f"    Ancien artefact supprime: {LEGACY_WASM_OUT.relative_to(ROOT)}")
+
+    print("\n[3] Transpilation multilingual -> Python (strict)")
+    python_code = transpile_strict(source)
+    PY_OUT.write_text(python_code, encoding="utf-8")
+    print(f"    Ecrit dans {PY_OUT.relative_to(ROOT)}")
+    print("    Apercu :")
+    for line in python_code.splitlines()[:12]:
+        print(f"      {line}")
+
+    print("\n[4] Generation WASM (backends officiels multilingual)")
+    wasm_intermediate_available, wasm_error = emit_wasm_intermediate_if_available(source)
+    if wasm_intermediate_available:
+        print(f"    Rust intermediaire ecrit: {WASM_RS_OUT.relative_to(ROOT)}")
+    else:
+        print("    Rust intermediaire indisponible.")
+        if wasm_error:
+            print(f"    Detail: {wasm_error}")
+
+    wat_text, wasm_bytes = generate_wat_and_wasm_strict(source)
+    WAT_OUT.write_text(wat_text, encoding="utf-8")
+    LEGACY_WASM_OUT.write_bytes(wasm_bytes)
+    print(f"    WAT ecrit : {WAT_OUT.relative_to(ROOT)}")
+    print(f"    WASM ecrit: {LEGACY_WASM_OUT.relative_to(ROOT)} ({len(wasm_bytes):,} octets)")
+
+    required_exports = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "newton", "phoenix"]
+    validate_wasm_exports(wasm_bytes, required_exports)
+    print(f"    Exports valides: {', '.join(required_exports)}")
+
+    print(f"\n[5] Benchmark")
+    print("    Ignore dans ce pipeline strict (pas d'execution runtime hors compilation).")
+    python_ms = None
+    multibrot_python_ms = None
+
+    print(f"\n[6] Ecriture de {BENCH_OUT.relative_to(ROOT)}")
+    benchmark = {
+        "python_ms": None,
+        "wasm_ms": None,
+        "speedup": None,
+        "multibrot_python_ms": None,
+        "multibrot_wasm_ms": None,
+        "multibrot_speedup": None,
+        "grid_size": BENCH_GRID,
+        "max_iter": BENCH_ITERS,
+        "wasm_available": True,
+        "wasm_estimated": False,
+        "wasm_pipeline": "multilingual_official_wat2wasm",
+    }
+    BENCH_OUT.write_text(json.dumps(benchmark, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps(benchmark, indent=4, ensure_ascii=False))
+
+    print(f"\n{SEPARATOR}")
+    print("  OK Build strict multilingual termine.")
     print(f"    ML   : {ML_OUT.relative_to(ROOT)}")
-    print(f"\n  Resultat benchmark :")
-    print(f"    {fmt(wasm_ms)} ms WASM . {fmt(python_ms)} ms Python . {round(speedup)}x plus rapide")
-elif wasm_valid:
-    print("  ~ WASM genere, benchmark WASM indisponible (wasmtime absent).")
-    print(f"    WASM charge par le navigateur : {WASM_OUT.relative_to(ROOT)}")
-    print("    Installez wasmtime pour le benchmark complet :")
-    print("      pip install wasmtime")
-else:
-    print("  ATTENTION : le binaire WASM n'a pas pu etre valide.")
-print(SEPARATOR)
+    print(f"    PY   : {PY_OUT.relative_to(ROOT)}")
+    if wasm_intermediate_available:
+        print(f"    RS   : {WASM_RS_OUT.relative_to(ROOT)}")
+    print(f"    WAT  : {WAT_OUT.relative_to(ROOT)}")
+    print(f"    WASM : {LEGACY_WASM_OUT.relative_to(ROOT)}")
+    print(f"    JSON : {BENCH_OUT.relative_to(ROOT)}")
+    print(SEPARATOR)
+
+
+if __name__ == "__main__":
+    main()

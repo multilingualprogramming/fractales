@@ -402,6 +402,7 @@ async function loadWasm() {
       burning_ship: typeof exports.burning_ship === "function" ? exports.burning_ship : null,
       tricorn: typeof exports.tricorn === "function" ? exports.tricorn : null,
       julia: typeof exports.julia === "function" ? exports.julia : null,
+      multibrot: typeof exports.multibrot === "function" ? exports.multibrot : null,
       newton: typeof exports.newton === "function" ? exports.newton : null,
       phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
     };

@@ -3,15 +3,17 @@
 Pipeline de compilation : source multilingual français -> WebAssembly + benchmark
 
 Etapes :
-  1. Lire src/mandelbrot.ml
-  2. Copier vers public/mandelbrot.ml  (servi statiquement par GitHub Pages)
+  1. Lire src/main.ml
+  2. Copier vers public/main.ml  (servi statiquement par GitHub Pages)
   3. Transpiler vers Python via ProgramExecutor (multilingualprogramming)
   4. Generer un binaire WebAssembly valide (encodage direct du format WASM)
-     avec 4 exports :
+     avec 6 exports :
        - mandelbrot(cx: f64, cy: f64, max_iter: f64) -> f64
        - burning_ship(cx: f64, cy: f64, max_iter: f64) -> f64
        - tricorn(cx: f64, cy: f64, max_iter: f64) -> f64
        - julia(zx: f64, zy: f64, c_re: f64, c_im: f64, max_iter: f64) -> f64
+       - newton(zx: f64, zy: f64, max_iter: f64) -> f64
+       - phoenix(cx: f64, cy: f64, max_iter: f64) -> f64
   5. Benchmark Python vs WASM sur une grille 200x200 avec max_iter=100
   6. Ecrire public/benchmark.json
 
@@ -37,14 +39,14 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
 # Chemins
 # ---------------------------------------------------------------------------
 ROOT   = Path(__file__).parent.parent
-SRC_ML = ROOT / "src" / "mandelbrot.ml"
+SRC_ML = ROOT / "src" / "main.ml"
 PUBLIC = ROOT / "public"
 PUBLIC.mkdir(parents=True, exist_ok=True)
 
 WASM_OUT  = PUBLIC / "mandelbrot.wasm"
 BENCH_OUT = PUBLIC / "benchmark.json"
 PY_OUT    = PUBLIC / "mandelbrot_transpiled.py"
-ML_OUT    = PUBLIC / "mandelbrot.ml"
+ML_OUT    = PUBLIC / "main.ml"
 
 # Parametres du benchmark
 BENCH_GRID  = 200   # 200x200 = 40 000 pixels
@@ -61,7 +63,7 @@ def fmt(ms):
 # ============================================================
 # GENERATEUR DE BINAIRE WASM
 #
-# Encode directement le format binaire WebAssembly pour 4 fonctions.
+# Encode directement le format binaire WebAssembly pour 6 fonctions.
 # Signatures :
 #   type0: (f64, f64, f64) -> f64
 #   type1: (f64, f64, f64, f64, f64) -> f64
@@ -207,6 +209,149 @@ def _f64_loop_body_julia():
     return body
 
 
+def _f64_loop_body_phoenix():
+    """Genere le corps WASM (sans locals_decl) pour phoenix(cx, cy, max_iter)."""
+    # params : 0=cx, 1=cy, 2=max_iter
+    # locals : 3=x, 4=y, 5=iter, 6=x_prev, 7=y_prev, 8=xtemp, 9=ytemp
+    def lget(i): return bytes([0x20]) + _uleb128(i)
+    def lset(i): return bytes([0x21]) + _uleb128(i)
+    def br(d):   return bytes([0x0C]) + _uleb128(d)
+    def brif(d): return bytes([0x0D]) + _uleb128(d)
+    def f64c(v): return bytes([0x44]) + struct.pack("<d", v)
+
+    F64_MUL    = bytes([0xA2])
+    F64_ADD    = bytes([0xA0])
+    F64_SUB    = bytes([0xA1])
+    F64_GE     = bytes([0x66])
+    F64_GT     = bytes([0x64])
+    RETURN     = bytes([0x0F])
+    END        = bytes([0x0B])
+    BLOCK_VOID = bytes([0x02, 0x40])
+    LOOP_VOID  = bytes([0x03, 0x40])
+    IF_VOID    = bytes([0x04, 0x40])
+
+    body = BLOCK_VOID + LOOP_VOID
+    body += lget(5) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
+
+    # escape: x*x + y*y > 4.0
+    body += lget(3) + lget(3) + F64_MUL
+    body += lget(4) + lget(4) + F64_MUL
+    body += F64_ADD + f64c(4.0) + F64_GT
+    body += IF_VOID + lget(5) + RETURN + END
+
+    # xtemp = x*x - y*y + cx + (-0.5)*x_prev
+    body += lget(3) + lget(3) + F64_MUL
+    body += lget(4) + lget(4) + F64_MUL
+    body += F64_SUB + lget(0) + F64_ADD
+    body += f64c(-0.5) + lget(6) + F64_MUL + F64_ADD
+    body += lset(8)
+
+    # ytemp = 2*x*y + cy + (-0.5)*y_prev
+    body += f64c(2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
+    body += f64c(-0.5) + lget(7) + F64_MUL + F64_ADD
+    body += lset(9)
+
+    # x_prev=x ; y_prev=y ; x=xtemp ; y=ytemp
+    body += lget(3) + lset(6)
+    body += lget(4) + lset(7)
+    body += lget(8) + lset(3)
+    body += lget(9) + lset(4)
+
+    body += lget(5) + f64c(1.0) + F64_ADD + lset(5)  # iter += 1
+    body += br(0) + END + END
+    body += lget(5) + END
+    return body
+
+
+def _f64_loop_body_newton():
+    """Genere le corps WASM (sans locals_decl) pour newton(zx, zy, max_iter)."""
+    # params : 0=zx(x), 1=zy(y), 2=max_iter
+    # locals : 3=iter, 4=x2, 5=y2, 6=fx, 7=fy, 8=dfx, 9=dfy, 10=denom,
+    #          11=dx, 12=dy, 13=d1, 14=d2, 15=d3
+    def lget(i): return bytes([0x20]) + _uleb128(i)
+    def lset(i): return bytes([0x21]) + _uleb128(i)
+    def br(d):   return bytes([0x0C]) + _uleb128(d)
+    def brif(d): return bytes([0x0D]) + _uleb128(d)
+    def f64c(v): return bytes([0x44]) + struct.pack("<d", v)
+
+    F64_MUL    = bytes([0xA2])
+    F64_ADD    = bytes([0xA0])
+    F64_SUB    = bytes([0xA1])
+    F64_DIV    = bytes([0xA3])
+    F64_GE     = bytes([0x66])
+    F64_LT     = bytes([0x63])
+    RETURN     = bytes([0x0F])
+    END        = bytes([0x0B])
+    BLOCK_VOID = bytes([0x02, 0x40])
+    LOOP_VOID  = bytes([0x03, 0x40])
+    IF_VOID    = bytes([0x04, 0x40])
+
+    body = bytes()
+    body += f64c(0.0) + lset(3)  # iter = 0
+    body += BLOCK_VOID + LOOP_VOID
+    body += lget(3) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
+
+    # x2=x*x ; y2=y*y
+    body += lget(0) + lget(0) + F64_MUL + lset(4)
+    body += lget(1) + lget(1) + F64_MUL + lset(5)
+
+    # fx = x*x2 - 3*x*y2 - 1
+    body += lget(0) + lget(4) + F64_MUL
+    body += f64c(3.0) + lget(0) + F64_MUL + lget(5) + F64_MUL + F64_SUB
+    body += f64c(1.0) + F64_SUB + lset(6)
+
+    # fy = 3*x2*y - y*y2
+    body += f64c(3.0) + lget(4) + F64_MUL + lget(1) + F64_MUL
+    body += lget(1) + lget(5) + F64_MUL + F64_SUB
+    body += lset(7)
+
+    # dfx = 3*(x2-y2) ; dfy = 6*x*y
+    body += f64c(3.0) + lget(4) + lget(5) + F64_SUB + F64_MUL + lset(8)
+    body += f64c(6.0) + lget(0) + F64_MUL + lget(1) + F64_MUL + lset(9)
+
+    # denom = dfx*dfx + dfy*dfy
+    body += lget(8) + lget(8) + F64_MUL + lget(9) + lget(9) + F64_MUL + F64_ADD + lset(10)
+
+    # if denom < eps: return iter
+    body += lget(10) + f64c(1e-6) + F64_LT
+    body += IF_VOID + lget(3) + RETURN + END
+
+    # dx = (fx*dfx + fy*dfy) / denom
+    body += lget(6) + lget(8) + F64_MUL + lget(7) + lget(9) + F64_MUL + F64_ADD
+    body += lget(10) + F64_DIV + lset(11)
+    # dy = (fy*dfx - fx*dfy) / denom
+    body += lget(7) + lget(8) + F64_MUL + lget(6) + lget(9) + F64_MUL + F64_SUB
+    body += lget(10) + F64_DIV + lset(12)
+
+    # x -= dx ; y -= dy
+    body += lget(0) + lget(11) + F64_SUB + lset(0)
+    body += lget(1) + lget(12) + F64_SUB + lset(1)
+
+    # d1 = (x-1)^2 + y^2
+    body += lget(0) + f64c(1.0) + F64_SUB + lget(0) + f64c(1.0) + F64_SUB + F64_MUL
+    body += lget(1) + lget(1) + F64_MUL + F64_ADD + lset(13)
+    # d2 = (x+0.5)^2 + (y-root)^2
+    body += lget(0) + f64c(0.5) + F64_ADD + lget(0) + f64c(0.5) + F64_ADD + F64_MUL
+    body += lget(1) + f64c(0.8660254037844386) + F64_SUB
+    body += lget(1) + f64c(0.8660254037844386) + F64_SUB + F64_MUL
+    body += F64_ADD + lset(14)
+    # d3 = (x+0.5)^2 + (y+root)^2
+    body += lget(0) + f64c(0.5) + F64_ADD + lget(0) + f64c(0.5) + F64_ADD + F64_MUL
+    body += lget(1) + f64c(0.8660254037844386) + F64_ADD
+    body += lget(1) + f64c(0.8660254037844386) + F64_ADD + F64_MUL
+    body += F64_ADD + lset(15)
+
+    # if d1<eps: return iter ; idem d2,d3
+    body += lget(13) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
+    body += lget(14) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
+    body += lget(15) + f64c(1e-6) + F64_LT + IF_VOID + lget(3) + RETURN + END
+
+    body += lget(3) + f64c(1.0) + F64_ADD + lset(3)  # iter += 1
+    body += br(0) + END + END
+    body += lget(3) + END
+    return body
+
+
 def _wrap_func_body(locals_count, body):
     locals_decl = _uleb128(1) + _uleb128(locals_count) + bytes([0x7C])
     func_data = locals_decl + body
@@ -214,12 +359,14 @@ def _wrap_func_body(locals_count, body):
 
 
 def generate_fractals_wasm():
-    """Genere un module WASM exportant mandelbrot, burning_ship, tricorn et julia."""
+    """Genere un module WASM exportant mandelbrot, burning_ship, tricorn, julia, newton, phoenix."""
     bodies = [
         _wrap_func_body(4, _f64_loop_body("mandelbrot")),
         _wrap_func_body(4, _f64_loop_body("burning_ship")),
         _wrap_func_body(4, _f64_loop_body("tricorn")),
         _wrap_func_body(2, _f64_loop_body_julia()),
+        _wrap_func_body(13, _f64_loop_body_newton()),
+        _wrap_func_body(7, _f64_loop_body_phoenix()),
     ]
 
     # Type section : 2 types
@@ -229,10 +376,10 @@ def generate_fractals_wasm():
         bytes([0x60]) + _uleb128(5) + bytes([0x7C, 0x7C, 0x7C, 0x7C, 0x7C]) + _uleb128(1) + bytes([0x7C])
     )
 
-    # Function section : [type0, type0, type0, type1]
-    func_content = _uleb128(4) + _uleb128(0) + _uleb128(0) + _uleb128(0) + _uleb128(1)
+    # Function section : [type0, type0, type0, type1, type0, type0]
+    func_content = _uleb128(6) + _uleb128(0) + _uleb128(0) + _uleb128(0) + _uleb128(1) + _uleb128(0) + _uleb128(0)
 
-    exports = [b"mandelbrot", b"burning_ship", b"tricorn", b"julia"]
+    exports = [b"mandelbrot", b"burning_ship", b"tricorn", b"julia", b"newton", b"phoenix"]
     export_content = _uleb128(len(exports))
     for idx, name in enumerate(exports):
         export_content += _uleb128(len(name)) + name + bytes([0x00]) + _uleb128(idx)
@@ -266,8 +413,8 @@ def find_multilingual_path():
 
 def try_multilingual_transpile(source):
     """
-    Essaie de transpiler le source francais via multilingualprogramming.
-    Retourne le code Python ou None en cas d'echec.
+    Transpile le source francais via multilingualprogramming.
+    Echec => exception (pas de fallback silencieux).
     """
     ml_path = find_multilingual_path()
     if ml_path and str(ml_path) not in sys.path:
@@ -278,72 +425,12 @@ def try_multilingual_transpile(source):
         executor = ProgramExecutor(language="fr")
         return executor.transpile(source)
     except ImportError:
-        return None
+        raise RuntimeError(
+            "multilingualprogramming est introuvable. "
+            "Ce projet exige une transpilation reelle via multilingual."
+        ) from None
     except Exception as exc:
-        print(f"    Avertissement transpilation : {exc}")
-        return None
-
-
-def fallback_python_code():
-    """Code Python de repli equivalent au source .ml."""
-    return (
-        "# Python transpile depuis le source francais multilingual\n"
-        "# (transpilation de repli)\n"
-        "\n"
-        "def mandelbrot(cx, cy, max_iter):\n"
-        "    x = 0.0\n"
-        "    y = 0.0\n"
-        "    iter = 0.0\n"
-        "    while iter < max_iter:\n"
-        "        if x * x + y * y > 4.0:\n"
-        "            return iter\n"
-        "        xtemp = x * x - y * y + cx\n"
-        "        y = 2.0 * x * y + cy\n"
-        "        x = xtemp\n"
-        "        iter = iter + 1.0\n"
-        "    return iter\n"
-        "\n"
-        "def julia(zx, zy, c_re, c_im, max_iter):\n"
-        "    x = zx\n"
-        "    y = zy\n"
-        "    iter = 0.0\n"
-        "    while iter < max_iter:\n"
-        "        if x * x + y * y > 4.0:\n"
-        "            return iter\n"
-        "        xtemp = x * x - y * y + c_re\n"
-        "        y = 2.0 * x * y + c_im\n"
-        "        x = xtemp\n"
-        "        iter = iter + 1.0\n"
-        "    return iter\n"
-        "\n"
-        "def burning_ship(cx, cy, max_iter):\n"
-        "    x = 0.0\n"
-        "    y = 0.0\n"
-        "    iter = 0.0\n"
-        "    while iter < max_iter:\n"
-        "        if x * x + y * y > 4.0:\n"
-        "            return iter\n"
-        "        ax = abs(x)\n"
-        "        ay = abs(y)\n"
-        "        xtemp = ax * ax - ay * ay + cx\n"
-        "        y = 2.0 * ax * ay + cy\n"
-        "        x = xtemp\n"
-        "        iter = iter + 1.0\n"
-        "    return iter\n"
-        "\n"
-        "def tricorn(cx, cy, max_iter):\n"
-        "    x = 0.0\n"
-        "    y = 0.0\n"
-        "    iter = 0.0\n"
-        "    while iter < max_iter:\n"
-        "        if x * x + y * y > 4.0:\n"
-        "            return iter\n"
-        "        xtemp = x * x - y * y + cx\n"
-        "        y = -2.0 * x * y + cy\n"
-        "        x = xtemp\n"
-        "        iter = iter + 1.0\n"
-        "    return iter\n"
-    )
+        raise RuntimeError(f"Echec de transpilation multilingual: {exc}") from exc
 
 
 # ============================================================
@@ -453,11 +540,7 @@ print("    Copie.")
 # Etape 3 : Transpilation Python
 print(f"\n[3] Transpilation multilingual -> Python")
 python_code = try_multilingual_transpile(source)
-if python_code:
-    print("    Transpilation via ProgramExecutor reussie.")
-else:
-    python_code = fallback_python_code()
-    print("    Transpilation de repli utilisee.")
+print("    Transpilation via ProgramExecutor reussie.")
 PY_OUT.write_text(python_code, encoding="utf-8")
 print(f"    Ecrit dans {PY_OUT.relative_to(ROOT)}")
 print("    Apercu :")
@@ -483,10 +566,14 @@ try:
     _res_b = _exp["burning_ship"](_sto, -1.8, -0.03, 100.0)
     _res_t = _exp["tricorn"](_sto, -0.5, 0.0, 100.0)
     _res_j = _exp["julia"](_sto, 0.0, 0.0, -0.8, 0.156, 100.0)
+    _res_n = _exp["newton"](_sto, 0.6, 0.2, 50.0)
+    _res_p = _exp["phoenix"](_sto, -0.4, 0.2, 100.0)
     print(f"    Validation wasmtime : mandelbrot(-0.5, 0.0, 100.0) = {_res_m}")
     print(f"    Validation wasmtime : burning_ship(-1.8, -0.03, 100.0) = {_res_b}")
     print(f"    Validation wasmtime : tricorn(-0.5, 0.0, 100.0) = {_res_t}")
     print(f"    Validation wasmtime : julia(0.0, 0.0, -0.8, 0.156, 100.0) = {_res_j}")
+    print(f"    Validation wasmtime : newton(0.6, 0.2, 50.0) = {_res_n}")
+    print(f"    Validation wasmtime : phoenix(-0.4, 0.2, 100.0) = {_res_p}")
 except ImportError:
     print("    wasmtime absent -- validation ignoree (le navigateur chargera le binaire).")
 except Exception as exc:

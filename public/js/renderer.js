@@ -24,10 +24,10 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn"
+  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "newton" | "phoenix" | "barnsley" | "sierpinski"
   juliaCre: -0.8,
   juliaCim: 0.156,
-  palette: "feu",   // "feu" | "ocean" | "aurora"
+  palette: "aurora",   // "feu" | "ocean" | "aurora"
 };
 
 const VIEW_PRESETS = {
@@ -35,7 +35,13 @@ const VIEW_PRESETS = {
   julia:        { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
   tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
+  phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  barnsley:     { centerX: 0.0,  centerY: 5.0, span: 12.0 },
+  sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.4 },
 };
+
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
@@ -189,11 +195,81 @@ function tricornJS(cx, cy, maxIter) {
   return iter;
 }
 
+function newtonJS(zx, zy, maxIter) {
+  const eps = 1e-6;
+  const root3over2 = 0.8660254037844386;
+  let x = zx, y = zy, iter = 0.0;
+  while (iter < maxIter) {
+    const x2 = x * x;
+    const y2 = y * y;
+    const fx = x * x2 - 3.0 * x * y2 - 1.0;
+    const fy = 3.0 * x2 * y - y * y2;
+    const dfx = 3.0 * (x2 - y2);
+    const dfy = 6.0 * x * y;
+    const denom = dfx * dfx + dfy * dfy;
+    if (denom < eps) return iter;
+
+    const dx = (fx * dfx + fy * dfy) / denom;
+    const dy = (fy * dfx - fx * dfy) / denom;
+    x -= dx;
+    y -= dy;
+
+    const d1 = (x - 1.0) * (x - 1.0) + y * y;
+    const d2 = (x + 0.5) * (x + 0.5) + (y - root3over2) * (y - root3over2);
+    const d3 = (x + 0.5) * (x + 0.5) + (y + root3over2) * (y + root3over2);
+    if (d1 < eps || d2 < eps || d3 < eps) return iter;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function phoenixJS(cx, cy, maxIter) {
+  const p = -0.5;
+  let x = 0.0, y = 0.0, iter = 0.0;
+  let xPrev = 0.0, yPrev = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const xNext = x * x - y * y + cx + p * xPrev;
+    const yNext = 2.0 * x * y + cy + p * yPrev;
+    xPrev = x;
+    yPrev = y;
+    x = xNext;
+    y = yNext;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function makeRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+function barnsleyStep(x, y, r) {
+  if (r < 0.01) return [0.0, 0.16 * y];
+  if (r < 0.86) return [0.85 * x + 0.04 * y, -0.04 * x + 0.85 * y + 1.6];
+  if (r < 0.93) return [0.20 * x - 0.26 * y, 0.23 * x + 0.22 * y + 1.6];
+  return [-0.15 * x + 0.28 * y, 0.26 * x + 0.24 * y + 0.44];
+}
+
+function sierpinskiStep(x, y, r) {
+  if (r < 1 / 3) return [0.5 * x, 0.5 * y];
+  if (r < 2 / 3) return [0.5 * x + 0.5, 0.5 * y];
+  return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
+}
+
 function getJSFractalFn(name) {
   switch (name) {
     case "julia": return juliaJS;
     case "burning_ship": return burningShipJS;
     case "tricorn": return tricornJS;
+    case "newton": return newtonJS;
+    case "phoenix": return phoenixJS;
     case "mandelbrot":
     default: return mandelbrotJS;
   }
@@ -204,6 +280,61 @@ function getActiveFractalFn() {
   if (!wasmAvailable) return { fn: jsFn, backend: "JS" };
   const wasmFn = wasmFunctions[params.fractal];
   return wasmFn ? { fn: wasmFn, backend: "WASM" } : { fn: jsFn, backend: "JS" };
+}
+
+function renderPointFractal(w, h, data, cx0, cy0, ps) {
+  const isBarnsley = params.fractal === "barnsley";
+  const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
+  const pointsTarget = Math.max(25000, params.maxIter * 600);
+  const burnIn = 40;
+  const pointsPerFrame = 20000;
+
+  let x = 0.0;
+  let y = 0.0;
+  let emitted = 0;
+  let iter = 0;
+
+  const putPoint = (px, py) => {
+    if (px < 0 || py < 0 || px >= w || py >= h) return;
+    const i = (py * w + px) * 4;
+    if (isBarnsley) {
+      data[i] = Math.min(120, data[i] + 2);
+      data[i + 1] = Math.min(255, data[i + 1] + 20);
+      data[i + 2] = Math.min(140, data[i + 2] + 3);
+    } else {
+      data[i] = Math.min(150, data[i] + 8);
+      data[i + 1] = Math.min(220, data[i + 1] + 12);
+      data[i + 2] = Math.min(255, data[i + 2] + 20);
+    }
+    data[i + 3] = 255;
+  };
+
+  const step = () => {
+    const end = Math.min(emitted + pointsPerFrame, pointsTarget);
+    while (emitted < end) {
+      const r = rng();
+      [x, y] = isBarnsley ? barnsleyStep(x, y, r) : sierpinskiStep(x, y, r);
+      iter += 1;
+      if (iter <= burnIn) continue;
+
+      const px = ((x - cx0) / ps) | 0;
+      const py = ((y - cy0) / ps) | 0;
+      putPoint(px, py);
+      emitted += 1;
+    }
+
+    ctx.putImageData(imageDataBuffer, 0, 0);
+    if (emitted < pointsTarget) {
+      requestAnimationFrame(step);
+    } else {
+      const elapsed = (performance.now() - renderStart).toFixed(0);
+      rendering = false;
+      canvas.parentElement.classList.remove("rendering");
+      updateStatusBar(`JS (IFS) · ${elapsed} ms`, true);
+    }
+  };
+
+  requestAnimationFrame(step);
 }
 
 // ============================================================
@@ -250,6 +381,8 @@ async function loadWasm() {
       burning_ship: typeof exports.burning_ship === "function" ? exports.burning_ship : null,
       tricorn: typeof exports.tricorn === "function" ? exports.tricorn : null,
       julia: typeof exports.julia === "function" ? exports.julia : null,
+      newton: typeof exports.newton === "function" ? exports.newton : null,
+      phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
@@ -310,6 +443,18 @@ function render() {
   canvas.parentElement.classList.add("rendering");
   updateStatusBar("Rendu…");
 
+  if (POINT_FRACTALS.has(params.fractal)) {
+    // fond noir explicite
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+      data[i + 3] = 255;
+    }
+    renderPointFractal(w, h, data, cx0, cy0, ps);
+    return;
+  }
+
   let row = 0;
   const ROWS_PER_FRAME = 8;
 
@@ -320,9 +465,12 @@ function render() {
       const base = py * w * 4;
       for (let px = 0; px < w; px++) {
         const cx = cx0 + px * ps;
-        const iter = params.fractal === "julia"
-          ? fn(cx, cy, params.juliaCre, params.juliaCim, max)
-          : fn(cx, cy, max);
+        let iter;
+        if (params.fractal === "julia") {
+          iter = fn(cx, cy, params.juliaCre, params.juliaCim, max);
+        } else {
+          iter = fn(cx, cy, max);
+        }
         const [r, g, b] = getColor(iter, max, pal);
         const i = base + px * 4;
         data[i]     = r;
@@ -509,7 +657,7 @@ const codePython = document.getElementById("code-python");
 async function loadSources() {
   // Source français
   try {
-    const resp = await fetch("mandelbrot.ml");
+    const resp = await fetch("main.ml");
     const src  = resp.ok ? await resp.text() : "# Source indisponible";
     codeFrench.innerHTML = highlightFrench(escapeHtml(src));
   } catch {
@@ -559,8 +707,9 @@ function escapeHtml(s) {
  */
 function highlightFrench(code) {
   const KW = [
-    "déf", "retour", "tantque", "soit", "si", "sinon",
+    "déf", "retour", "tantque", "soit", "si", "sinonsi", "sinon",
     "pour", "dans", "Vrai", "Faux", "intervalle", "et", "ou", "non",
+    "constante", "affirmer", "importer",
   ];
   const kwRe = new RegExp(`\\b(${KW.join("|")})\\b`, "g");
 
@@ -579,9 +728,9 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3)\b/g, `<span class="param">$1</span>`);
 }
 
 function highlightPython(code) {
@@ -602,9 +751,9 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3)\b/g, `<span class="param">$1</span>`);
 }
 
 // ============================================================

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Explorateur de Fractales — multilingual WebAssembly</title>
   <meta name="description"
-        content="Fractales Mandelbrot, Julia, Burning Ship et Tricorn calculées en WebAssembly depuis du code source écrit en français avec le langage multilingual." />
+        content="Fractales Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Barnsley et Sierpinski calculées en WebAssembly/JavaScript depuis du code source écrit en français avec le langage multilingual." />
 
   <!-- Feuille de style principale -->
   <link rel="stylesheet" href="css/style.css" />
@@ -132,6 +132,10 @@
         <option value="julia">Julia (c = -0.8 + 0.156i)</option>
         <option value="burning_ship">Burning Ship</option>
         <option value="tricorn">Tricorn</option>
+        <option value="newton">Newton (z^3 - 1)</option>
+        <option value="phoenix">Phoenix</option>
+        <option value="barnsley">Barnsley (IFS)</option>
+        <option value="sierpinski">Sierpinski (IFS)</option>
       </select>
     </div>
 
@@ -154,7 +158,7 @@
       <select id="palette-select" aria-label="Choisir une palette de couleurs">
         <option value="feu"   >🔥 Feu</option>
         <option value="ocean" >🌊 Océan</option>
-        <option value="aurora">🌌 Aurora</option>
+        <option value="aurora" selected>🌌 Aurora</option>
       </select>
     </div>
 

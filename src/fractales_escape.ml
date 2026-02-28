@@ -1,20 +1,16 @@
-# Fractales itératives — source en français (multilingual)
-#
-# Fonctions exportées pour la Phase 1 :
-#   - mandelbrot(cx, cy, max_iter)
-#   - julia(zx, zy, c_re, c_im, max_iter)
-#   - burning_ship(cx, cy, max_iter)
-#   - tricorn(cx, cy, max_iter)
-#
-# Mots-clés :
-#   déf, soit, tantque, si, retour
+importer math
+
+constante RAYON_ECHAPPEMENT_CARRE = 4.0
+
+déf norme_carre(x, y):
+    retour x * x + y * y
 
 déf mandelbrot(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit iter = 0.0
     tantque iter < max_iter:
-        si x * x + y * y > 4.0:
+        si norme_carre(x, y) > RAYON_ECHAPPEMENT_CARRE:
             retour iter
         soit xtemp = x * x - y * y + cx
         y = 2.0 * x * y + cy
@@ -27,7 +23,7 @@ déf julia(zx, zy, c_re, c_im, max_iter):
     soit y = zy
     soit iter = 0.0
     tantque iter < max_iter:
-        si x * x + y * y > 4.0:
+        si norme_carre(x, y) > RAYON_ECHAPPEMENT_CARRE:
             retour iter
         soit xtemp = x * x - y * y + c_re
         y = 2.0 * x * y + c_im
@@ -40,7 +36,7 @@ déf burning_ship(cx, cy, max_iter):
     soit y = 0.0
     soit iter = 0.0
     tantque iter < max_iter:
-        si x * x + y * y > 4.0:
+        si norme_carre(x, y) > RAYON_ECHAPPEMENT_CARRE:
             retour iter
         soit ax = abs(x)
         soit ay = abs(y)
@@ -55,7 +51,7 @@ déf tricorn(cx, cy, max_iter):
     soit y = 0.0
     soit iter = 0.0
     tantque iter < max_iter:
-        si x * x + y * y > 4.0:
+        si norme_carre(x, y) > RAYON_ECHAPPEMENT_CARRE:
             retour iter
         soit xtemp = x * x - y * y + cx
         y = -2.0 * x * y + cy

@@ -9,7 +9,7 @@
 
 "use strict";
 
-const WASM_URL = "mandelbrot.wasm?v=20260228r2";
+const WASM_URL = "mandelbrot.wasm?v=20260228r3";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION

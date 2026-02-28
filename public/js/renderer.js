@@ -1,4 +1,4 @@
-/**
+﻿/**
  * renderer.js — Explorateur de Fractales
  *
  * Charge mandelbrot.wasm (compilé depuis le source français multilingual),
@@ -46,9 +46,6 @@ const VIEW_PRESETS = {
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.4 },
   koch:         { centerX: 0.0,  centerY: 0.0, span: 1.0 },
 };
-
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
-const LINE_FRACTALS = new Set(["koch"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
@@ -149,309 +146,9 @@ function getColor(iter, max, name) {
   ];
 }
 
-// ============================================================
-// FALLBACK JAVASCRIPT (identique à mandelbrot.ml)
-// Utilisé si le module WASM ne peut pas être chargé.
-// ============================================================
-function mandelbrotJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xtemp = x * x - y * y + cx;
-    y = 2.0 * x * y + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function juliaJS(zx, zy, cRe, cIm, maxIter) {
-  let x = zx, y = zy, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xtemp = x * x - y * y + cRe;
-    y = 2.0 * x * y + cIm;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function burningShipJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const ax = Math.abs(x);
-    const ay = Math.abs(y);
-    const xtemp = ax * ax - ay * ay + cx;
-    y = 2.0 * ax * ay + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function tricornJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xtemp = x * x - y * y + cx;
-    y = -2.0 * x * y + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function multibrotJS(cx, cy, maxIter, power) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const r = Math.sqrt(x * x + y * y);
-    const theta = Math.atan2(y, x);
-    const rn = r ** power;
-    const angle = power * theta;
-    const nx = rn * Math.cos(angle) + cx;
-    const ny = rn * Math.sin(angle) + cy;
-    x = nx;
-    y = ny;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function celticJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xtemp = Math.abs(x * x - y * y) + cx;
-    y = 2.0 * x * y + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function buffaloJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xtemp = Math.abs(x * x - y * y) + cx;
-    y = Math.abs(2.0 * x * y) + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function perpendicularBurningShipJS(cx, cy, maxIter) {
-  let x = 0.0, y = 0.0, iter = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const ax = Math.abs(x);
-    const ay = Math.abs(y);
-    const xtemp = ax * ax - ay * ay + cx;
-    y = -2.0 * ax * y + cy;
-    x = xtemp;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function newtonJS(zx, zy, maxIter) {
-  const eps = 1e-6;
-  const root3over2 = 0.8660254037844386;
-  let x = zx, y = zy, iter = 0.0;
-  while (iter < maxIter) {
-    const x2 = x * x;
-    const y2 = y * y;
-    const fx = x * x2 - 3.0 * x * y2 - 1.0;
-    const fy = 3.0 * x2 * y - y * y2;
-    const dfx = 3.0 * (x2 - y2);
-    const dfy = 6.0 * x * y;
-    const denom = dfx * dfx + dfy * dfy;
-    if (denom < eps) return iter;
-
-    const dx = (fx * dfx + fy * dfy) / denom;
-    const dy = (fy * dfx - fx * dfy) / denom;
-    x -= dx;
-    y -= dy;
-
-    const d1 = (x - 1.0) * (x - 1.0) + y * y;
-    const d2 = (x + 0.5) * (x + 0.5) + (y - root3over2) * (y - root3over2);
-    const d3 = (x + 0.5) * (x + 0.5) + (y + root3over2) * (y + root3over2);
-    if (d1 < eps || d2 < eps || d3 < eps) return iter;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function phoenixJS(cx, cy, maxIter) {
-  const p = -0.5;
-  let x = 0.0, y = 0.0, iter = 0.0;
-  let xPrev = 0.0, yPrev = 0.0;
-  while (iter < maxIter) {
-    if (x * x + y * y > 4.0) return iter;
-    const xNext = x * x - y * y + cx + p * xPrev;
-    const yNext = 2.0 * x * y + cy + p * yPrev;
-    xPrev = x;
-    yPrev = y;
-    x = xNext;
-    y = yNext;
-    iter += 1.0;
-  }
-  return iter;
-}
-
-function makeRng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => {
-    s ^= s << 13;
-    s ^= s >>> 17;
-    s ^= s << 5;
-    return (s >>> 0) / 4294967296;
-  };
-}
-
-function barnsleyStep(x, y, r) {
-  if (r < 0.01) return [0.0, 0.16 * y];
-  if (r < 0.86) return [0.85 * x + 0.04 * y, -0.04 * x + 0.85 * y + 1.6];
-  if (r < 0.93) return [0.20 * x - 0.26 * y, 0.23 * x + 0.22 * y + 1.6];
-  return [-0.15 * x + 0.28 * y, 0.26 * x + 0.24 * y + 0.44];
-}
-
-function sierpinskiStep(x, y, r) {
-  if (r < 1 / 3) return [0.5 * x, 0.5 * y];
-  if (r < 2 / 3) return [0.5 * x + 0.5, 0.5 * y];
-  return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
-}
-
-function kochGenerate(iterations) {
-  let s = "F";
-  for (let i = 0; i < iterations; i++) {
-    let next = "";
-    for (const ch of s) {
-      next += (ch === "F") ? "F+F--F+F" : ch;
-    }
-    s = next;
-  }
-  return s;
-}
-
-function getJSFractalFn(name) {
-  switch (name) {
-    case "julia": return juliaJS;
-    case "burning_ship": return burningShipJS;
-    case "tricorn": return tricornJS;
-    case "multibrot": return multibrotJS;
-    case "celtic": return celticJS;
-    case "buffalo": return buffaloJS;
-    case "perpendicular_burning_ship": return perpendicularBurningShipJS;
-    case "newton": return newtonJS;
-    case "phoenix": return phoenixJS;
-    case "mandelbrot":
-    default: return mandelbrotJS;
-  }
-}
-
 function getActiveFractalFn() {
-  const jsFn = getJSFractalFn(params.fractal);
-  if (!wasmAvailable) return { fn: jsFn, backend: "JS" };
   const wasmFn = wasmFunctions[params.fractal];
-  return wasmFn ? { fn: wasmFn, backend: "WASM" } : { fn: jsFn, backend: "JS" };
-}
-
-function renderPointFractal(w, h, data, cx0, cy0, ps) {
-  const isBarnsley = params.fractal === "barnsley";
-  const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
-  const pointsTarget = Math.max(25000, params.maxIter * 600);
-  const burnIn = 40;
-  const pointsPerFrame = 20000;
-
-  let x = 0.0;
-  let y = 0.0;
-  let emitted = 0;
-  let iter = 0;
-
-  const putPoint = (px, py) => {
-    if (px < 0 || py < 0 || px >= w || py >= h) return;
-    const i = (py * w + px) * 4;
-    if (isBarnsley) {
-      data[i] = Math.min(120, data[i] + 2);
-      data[i + 1] = Math.min(255, data[i + 1] + 20);
-      data[i + 2] = Math.min(140, data[i + 2] + 3);
-    } else {
-      data[i] = Math.min(150, data[i] + 8);
-      data[i + 1] = Math.min(220, data[i + 1] + 12);
-      data[i + 2] = Math.min(255, data[i + 2] + 20);
-    }
-    data[i + 3] = 255;
-  };
-
-  const step = () => {
-    const end = Math.min(emitted + pointsPerFrame, pointsTarget);
-    while (emitted < end) {
-      const r = rng();
-      [x, y] = isBarnsley ? barnsleyStep(x, y, r) : sierpinskiStep(x, y, r);
-      iter += 1;
-      if (iter <= burnIn) continue;
-
-      const px = ((x - cx0) / ps) | 0;
-      const py = ((y - cy0) / ps) | 0;
-      putPoint(px, py);
-      emitted += 1;
-    }
-
-    ctx.putImageData(imageDataBuffer, 0, 0);
-    if (emitted < pointsTarget) {
-      requestAnimationFrame(step);
-    } else {
-      const elapsed = (performance.now() - renderStart).toFixed(0);
-      rendering = false;
-      canvas.parentElement.classList.remove("rendering");
-      updateStatusBar(`JS (IFS) · ${elapsed} ms`, true);
-    }
-  };
-
-  requestAnimationFrame(step);
-}
-
-function renderLineFractal(w, h) {
-  const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
-  const commands = kochGenerate(n);
-  const seg = (w * 0.8) / Math.pow(3, n);
-  const turn = Math.PI / 3; // 60°
-
-  ctx.fillStyle = "rgb(0, 0, 0)";
-  ctx.fillRect(0, 0, w, h);
-
-  const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params.palette);
-  ctx.strokeStyle = `rgb(${stroke[0]}, ${stroke[1]}, ${stroke[2]})`;
-  ctx.lineWidth = Math.max(1, Math.min(2, w / 800));
-  ctx.beginPath();
-
-  let x = w * 0.1;
-  let y = h * 0.65;
-  let a = 0.0;
-  ctx.moveTo(x, y);
-
-  for (const c of commands) {
-    if (c === "F") {
-      x += seg * Math.cos(a);
-      y += seg * Math.sin(a);
-      ctx.lineTo(x, y);
-    } else if (c === "+") {
-      a += turn;
-    } else if (c === "-") {
-      a -= turn;
-    }
-  }
-
-  ctx.stroke();
-  const elapsed = (performance.now() - renderStart).toFixed(0);
-  rendering = false;
-  canvas.parentElement.classList.remove("rendering");
-  updateStatusBar(`JS (L-system) · ${elapsed} ms`, true);
+  return wasmFn ? { fn: wasmFn, backend: "WASM" } : { fn: null, backend: "WASM requis" };
 }
 
 // ============================================================
@@ -504,16 +201,19 @@ async function loadWasm() {
       perpendicular_burning_ship: typeof exports.perpendicular_burning_ship === "function" ? exports.perpendicular_burning_ship : null,
       newton: typeof exports.newton === "function" ? exports.newton : null,
       phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
+      barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
+      sierpinski: typeof exports.sierpinski === "function" ? exports.sierpinski : null,
+      koch: typeof exports.koch === "function" ? exports.koch : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
     updateStatusBar("WASM prêt");
     return true;
   } catch (err) {
-    console.warn("[WASM] Chargement échoué, fallback JavaScript activé :", err.message);
+    console.warn("[WASM] Chargement échoué :", err.message);
     wasmFunctions = {};
     wasmAvailable = false;
-    updateStatusBar("JS fallback");
+    updateStatusBar("WASM indisponible");
     return false;
   }
 }
@@ -552,32 +252,24 @@ function render() {
   }
   const data = imageDataBuffer.data;
 
-  const { fn, backend } = getActiveFractalFn();
   const cx0 = view.centerX - (w / 2) * view.pixelSize;
   const cy0 = view.centerY - (h / 2) * view.pixelSize;
   const ps  = view.pixelSize;
   const max = params.maxIter;
   const pal = params.palette;
+  const { fn, backend } = getActiveFractalFn();
 
   rendering = true;
   renderStart = performance.now();
   canvas.parentElement.classList.add("rendering");
   updateStatusBar("Rendu…");
 
-  if (LINE_FRACTALS.has(params.fractal)) {
-    renderLineFractal(w, h);
-    return;
-  }
-
-  if (POINT_FRACTALS.has(params.fractal)) {
-    // fond noir explicite
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = 0;
-      data[i + 1] = 0;
-      data[i + 2] = 0;
-      data[i + 3] = 255;
-    }
-    renderPointFractal(w, h, data, cx0, cy0, ps);
+  if (!fn) {
+    ctx.fillStyle = "rgb(0, 0, 0)";
+    ctx.fillRect(0, 0, w, h);
+    rendering = false;
+    canvas.parentElement.classList.remove("rendering");
+    updateStatusBar(`${params.fractal} : WASM requis (export introuvable)`, true);
     return;
   }
 
@@ -863,7 +555,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -886,7 +578,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -1015,3 +707,6 @@ async function init() {
 
 // Démarrer
 init().catch(console.error);
+
+
+

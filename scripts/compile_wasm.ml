@@ -11,6 +11,7 @@ soit DOSSIER_PUBLIC = RACINE / "public"
 DOSSIER_PUBLIC.mkdir(parents=Vrai, exist_ok=Vrai)
 
 soit SORTIE_ML = DOSSIER_PUBLIC / "main.ml"
+soit SORTIE_ML_BUNDLE = DOSSIER_PUBLIC / "main_wasm_bundle.ml"
 soit SORTIE_PY = DOSSIER_PUBLIC / "mandelbrot_transpiled.py"
 soit SORTIE_BENCH = DOSSIER_PUBLIC / "benchmark.json"
 soit SORTIE_WASM_RS = DOSSIER_PUBLIC / "wasm_intermediate.rs"
@@ -20,6 +21,7 @@ soit SORTIE_WASM = DOSSIER_PUBLIC / "mandelbrot.wasm"
 soit TAILLE_BENCH_GRILLE = 200
 soit ITER_BENCH_MAX = 100
 soit SEPARATEUR = "=" * 62
+soit MODULES_WASM = ["fractales_escape", "fractales_dynamique", "fractales_variantes", "fractales_ifs", "fractales_lsystem"]
 
 déf ajouter_depot_multilingual_au_chemin():
     soit candidats = [RACINE.parent / "multilingual", Path.home() / "Documents" / "Research" / "Workspace" / "multilingual"]
@@ -74,6 +76,12 @@ déf generer_wat_et_wasm_strict(source):
     soit octets_wasm = wasmtime.wat2wasm(texte_wat)
     retour (texte_wat, octets_wasm)
 
+déf verifier_wat_strict(texte_wat):
+    si ("unsupported call" dans texte_wat):
+        lever RuntimeError("WAT non strict: 'unsupported call' detecte.")
+    si ("unresolved:" dans texte_wat):
+        lever RuntimeError("WAT non strict: 'unresolved' detecte.")
+
 déf valider_exports_wasm(octets_wasm, exports_requises):
     soit wasmtime = importlib.import_module("wasmtime")
     soit moteur = wasmtime.Engine()
@@ -104,6 +112,28 @@ déf valider_exports_wasm(octets_wasm, exports_requises):
     si exports_manquantes:
         lever RuntimeError(f"Exports WASM manquants: {exports_manquantes}")
 
+déf construire_source_wasm_modulaire():
+    soit morceaux = ["# Bundle WASM genere automatiquement depuis src/*.ml", "importer math", ""]
+    pour nom_module dans MODULES_WASM:
+        soit chemin = RACINE / "src" / f"{nom_module}.ml"
+        si non chemin.exists():
+            lever RuntimeError(f"Module introuvable pour bundle WASM: {chemin}")
+        soit texte = chemin.read_text(encoding="utf-8")
+        soit lignes_filtrees = []
+        pour ligne dans texte.splitlines():
+            soit brut = ligne.strip()
+            si brut.startswith("importer fractales_"):
+                continuer
+            si brut.startswith("depuis fractales_"):
+                continuer
+            si brut == "importer math":
+                continuer
+            lignes_filtrees.append(ligne)
+        morceaux.append(f"# --- module: {nom_module} ---")
+        morceaux.append(chr(10).join(lignes_filtrees).strip())
+        morceaux.append("")
+    retour chr(10).join(morceaux).strip() + chr(10)
+
 déf main():
     si sys.stdout.encoding et non (sys.stdout.encoding.lower() dans ("utf-8", "utf8")):
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -118,13 +148,16 @@ déf main():
     afficher(f"[1] Lecture de {SOURCE_ML.relative_to(RACINE)}")
     si non SOURCE_ML.exists():
         lever RuntimeError(f"Fichier source introuvable: {SOURCE_ML}")
-    soit source = SOURCE_ML.read_text(encoding="utf-8")
-    afficher(f"    {longueur(source)} caracteres, {source.count(chr(10))} lignes")
+    soit source_humaine = SOURCE_ML.read_text(encoding="utf-8")
+    afficher(f"    {longueur(source_humaine)} caracteres, {source_humaine.count(chr(10))} lignes")
 
     afficher("")
     afficher(f"[2] Copie vers {SORTIE_ML.relative_to(RACINE)}")
     shutil.copy(SOURCE_ML, SORTIE_ML)
     afficher("    Copie.")
+    soit source_wasm = construire_source_wasm_modulaire()
+    SORTIE_ML_BUNDLE.write_text(source_wasm, encoding="utf-8")
+    afficher(f"    Bundle WASM ecrit: {SORTIE_ML_BUNDLE.relative_to(RACINE)}")
 
     si SORTIE_WASM.exists():
         SORTIE_WASM.unlink()
@@ -132,7 +165,7 @@ déf main():
 
     afficher("")
     afficher("[3] Transpilation multilingual -> Python (strict)")
-    soit code_python = transpiler_strict(source)
+    soit code_python = transpiler_strict(source_wasm)
     SORTIE_PY.write_text(code_python, encoding="utf-8")
     afficher(f"    Ecrit dans {SORTIE_PY.relative_to(RACINE)}")
     afficher("    Apercu :")
@@ -141,7 +174,7 @@ déf main():
 
     afficher("")
     afficher("[4] Generation WASM (backends officiels multilingual)")
-    soit intermediaire_wasm_disponible, erreur_wasm = emettre_intermediaire_wasm_si_disponible(source)
+    soit intermediaire_wasm_disponible, erreur_wasm = emettre_intermediaire_wasm_si_disponible(source_wasm)
     si intermediaire_wasm_disponible:
         afficher(f"    Rust intermediaire ecrit: {SORTIE_WASM_RS.relative_to(RACINE)}")
     sinon:
@@ -149,13 +182,14 @@ déf main():
         si erreur_wasm:
             afficher(f"    Detail: {erreur_wasm}")
 
-    soit texte_wat, octets_wasm = generer_wat_et_wasm_strict(source)
+    soit texte_wat, octets_wasm = generer_wat_et_wasm_strict(source_wasm)
+    verifier_wat_strict(texte_wat)
     SORTIE_WAT.write_text(texte_wat, encoding="utf-8")
     SORTIE_WASM.write_bytes(octets_wasm)
     afficher(f"    WAT ecrit : {SORTIE_WAT.relative_to(RACINE)}")
     afficher(f"    WASM ecrit: {SORTIE_WASM.relative_to(RACINE)} ({longueur(octets_wasm):,} octets)")
 
-    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "newton", "phoenix"]
+    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "newton", "phoenix", "barnsley", "sierpinski", "koch"]
     valider_exports_wasm(octets_wasm, exports_requises)
     afficher(f"    Exports valides: {', '.join(exports_requises)}")
 
@@ -173,6 +207,7 @@ déf main():
     afficher(SEPARATEUR)
     afficher("  OK Build strict multilingual termine.")
     afficher(f"    ML   : {SORTIE_ML.relative_to(RACINE)}")
+    afficher(f"    ML+  : {SORTIE_ML_BUNDLE.relative_to(RACINE)}")
     afficher(f"    PY   : {SORTIE_PY.relative_to(RACINE)}")
     si intermediaire_wasm_disponible:
         afficher(f"    RS   : {SORTIE_WASM_RS.relative_to(RACINE)}")
@@ -180,3 +215,4 @@ déf main():
     afficher(f"    WASM : {SORTIE_WASM.relative_to(RACINE)}")
     afficher(f"    JSON : {SORTIE_BENCH.relative_to(RACINE)}")
     afficher(SEPARATEUR)
+

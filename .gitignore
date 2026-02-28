@@ -214,3 +214,4 @@ public/mandelbrot_transpiled.py
 public/benchmark.json
 public/wasm_intermediate.rs
 public/main.wat
+public/main_wasm_bundle.ml

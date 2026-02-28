@@ -1,37 +1,43 @@
-constante KOCH_AXIOME = "F"
-constante KOCH_REGLE_F = "F+F--F+F"
-
-classe SystemeL:
-    déf __init__(soi, axiome):
-        soi.axiome = axiome
-
-    déf regle(soi, symbole):
-        retour symbole
-
-    déf remplacer(soi, chaine):
-        soit resultat = ""
-        pour c dans chaine:
-            resultat = resultat + soi.regle(c)
-        retour resultat
-
-    déf generer(soi, iterations):
-        soit etat = soi.axiome
-        soit i = 0
-        tantque i < iterations:
-            etat = soi.remplacer(etat)
-            i = i + 1
-        retour etat
-
-classe SystemeKoch(SystemeL):
-    déf __init__(soi):
-        super().__init__(KOCH_AXIOME)
-
-    déf regle(soi, symbole):
-        si symbole == "F":
-            retour KOCH_REGLE_F
-        sinon:
-            retour symbole
+importer math
 
 déf koch_generer(iterations):
-    soit systeme = SystemeKoch()
-    retour systeme.generer(iterations)
+    soit etat = "F"
+    soit i = 0
+    tantque i < iterations:
+        soit suivant = ""
+        pour c dans etat:
+            si c == "F":
+                suivant = suivant + "F+F--F+F"
+            sinon:
+                suivant = suivant + c
+        etat = suivant
+        i = i + 1
+    retour etat
+
+déf koch(cx, cy, max_iter):
+    soit koch_seuil = 0.02
+    soit x = cx + 0.5
+    soit y = cy + 0.35
+    soit echelle = 1.0
+    soit dist = abs(y)
+    soit niveau = 0.0
+    soit nmax = min(max_iter, 8.0)
+    tantque niveau < nmax:
+        x = x * 3.0
+        y = y * 3.0
+        soit cellule = x - (x % 1.0)
+        x = x - cellule
+        si cellule == 1.0:
+            y = abs(y - 1.0)
+        soit d = abs(y - 0.5) / echelle
+        si d < dist:
+            dist = d
+        echelle = echelle * 3.0
+        niveau = niveau + 1.0
+
+    si dist < koch_seuil:
+        retour max_iter
+    soit score = max_iter - (dist / koch_seuil) * max_iter
+    si score < 0.0:
+        retour 0.0
+    retour score

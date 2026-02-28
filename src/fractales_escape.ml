@@ -1,7 +1,10 @@
-importer math
-
 déf norme_carre(x, y):
     retour x * x + y * y
+
+déf abs_escape(v):
+    si v < 0.0:
+        retour -v
+    retour v
 
 déf complexe_puissance_re_im(x, y, puissance):
     soit rx = 1.0
@@ -51,8 +54,8 @@ déf burning_ship(cx, cy, max_iter):
     tantque iter < max_iter:
         si norme_carre(x, y) > rayon_echappement_carre:
             retour iter
-        soit ax = abs(x)
-        soit ay = abs(y)
+        soit ax = abs_escape(x)
+        soit ay = abs_escape(y)
         soit xtemp = ax * ax - ay * ay + cx
         y = 2.0 * ax * ay + cy
         x = xtemp

@@ -1,5 +1,3 @@
-importer math
-
 déf racine_approx(valeur):
     si valeur <= 0.0:
         retour 0.0
@@ -11,6 +9,11 @@ déf racine_approx(valeur):
         x = 0.5 * (x + valeur / x)
         i = i + 1.0
     retour x
+
+déf abs_ifs(v):
+    si v < 0.0:
+        retour -v
+    retour v
 
 déf barnsley_etape(x, y, choix):
     si choix < 0.01:
@@ -34,7 +37,7 @@ déf barnsley(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit meilleur = 1.0e9
-    soit choix = abs(cx * 12.9898 + cy * 78.233)
+    soit choix = abs_ifs(cx * 12.9898 + cy * 78.233)
     soit iter = 0.0
     tantque iter < max_iter:
         choix = (choix * 3.987654321 + 0.123456789) % 1.0
@@ -57,7 +60,7 @@ déf sierpinski(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit meilleur = 1.0e9
-    soit choix = abs(cx * 91.133 + cy * 17.771)
+    soit choix = abs_ifs(cx * 91.133 + cy * 17.771)
     soit iter = 0.0
     tantque iter < max_iter:
         choix = (choix * 2.618033989 + 0.707106781) % 1.0

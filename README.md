@@ -11,7 +11,7 @@ dont le code de calcul est entièrement écrit en **français** grâce au langag
 ```
 src/mandelbrot.ml          ← source en français (mots-clés : soit, tantque, retour…)
       │
-      │  build/compile_wasm.py  (exécuté lors du build GitHub Actions)
+      │  scripts/compile_wasm.py  (exécuté lors du build GitHub Actions)
       │
       ▼  Lexer (tokenisation Unicode)
       ▼  Parser → AST surface
@@ -79,7 +79,7 @@ Ce fichier est compilé vers WASM à l'étape de build, puis copié dans
 ### Lancer le build
 
 ```bash
-python build/compile_wasm.py
+python scripts/compile_wasm.py
 ```
 
 Sortie attendue :
@@ -129,7 +129,7 @@ git push origin main
 ```
 
 1. Installe Python 3.12 et `multilingualprogramming[wasm]`
-2. Exécute `python build/compile_wasm.py`
+2. Exécute `python scripts/compile_wasm.py`
 3. Déploie `public/` sur GitHub Pages
 
 Configurez Pages dans les paramètres du dépôt :
@@ -204,7 +204,7 @@ function mandelbrotJS(cx, cy, maxIter) {
 │   │   └── renderer.js           # Chargeur WASM + rendu canvas
 │   ├── css/
 │   │   └── style.css             # Thème sombre futuriste
-│   ├── mandelbrot.wasm           # ← généré par build/compile_wasm.py
+│   ├── mandelbrot.wasm           # ← généré par scripts/compile_wasm.py
 │   ├── mandelbrot.ml             # ← copié depuis src/
 │   ├── mandelbrot_transpiled.py  # ← généré par transpilation
 │   └── benchmark.json           # ← résultats de benchmark

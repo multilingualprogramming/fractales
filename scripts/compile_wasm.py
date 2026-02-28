@@ -12,7 +12,7 @@ Etapes :
   6. Ecrire public/benchmark.json
 
 Usage :
-  python build/compile_wasm.py
+  python scripts/compile_wasm.py
 """
 
 import io

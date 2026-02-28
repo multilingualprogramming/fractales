@@ -453,6 +453,7 @@ iterSlider.addEventListener("input", () => {
 fractalSelect.addEventListener("change", () => {
   params.fractal = fractalSelect.value;
   resetView();
+  loadSources(params.fractal);
 });
 
 multibrotPower.addEventListener("change", () => {
@@ -485,7 +486,7 @@ window.addEventListener("resize", () => {
 });
 
 // ============================================================
-// CHARGEMENT DU SOURCE & TRANSPILATION
+// CHARGEMENT DU SOURCE & TRANSPILATION (contextuel par fractale)
 // ============================================================
 
 const tabFrench = document.getElementById("tab-french");
@@ -493,31 +494,82 @@ const tabPython = document.getElementById("tab-python");
 const codeFrench = document.getElementById("code-french");
 const codePython = document.getElementById("code-python");
 
-async function loadSources() {
-  // Source français
-  try {
-    const resp = await fetch("main.ml");
-    const src  = resp.ok ? await resp.text() : "# Source indisponible";
-    codeFrench.innerHTML = highlightFrench(escapeHtml(src));
-  } catch {
-    codeFrench.textContent = "# Impossible de charger le source.";
+/**
+ * Associe chaque fractale au module source (.ml / .py) qui la contient.
+ * Utilisé pour l'affichage contextuel dans la barre latérale.
+ */
+const FRACTAL_SOURCE_MAP = {
+  mandelbrot:                  "fractales_escape",
+  julia:                       "fractales_escape",
+  burning_ship:                "fractales_escape",
+  tricorn:                     "fractales_escape",
+  multibrot:                   "fractales_escape",
+  celtic:                      "fractales_variantes",
+  buffalo:                     "fractales_variantes",
+  perpendicular_burning_ship:  "fractales_variantes",
+  newton:                      "fractales_dynamique",
+  phoenix:                     "fractales_dynamique",
+  barnsley:                    "fractales_ifs",
+  sierpinski:                  "fractales_ifs",
+  koch:                        "fractales_lsystem",
+  magnet1:                     "fractales_magnetiques",
+  magnet2:                     "fractales_magnetiques",
+  lambda_fractale:             "fractales_magnetiques",
+};
+
+/** Cache : { moduleName: { mlHtml, pyHtml } } */
+const sourcesCache = {};
+
+/**
+ * Charge et affiche le source .ml et le Python transpilé du module
+ * contenant la fractale sélectionnée.
+ * @param {string} fractalName
+ */
+async function loadSources(fractalName) {
+  const module = FRACTAL_SOURCE_MAP[fractalName] ?? "main";
+
+  // Mettre à jour les étiquettes des onglets
+  tabFrench.textContent = `🇫🇷 ${module}.ml`;
+  tabPython.textContent  = `🐍 ${module}.py`;
+
+  // Retourner le cache si disponible
+  if (sourcesCache[module]) {
+    codeFrench.innerHTML = sourcesCache[module].mlHtml;
+    codePython.innerHTML = sourcesCache[module].pyHtml;
+    return;
   }
 
-  // Python transpilé
+  codeFrench.innerHTML = `<span class="cmt"># Chargement de ${module}.ml…</span>`;
+  codePython.innerHTML = `<span class="cmt"># Chargement de ${module}.py…</span>`;
+
+  // Source français (.ml)
+  let mlHtml;
   try {
-    const resp = await fetch("mandelbrot_transpiled.py");
-    const src  = resp.ok ? await resp.text() : "# Transpilation indisponible";
-    codePython.innerHTML = highlightPython(escapeHtml(src));
+    const resp = await fetch(`${module}.ml`);
+    const src  = resp.ok ? await resp.text() : `# Source indisponible (${module}.ml)`;
+    mlHtml = highlightFrench(escapeHtml(src));
   } catch {
-    codePython.textContent = "# Impossible de charger la transpilation.";
+    mlHtml = `<span class="cmt"># Impossible de charger ${module}.ml</span>`;
   }
+  codeFrench.innerHTML = mlHtml;
+
+  // Python transpilé (.py)
+  let pyHtml;
+  try {
+    const resp = await fetch(`${module}.py`);
+    const src  = resp.ok ? await resp.text() : `# Transpilation indisponible (${module}.py)`;
+    pyHtml = highlightPython(escapeHtml(src));
+  } catch {
+    pyHtml = `<span class="cmt"># Impossible de charger ${module}.py</span>`;
+  }
+  codePython.innerHTML = pyHtml;
+
+  sourcesCache[module] = { mlHtml, pyHtml };
 }
 
 tabFrench.addEventListener("click", () => {
   tabFrench.classList.add("active");
   tabPython.classList.remove("active");
-  codeFrench.parentElement.parentElement.style.display = "";
-  codePython.parentElement.parentElement.style.display = "none";
   document.getElementById("panel-french").style.display = "";
   document.getElementById("panel-python").style.display = "none";
 });
@@ -712,7 +764,7 @@ async function init() {
   render();
 
   // Charger sources et benchmark en parallèle
-  await Promise.all([loadSources(), loadBenchmark()]);
+  await Promise.all([loadSources(params.fractal), loadBenchmark()]);
 
   showZoomHint();
 }

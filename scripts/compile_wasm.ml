@@ -112,6 +112,33 @@ déf valider_exports_wasm(octets_wasm, exports_requises):
     si exports_manquantes:
         lever RuntimeError(f"Exports WASM manquants: {exports_manquantes}")
 
+déf copier_sources_modules():
+    # Copie chaque module source vers public/ et le transpile en Python individuel.
+    # Permet l'affichage contextuel dans la barre latérale (un fichier par fractale).
+    pour nom_module dans MODULES_WASM:
+        soit chemin_src = RACINE / "src" / f"{nom_module}.ml"
+        si non chemin_src.exists():
+            continuer
+        shutil.copy(chemin_src, DOSSIER_PUBLIC / f"{nom_module}.ml")
+        essayer:
+            soit source_mod = chemin_src.read_text(encoding="utf-8")
+            soit code_py_mod = transpiler_strict(source_mod)
+            (DOSSIER_PUBLIC / f"{nom_module}.py").write_text(code_py_mod, encoding="utf-8")
+            afficher(f"    OK {nom_module}.ml -> {nom_module}.py")
+        sauf Exception comme err:
+            afficher(f"    Avertissement ({nom_module}): {err}")
+    # Module OOP : transpilation Python uniquement (classes non supportees en WAT)
+    soit chemin_classes = RACINE / "src" / "fractales_classes.ml"
+    si chemin_classes.exists():
+        shutil.copy(chemin_classes, DOSSIER_PUBLIC / "fractales_classes.ml")
+        essayer:
+            soit source_cls = chemin_classes.read_text(encoding="utf-8")
+            soit code_py_cls = transpiler_strict(source_cls)
+            (DOSSIER_PUBLIC / "fractales_classes.py").write_text(code_py_cls, encoding="utf-8")
+            afficher(f"    OK fractales_classes.ml -> fractales_classes.py")
+        sauf Exception comme err:
+            afficher(f"    Avertissement (fractales_classes): {err}")
+
 déf construire_source_wasm_modulaire():
     soit morceaux = ["# Bundle WASM genere automatiquement depuis src/*.ml", "importer math", ""]
     pour nom_module dans MODULES_WASM:
@@ -162,6 +189,10 @@ déf main():
     si SORTIE_WASM.exists():
         SORTIE_WASM.unlink()
         afficher(f"    Ancien artefact supprime: {SORTIE_WASM.relative_to(RACINE)}")
+
+    afficher("")
+    afficher("[2b] Copie et transpilation individuelle des modules (affichage contextuel)")
+    copier_sources_modules()
 
     afficher("")
     afficher("[3] Transpilation multilingual -> Python (strict)")

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * renderer.js — Explorateur de Fractales
  *
  * Charge mandelbrot.wasm (compilé depuis le source français multilingual),
@@ -9,7 +9,7 @@
 
 "use strict";
 
-const WASM_URL = "mandelbrot.wasm?v=20260228r7";
+const WASM_URL = "mandelbrot.wasm?v=20260228r8";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -234,7 +234,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
-      updateStatusBar("IFS mode ? " + elapsed + " ms", true);
+      updateStatusBar("IFS mode - " + elapsed + " ms", true);
     }
   };
   requestAnimationFrame(step);
@@ -274,7 +274,7 @@ function renderLineFractal(w, h) {
   const elapsed = (performance.now() - renderStart).toFixed(0);
   rendering = false;
   canvas.parentElement.classList.remove("rendering");
-  updateStatusBar("L-system mode ? " + elapsed + " ms", true);
+  updateStatusBar("L-system mode - " + elapsed + " ms", true);
 }
 
 function getActiveFractalFn() {
@@ -386,7 +386,6 @@ function render() {
   const h = canvas.height;
   if (w === 0 || h === 0) return;
 
-  // Recréer le buffer si nécessaire
   if (!imageDataBuffer || imageDataBuffer.width !== w || imageDataBuffer.height !== h) {
     imageDataBuffer = ctx.createImageData(w, h);
   }
@@ -397,19 +396,30 @@ function render() {
   const ps  = view.pixelSize;
   const max = params.maxIter;
   const pal = params.palette;
-  const { fn, backend } = getActiveFractalFn();
 
   rendering = true;
   renderStart = performance.now();
   canvas.parentElement.classList.add("rendering");
-  updateStatusBar("Rendu…");
+  updateStatusBar("Rendering...");
 
+  if (POINT_FRACTALS.has(params.fractal)) {
+    data.fill(0);
+    renderPointFractal(w, h, data, cx0, cy0, ps);
+    return;
+  }
+
+  if (LINE_FRACTALS.has(params.fractal)) {
+    renderLineFractal(w, h);
+    return;
+  }
+
+  const { fn, backend } = getActiveFractalFn();
   if (!fn) {
     ctx.fillStyle = "rgb(0, 0, 0)";
     ctx.fillRect(0, 0, w, h);
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
-    updateStatusBar(`${params.fractal} : WASM requis (export introuvable)`, true);
+    updateStatusBar(`${params.fractal} : WASM required (missing export)`, true);
     return;
   }
 
@@ -433,7 +443,7 @@ function render() {
         }
         const [r, g, b] = getColor(iter, max, pal);
         const i = base + px * 4;
-        data[i]     = r;
+        data[i] = r;
         data[i + 1] = g;
         data[i + 2] = b;
         data[i + 3] = 255;
@@ -448,14 +458,12 @@ function render() {
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
-      updateStatusBar(`${backend} · ${elapsed} ms`, true);
+      updateStatusBar(`${backend} - ${elapsed} ms`, true);
     }
   }
 
   requestAnimationFrame(step);
-}
-
-function updateStatusBar(msg, autoHide = false) {
+}function updateStatusBar(msg, autoHide = false) {
   renderStatus.textContent = msg;
   renderStatus.classList.remove("hidden");
   if (autoHide) {

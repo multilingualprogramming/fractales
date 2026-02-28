@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explorateur de Fractales — multilingual WebAssembly</title>
+  <meta name="description"
+        content="Ensemble de Mandelbrot calculé en WebAssembly depuis du code source écrit en français avec le langage multilingual." />
+
+  <!-- Feuille de style principale -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Préchargement des ressources critiques -->
+  <link rel="preload" href="mandelbrot.wasm" as="fetch" crossorigin />
+  <link rel="preload" href="benchmark.json"  as="fetch" crossorigin />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============================================================
+       EN-TÊTE
+       ============================================================ -->
+  <header id="header">
+    <div class="header-brand">
+      <!-- Icône fractale SVG inline -->
+      <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"
+           aria-hidden="true">
+        <circle cx="14" cy="14" r="13" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+        <circle cx="9"  cy="14" r="5"  stroke="#00d4ff" stroke-width="1.2" opacity="0.7"/>
+        <circle cx="18" cy="14" r="2"  fill="#00d4ff"   opacity="0.9"/>
+        <circle cx="6"  cy="14" r="1"  fill="#00ff9f"   opacity="0.8"/>
+        <circle cx="22" cy="14" r="1.5" stroke="#9d4edd" stroke-width="1" opacity="0.8"/>
+        <line x1="1" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
+      </svg>
+      Explorateur de <span>Fractales</span>
+      <span style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:4px">
+        · multilingual → WebAssembly
+      </span>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-toggle-sidebar" class="btn" title="Afficher/masquer le code source">
+        <span class="btn-icon">⟨/⟩</span>
+        <span>Code source</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       ZONE CANVAS
+       ============================================================ -->
+  <main id="canvas-container" aria-label="Ensemble de Mandelbrot interactif">
+
+    <canvas id="fractal-canvas">
+      Votre navigateur ne supporte pas l'élément canvas.
+    </canvas>
+
+    <!-- Indicateur de statut du rendu -->
+    <div id="render-overlay">
+      <div id="render-status" class="loading-pulse">Initialisation…</div>
+    </div>
+
+    <!-- Coordonnées du curseur -->
+    <div id="coords-display">Re 0.000000  Im 0.000000</div>
+
+    <!-- Astuce de zoom (disparaît automatiquement) -->
+    <div id="zoom-hint" role="status" aria-live="polite">
+      Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       PANNEAU LATÉRAL
+       ============================================================ -->
+  <aside id="sidebar" aria-label="Panneau de code source">
+    <div id="sidebar-inner">
+
+      <!-- Titre -->
+      <div class="sidebar-header">
+        <h2>Source &amp; Performances</h2>
+      </div>
+
+      <!-- Badge benchmark -->
+      <div id="benchmark-badge" aria-live="polite">
+        <span id="badge-loading" class="loading-pulse">Chargement des données benchmark…</span>
+      </div>
+
+      <!-- Onglets de code -->
+      <div class="code-tabs" role="tablist" aria-label="Affichage du code">
+        <button id="tab-french" class="tab-btn active"
+                role="tab" aria-selected="true" aria-controls="panel-french">
+          🇫🇷 français.ml
+        </button>
+        <button id="tab-python" class="tab-btn"
+                role="tab" aria-selected="false" aria-controls="panel-python">
+          🐍 Python transpilé
+        </button>
+      </div>
+
+      <!-- Panneau source français -->
+      <div id="panel-french" class="code-panel" role="tabpanel" aria-labelledby="tab-french">
+        <div class="code-scroll">
+          <pre id="code-french" aria-label="Code source en français multilingual"
+               ><span class="cmt"># Chargement…</span></pre>
+        </div>
+      </div>
+
+      <!-- Panneau Python transpilé -->
+      <div id="panel-python" class="code-panel" role="tabpanel"
+           aria-labelledby="tab-python" style="display:none">
+        <div class="code-scroll">
+          <pre id="code-python" aria-label="Code Python généré par transpilation"
+               ><span class="cmt"># Chargement…</span></pre>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       BARRE DE CONTRÔLES
+       ============================================================ -->
+  <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
+
+    <!-- Slider d'itérations -->
+    <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
+      <label class="control-label" for="iter-slider">Itérations :</label>
+      <input type="range" id="iter-slider"
+             min="64" max="1024" step="64" value="256"
+             aria-valuemin="64" aria-valuemax="1024" aria-valuenow="256" />
+      <span id="iter-value" class="control-value">256</span>
+    </div>
+
+    <div class="ctrl-sep" aria-hidden="true"></div>
+
+    <!-- Sélecteur de palette -->
+    <div class="control-group" role="group" aria-label="Palette de couleurs">
+      <label class="control-label" for="palette-select">Palette :</label>
+      <select id="palette-select" aria-label="Choisir une palette de couleurs">
+        <option value="feu"   >🔥 Feu</option>
+        <option value="ocean" >🌊 Océan</option>
+        <option value="aurora">🌌 Aurora</option>
+      </select>
+    </div>
+
+    <div class="ctrl-sep" aria-hidden="true"></div>
+
+    <!-- Bouton réinitialiser -->
+    <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
+      <span class="btn-icon">⟳</span>
+      <span>Réinitialiser</span>
+    </button>
+
+  </footer>
+
+</div><!-- /#app -->
+
+<!-- ============================================================
+     SCRIPT PRINCIPAL (module ES)
+     ============================================================ -->
+<script type="module" src="js/renderer.js"></script>
+
+</body>
+</html>

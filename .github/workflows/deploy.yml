@@ -1,0 +1,102 @@
+# ============================================================
+# Explorateur de Fractales — Déploiement GitHub Pages
+#
+# Pipeline :
+#   1. Installer Python 3.12
+#   2. pip install multilingualprogramming[wasm]
+#   3. python build/compile_wasm.py
+#      → public/mandelbrot.wasm    (binaire WebAssembly)
+#      → public/benchmark.json     (résultats de benchmark)
+#      → public/mandelbrot_transpiled.py (Python généré)
+#      → public/mandelbrot.ml      (copie du source français)
+#   4. Déployer public/ vers GitHub Pages
+# ============================================================
+
+name: Compiler WASM et déployer sur GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+# Permissions pour le déploiement Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────
+  # Job 1 : Compilation WASM + génération des artefacts
+  # ──────────────────────────────────────────────────────────
+  build:
+    name: Compiler le source français → WebAssembly
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cloner le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Installer multilingualprogramming[wasm]
+        run: |
+          pip install --upgrade pip
+          pip install "multilingualprogramming[wasm]"
+
+      - name: Vérifier l'installation WASM
+        run: |
+          python -c "
+          from multilingualprogramming.runtime.backend_selector import BackendSelector
+          s = BackendSelector()
+          print(f'WASM disponible : {s.is_wasm_available()}')
+          print(f'Backend actif   : {s.backend}')
+          "
+
+      - name: Compiler le source français vers WebAssembly
+        run: python build/compile_wasm.py
+
+      - name: Vérifier les artefacts générés
+        run: |
+          echo "=== Fichiers générés dans public/ ==="
+          ls -lh public/
+          echo ""
+          echo "=== Contenu de benchmark.json ==="
+          cat public/benchmark.json
+          echo ""
+          echo "=== Taille du binaire WASM ==="
+          wc -c public/mandelbrot.wasm 2>/dev/null || echo "WASM non généré"
+
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Préparer l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "public"
+
+  # ──────────────────────────────────────────────────────────
+  # Job 2 : Déploiement GitHub Pages
+  # ──────────────────────────────────────────────────────────
+  deploy:
+    name: Déployer sur GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

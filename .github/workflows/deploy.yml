@@ -92,7 +92,7 @@ jobs:
               print_newline() {},
             },
           }).then(({ instance }) => {
-            const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch'];
+            const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch','magnet1','magnet2','lambda_fractale'];
             const exports = instance.exports;
             const missing = required.filter((name) => typeof exports[name] !== 'function');
             if (missing.length) {

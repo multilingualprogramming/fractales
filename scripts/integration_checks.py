@@ -25,6 +25,9 @@ REQUIRED_EXPORTS = {
     "barnsley",
     "sierpinski",
     "koch",
+    "magnet1",
+    "magnet2",
+    "lambda_fractale",
 }
 
 

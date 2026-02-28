@@ -24,7 +24,7 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch"
+  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
   multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
@@ -45,6 +45,9 @@ const VIEW_PRESETS = {
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 12.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.4 },
   koch:         { centerX: 0.0,  centerY: 0.0, span: 1.0 },
+  magnet1:      { centerX: 1.5,  centerY: 0.0, span: 4.0 },
+  magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
+  lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
 };
 
 /** Fonctions fractales exportées par WASM */
@@ -210,6 +213,9 @@ async function loadWasm() {
       barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
       sierpinski: typeof exports.sierpinski === "function" ? exports.sierpinski : null,
       koch: typeof exports.koch === "function" ? exports.koch : null,
+      magnet1: typeof exports.magnet1 === "function" ? exports.magnet1 : null,
+      magnet2: typeof exports.magnet2 === "function" ? exports.magnet2 : null,
+      lambda_fractale: typeof exports.lambda_fractale === "function" ? exports.lambda_fractale : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
@@ -561,7 +567,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -584,7 +590,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }

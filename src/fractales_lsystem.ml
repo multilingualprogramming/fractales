@@ -44,8 +44,8 @@ déf koch(cx, cy, max_iter):
         niveau = niveau + 1.0
 
     si dist < koch_seuil:
-        retour max_iter
-    soit score = max_iter - (dist / koch_seuil) * max_iter
-    si score < 0.0:
-        retour 0.0
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (koch_seuil * 8.0)) * (max_iter * 0.9)
+    si score < 8.0:
+        retour 8.0
     retour score

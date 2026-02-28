@@ -4,7 +4,7 @@
 # Pipeline :
 #   1. Installer Python 3.12
 #   2. pip install multilingualprogramming[wasm]
-#   3. python build/compile_wasm.py
+#   3. python scripts/compile_wasm.py
 #      → public/mandelbrot.wasm    (binaire WebAssembly)
 #      → public/benchmark.json     (résultats de benchmark)
 #      → public/mandelbrot_transpiled.py (Python généré)
@@ -64,7 +64,7 @@ jobs:
           "
 
       - name: Compiler le source français vers WebAssembly
-        run: python build/compile_wasm.py
+        run: python scripts/compile_wasm.py
 
       - name: Vérifier les artefacts générés
         run: |

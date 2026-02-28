@@ -37,19 +37,19 @@ déf barnsley(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit meilleur = 1.0e9
-    soit choix = abs_ifs(cx * 12.9898 + cy * 78.233)
+    soit choix = 0.314159265
     soit iter = 0.0
     tantque iter < max_iter:
         choix = (choix * 3.987654321 + 0.123456789) % 1.0
         soit pt = barnsley_etape(x, y, choix)
         x = pt[0]
         y = pt[1]
-        soit d = (x - cx * 1.5) * (x - cx * 1.5) + (y - (cy * 1.5 + 6.0)) * (y - (cy * 1.5 + 6.0))
+        soit d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
         si d < meilleur:
             meilleur = d
         iter = iter + 1.0
 
-    soit score = max_iter - racine_approx(meilleur) * 0.8
+    soit score = max_iter - racine_approx(meilleur) * 70.0
     si score < 0.0:
         retour 0.0
     si score > max_iter:
@@ -60,19 +60,19 @@ déf sierpinski(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit meilleur = 1.0e9
-    soit choix = abs_ifs(cx * 91.133 + cy * 17.771)
+    soit choix = 0.271828182
     soit iter = 0.0
     tantque iter < max_iter:
         choix = (choix * 2.618033989 + 0.707106781) % 1.0
         soit pt = sierpinski_etape(x, y, choix)
         x = pt[0]
         y = pt[1]
-        soit d = (x - (cx + 0.5)) * (x - (cx + 0.5)) + (y - (cy + 0.45)) * (y - (cy + 0.45))
+        soit d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
         si d < meilleur:
             meilleur = d
         iter = iter + 1.0
 
-    soit score = max_iter - racine_approx(meilleur) * 2.0
+    soit score = max_iter - racine_approx(meilleur) * 180.0
     si score < 0.0:
         retour 0.0
     si score > max_iter:

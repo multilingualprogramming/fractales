@@ -66,6 +66,9 @@ jobs:
       - name: Compiler le source français vers WebAssembly
         run: python scripts/compile_wasm.py
 
+      - name: Exécuter les tests d'intégration
+        run: python scripts/integration_checks.py
+
       - name: Vérifier les artefacts générés
         run: |
           echo "=== Fichiers générés dans public/ ==="

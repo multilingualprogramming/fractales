@@ -24,7 +24,7 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "newton" | "phoenix" | "barnsley" | "sierpinski"
+  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch"
   multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
@@ -37,13 +37,18 @@ const VIEW_PRESETS = {
   burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
   tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
   multibrot:    { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  celtic:       { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  buffalo:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  perpendicular_burning_ship: { centerX: -0.5, centerY: -0.4, span: 3.0 },
   newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 12.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.4 },
+  koch:         { centerX: 0.0,  centerY: 0.0, span: 1.0 },
 };
 
 const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
+const LINE_FRACTALS = new Set(["koch"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
@@ -215,6 +220,44 @@ function multibrotJS(cx, cy, maxIter, power) {
   return iter;
 }
 
+function celticJS(cx, cy, maxIter) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const xtemp = Math.abs(x * x - y * y) + cx;
+    y = 2.0 * x * y + cy;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function buffaloJS(cx, cy, maxIter) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const xtemp = Math.abs(x * x - y * y) + cx;
+    y = Math.abs(2.0 * x * y) + cy;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function perpendicularBurningShipJS(cx, cy, maxIter) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const ax = Math.abs(x);
+    const ay = Math.abs(y);
+    const xtemp = ax * ax - ay * ay + cx;
+    y = -2.0 * ax * y + cy;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
 function newtonJS(zx, zy, maxIter) {
   const eps = 1e-6;
   const root3over2 = 0.8660254037844386;
@@ -283,12 +326,27 @@ function sierpinskiStep(x, y, r) {
   return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
 }
 
+function kochGenerate(iterations) {
+  let s = "F";
+  for (let i = 0; i < iterations; i++) {
+    let next = "";
+    for (const ch of s) {
+      next += (ch === "F") ? "F+F--F+F" : ch;
+    }
+    s = next;
+  }
+  return s;
+}
+
 function getJSFractalFn(name) {
   switch (name) {
     case "julia": return juliaJS;
     case "burning_ship": return burningShipJS;
     case "tricorn": return tricornJS;
     case "multibrot": return multibrotJS;
+    case "celtic": return celticJS;
+    case "buffalo": return buffaloJS;
+    case "perpendicular_burning_ship": return perpendicularBurningShipJS;
     case "newton": return newtonJS;
     case "phoenix": return phoenixJS;
     case "mandelbrot":
@@ -358,6 +416,44 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   requestAnimationFrame(step);
 }
 
+function renderLineFractal(w, h) {
+  const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
+  const commands = kochGenerate(n);
+  const seg = (w * 0.8) / Math.pow(3, n);
+  const turn = Math.PI / 3; // 60°
+
+  ctx.fillStyle = "rgb(0, 0, 0)";
+  ctx.fillRect(0, 0, w, h);
+
+  const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params.palette);
+  ctx.strokeStyle = `rgb(${stroke[0]}, ${stroke[1]}, ${stroke[2]})`;
+  ctx.lineWidth = Math.max(1, Math.min(2, w / 800));
+  ctx.beginPath();
+
+  let x = w * 0.1;
+  let y = h * 0.65;
+  let a = 0.0;
+  ctx.moveTo(x, y);
+
+  for (const c of commands) {
+    if (c === "F") {
+      x += seg * Math.cos(a);
+      y += seg * Math.sin(a);
+      ctx.lineTo(x, y);
+    } else if (c === "+") {
+      a += turn;
+    } else if (c === "-") {
+      a -= turn;
+    }
+  }
+
+  ctx.stroke();
+  const elapsed = (performance.now() - renderStart).toFixed(0);
+  rendering = false;
+  canvas.parentElement.classList.remove("rendering");
+  updateStatusBar(`JS (L-system) · ${elapsed} ms`, true);
+}
+
 // ============================================================
 // CHARGEMENT WASM
 // ============================================================
@@ -403,6 +499,9 @@ async function loadWasm() {
       tricorn: typeof exports.tricorn === "function" ? exports.tricorn : null,
       julia: typeof exports.julia === "function" ? exports.julia : null,
       multibrot: typeof exports.multibrot === "function" ? exports.multibrot : null,
+      celtic: typeof exports.celtic === "function" ? exports.celtic : null,
+      buffalo: typeof exports.buffalo === "function" ? exports.buffalo : null,
+      perpendicular_burning_ship: typeof exports.perpendicular_burning_ship === "function" ? exports.perpendicular_burning_ship : null,
       newton: typeof exports.newton === "function" ? exports.newton : null,
       phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
     };
@@ -464,6 +563,11 @@ function render() {
   renderStart = performance.now();
   canvas.parentElement.classList.add("rendering");
   updateStatusBar("Rendu…");
+
+  if (LINE_FRACTALS.has(params.fractal)) {
+    renderLineFractal(w, h);
+    return;
+  }
 
   if (POINT_FRACTALS.has(params.fractal)) {
     // fond noir explicite
@@ -759,7 +863,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre|iterer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -782,7 +886,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre|iterer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|iterer|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -812,9 +916,33 @@ function frFmt(n) {
 }
 
 function renderBenchmarkBadge(data) {
-  const { python_ms, wasm_ms, speedup, wasm_available, wasm_estimated } = data;
+  const {
+    python_ms,
+    wasm_ms,
+    speedup,
+    wasm_available,
+    wasm_estimated,
+    wasm_pipeline,
+  } = data;
 
   let html = "";
+
+  const benchmarkDisabled = wasm_pipeline === "multilingual_official_wat2wasm" &&
+    python_ms === null &&
+    wasm_ms === null;
+
+  if (benchmarkDisabled && wasm_available) {
+    html += `
+      <div class="badge-row">
+        <span class="badge-wasm">⚡ WASM généré</span>
+        <span class="badge-label">pipeline officiel</span>
+      </div>
+      <div class="badge-row">
+        <span class="badge-python" style="color:var(--text-dim)">Benchmark désactivé (mode strict)</span>
+      </div>`;
+    badgeDiv.innerHTML = html;
+    return;
+  }
 
   if (wasm_available && wasm_ms !== null) {
     const wasmLabel = wasm_estimated ? "WASM (estimé)" : "WASM";

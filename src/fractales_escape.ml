@@ -6,18 +6,18 @@ déf norme_carre(x, y):
     retour x * x + y * y
 
 classe FractaleEvasion:
-    fonction __init__(soi, rayon_carre):
+    déf __init__(soi, rayon_carre):
         soi.rayon_carre = rayon_carre
 
-    fonction est_echappe(soi, x, y):
+    déf est_echappe(soi, x, y):
         retour norme_carre(x, y) > soi.rayon_carre
 
 classe MultibrotFractale(FractaleEvasion):
-    fonction __init__(soi, puissance):
+    déf __init__(soi, puissance):
         super().__init__(RAYON_ECHAPPEMENT_CARRE)
         soi.puissance = puissance
 
-    fonction iterer(soi, cx, cy, max_iter):
+    déf iterer(soi, cx, cy, max_iter):
         soit x = 0.0
         soit y = 0.0
         soit iter = 0.0

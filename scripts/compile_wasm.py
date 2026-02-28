@@ -218,7 +218,18 @@ def main() -> None:
     print(f"    WAT ecrit : {WAT_OUT.relative_to(ROOT)}")
     print(f"    WASM ecrit: {LEGACY_WASM_OUT.relative_to(ROOT)} ({len(wasm_bytes):,} octets)")
 
-    required_exports = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "newton", "phoenix"]
+    required_exports = [
+        "mandelbrot",
+        "julia",
+        "burning_ship",
+        "tricorn",
+        "multibrot",
+        "celtic",
+        "buffalo",
+        "perpendicular_burning_ship",
+        "newton",
+        "phoenix",
+    ]
     validate_wasm_exports(wasm_bytes, required_exports)
     print(f"    Exports valides: {', '.join(required_exports)}")
 

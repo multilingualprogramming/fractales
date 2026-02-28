@@ -49,11 +49,11 @@ déf barnsley(cx, cy, max_iter):
             meilleur = d
         iter = iter + 1.0
 
-    soit score = (1.0 - racine_approx(meilleur) / 24.0) * (max_iter * 0.92)
+    soit score = max_iter - racine_approx(meilleur) * 0.8
     si score < 0.0:
         retour 0.0
-    si score > max_iter * 0.92:
-        retour max_iter * 0.92
+    si score > max_iter:
+        retour max_iter
     retour score
 
 déf sierpinski(cx, cy, max_iter):
@@ -72,9 +72,9 @@ déf sierpinski(cx, cy, max_iter):
             meilleur = d
         iter = iter + 1.0
 
-    soit score = (1.0 - racine_approx(meilleur) / 3.0) * (max_iter * 0.92)
+    soit score = max_iter - racine_approx(meilleur) * 2.0
     si score < 0.0:
         retour 0.0
-    si score > max_iter * 0.92:
-        retour max_iter * 0.92
+    si score > max_iter:
+        retour max_iter
     retour score

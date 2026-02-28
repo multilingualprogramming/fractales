@@ -9,6 +9,8 @@
 
 "use strict";
 
+const WASM_URL = "mandelbrot.wasm?v=20260228r2";
+
 // ============================================================
 // ÉTAT DE L'APPLICATION
 // ============================================================
@@ -181,13 +183,13 @@ async function loadWasm() {
     try {
       // Méthode optimale (streaming)
       const result = await WebAssembly.instantiateStreaming(
-        fetch("mandelbrot.wasm"),
+        fetch(WASM_URL),
         importObject
       );
       instance = result.instance;
     } catch {
       // Fallback : télécharger d'abord, puis instancier
-      const resp = await fetch("mandelbrot.wasm");
+      const resp = await fetch(WASM_URL);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const bytes = await resp.arrayBuffer();
       const result = await WebAssembly.instantiate(bytes, importObject);

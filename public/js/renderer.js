@@ -27,7 +27,7 @@ const view = {
 const params = {
   maxIter: 256,
   fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
-  multibrotPower: 3,
+  multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
   palette: "aurora",   // "feu" | "ocean" | "aurora"
@@ -44,9 +44,9 @@ const VIEW_PRESETS = {
   perpendicular_burning_ship: { centerX: -0.5, centerY: -0.4, span: 3.0 },
   newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
-  barnsley:     { centerX: 0.0,  centerY: 5.0, span: 12.0 },
-  sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.4 },
-  koch:         { centerX: 0.0,  centerY: 0.0, span: 1.0 },
+  barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
+  sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
+  koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
   magnet1:      { centerX: 1.5,  centerY: 0.0, span: 4.0 },
   magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },

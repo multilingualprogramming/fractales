@@ -83,11 +83,14 @@ déf multibrot(cx, cy, max_iter, puissance):
     soit iter = 0.0
     tantque iter < max_iter:
         si norme_carre(x, y) > rayon_echappement_carre:
-            retour iter
+            soit score = max_iter - iter * 0.85
+            si score < 0.0:
+                retour 0.0
+            retour score
         soit p = complexe_puissance_re_im(x, y, puissance)
         soit nx = p[0] + cx
         soit ny = p[1] + cy
         x = nx
         y = ny
         iter = iter + 1.0
-    retour iter
+    retour max_iter

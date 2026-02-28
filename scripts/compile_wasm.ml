@@ -21,7 +21,7 @@ soit SORTIE_WASM = DOSSIER_PUBLIC / "mandelbrot.wasm"
 soit TAILLE_BENCH_GRILLE = 200
 soit ITER_BENCH_MAX = 100
 soit SEPARATEUR = "=" * 62
-soit MODULES_WASM = ["fractales_escape", "fractales_dynamique", "fractales_variantes", "fractales_ifs", "fractales_lsystem", "fractales_magnetiques"]
+soit MODULES_WASM = ["fractales_escape", "fractales_dynamique", "fractales_variantes", "fractales_ifs", "fractales_lsystem", "fractales_magnetiques", "fractales_classes_compat"]
 
 déf ajouter_depot_multilingual_au_chemin():
     soit candidats = [RACINE.parent / "multilingual", Path.home() / "Documents" / "Research" / "Workspace" / "multilingual"]
@@ -220,7 +220,7 @@ déf main():
     afficher(f"    WAT ecrit : {SORTIE_WAT.relative_to(RACINE)}")
     afficher(f"    WASM ecrit: {SORTIE_WASM.relative_to(RACINE)} ({longueur(octets_wasm):,} octets)")
 
-    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "newton", "phoenix", "barnsley", "sierpinski", "koch", "magnet1", "magnet2", "lambda_fractale"]
+    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "newton", "phoenix", "barnsley", "sierpinski", "koch", "magnet1", "magnet2", "lambda_fractale", "mandelbrot_classe"]
     valider_exports_wasm(octets_wasm, exports_requises)
     afficher(f"    Exports valides: {', '.join(exports_requises)}")
 
@@ -246,4 +246,3 @@ déf main():
     afficher(f"    WASM : {SORTIE_WASM.relative_to(RACINE)}")
     afficher(f"    JSON : {SORTIE_BENCH.relative_to(RACINE)}")
     afficher(SEPARATEUR)
-

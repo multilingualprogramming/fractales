@@ -9,7 +9,7 @@
 
 "use strict";
 
-const WASM_URL = "mandelbrot.wasm?v=20260228r6";
+const WASM_URL = "mandelbrot.wasm?v=20260228r7";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -51,6 +51,9 @@ const VIEW_PRESETS = {
   magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
 };
+
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
+const LINE_FRACTALS = new Set(["koch"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
@@ -149,6 +152,129 @@ function getColor(iter, max, name) {
     (c0[1] + (c1[1] - c0[1]) * frac) | 0,
     (c0[2] + (c1[2] - c0[2]) * frac) | 0,
   ];
+}
+
+
+
+function makeRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+function barnsleyStep(x, y, r) {
+  if (r < 0.01) return [0.0, 0.16 * y];
+  if (r < 0.86) return [0.85 * x + 0.04 * y, -0.04 * x + 0.85 * y + 1.6];
+  if (r < 0.93) return [0.2 * x - 0.26 * y, 0.23 * x + 0.22 * y + 1.6];
+  return [-0.15 * x + 0.28 * y, 0.26 * x + 0.24 * y + 0.44];
+}
+
+function sierpinskiStep(x, y, r) {
+  if (r < 1 / 3) return [0.5 * x, 0.5 * y];
+  if (r < 2 / 3) return [0.5 * x + 0.5, 0.5 * y];
+  return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
+}
+
+function kochGenerate(iterations) {
+  let s = "F";
+  for (let i = 0; i < iterations; i++) {
+    let next = "";
+    for (const ch of s) next += ch === "F" ? "F+F--F+F" : ch;
+    s = next;
+  }
+  return s;
+}
+
+function renderPointFractal(w, h, data, cx0, cy0, ps) {
+  const isBarnsley = params.fractal === "barnsley";
+  const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
+  const pointsTarget = Math.max(30000, params.maxIter * 900);
+  const burnIn = isBarnsley ? 80 : 40;
+  const pointsPerFrame = 25000;
+  let x = 0.0;
+  let y = 0.0;
+  let emitted = 0;
+  let iter = 0;
+
+  const putPoint = (px, py) => {
+    if (px < 0 || py < 0 || px >= w || py >= h) return;
+    const i = (py * w + px) * 4;
+    if (isBarnsley) {
+      data[i] = Math.min(120, data[i] + 3);
+      data[i + 1] = Math.min(255, data[i + 1] + 24);
+      data[i + 2] = Math.min(140, data[i + 2] + 4);
+    } else {
+      data[i] = Math.min(160, data[i] + 10);
+      data[i + 1] = Math.min(230, data[i + 1] + 16);
+      data[i + 2] = Math.min(255, data[i + 2] + 24);
+    }
+    data[i + 3] = 255;
+  };
+
+  const step = () => {
+    const end = Math.min(emitted + pointsPerFrame, pointsTarget);
+    while (emitted < end) {
+      const r = rng();
+      [x, y] = isBarnsley ? barnsleyStep(x, y, r) : sierpinskiStep(x, y, r);
+      iter += 1;
+      if (iter <= burnIn) continue;
+      const px = ((x - cx0) / ps) | 0;
+      const py = ((y - cy0) / ps) | 0;
+      putPoint(px, py);
+      emitted += 1;
+    }
+    ctx.putImageData(imageDataBuffer, 0, 0);
+    if (emitted < pointsTarget) {
+      requestAnimationFrame(step);
+    } else {
+      const elapsed = (performance.now() - renderStart).toFixed(0);
+      rendering = false;
+      canvas.parentElement.classList.remove("rendering");
+      updateStatusBar("IFS mode ? " + elapsed + " ms", true);
+    }
+  };
+  requestAnimationFrame(step);
+}
+
+function renderLineFractal(w, h) {
+  const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
+  const commands = kochGenerate(n);
+  const seg = (w * 0.8) / Math.pow(3, n);
+  const turn = Math.PI / 3;
+
+  ctx.fillStyle = "rgb(0, 0, 0)";
+  ctx.fillRect(0, 0, w, h);
+
+  const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params.palette);
+  ctx.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
+  ctx.lineWidth = Math.max(1, Math.min(2, w / 800));
+  ctx.beginPath();
+  let x = w * 0.1;
+  let y = h * 0.65;
+  let a = 0.0;
+  ctx.moveTo(x, y);
+
+  for (const c of commands) {
+    if (c === "F") {
+      x += seg * Math.cos(a);
+      y += seg * Math.sin(a);
+      ctx.lineTo(x, y);
+    } else if (c === "+") {
+      a += turn;
+    } else if (c === "-") {
+      a -= turn;
+    }
+  }
+
+  ctx.stroke();
+  const elapsed = (performance.now() - renderStart).toFixed(0);
+  rendering = false;
+  canvas.parentElement.classList.remove("rendering");
+  updateStatusBar("L-system mode ? " + elapsed + " ms", true);
 }
 
 function getActiveFractalFn() {
@@ -773,6 +899,7 @@ async function init() {
 
 // Démarrer
 init().catch(console.error);
+
 
 
 

@@ -24,7 +24,8 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "newton" | "phoenix" | "barnsley" | "sierpinski"
+  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "newton" | "phoenix" | "barnsley" | "sierpinski"
+  multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
   palette: "aurora",   // "feu" | "ocean" | "aurora"
@@ -35,6 +36,7 @@ const VIEW_PRESETS = {
   julia:        { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
   tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  multibrot:    { centerX: -0.5, centerY: 0.0, span: 3.5 },
   newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 12.0 },
@@ -65,6 +67,7 @@ const coordsDisplay = document.getElementById("coords-display");
 const iterSlider    = document.getElementById("iter-slider");
 const iterValue     = document.getElementById("iter-value");
 const fractalSelect = document.getElementById("fractal-select");
+const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
 const btnReset      = document.getElementById("btn-reset");
 const btnToggle     = document.getElementById("btn-toggle-sidebar");
@@ -195,6 +198,23 @@ function tricornJS(cx, cy, maxIter) {
   return iter;
 }
 
+function multibrotJS(cx, cy, maxIter, power) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const r = Math.sqrt(x * x + y * y);
+    const theta = Math.atan2(y, x);
+    const rn = r ** power;
+    const angle = power * theta;
+    const nx = rn * Math.cos(angle) + cx;
+    const ny = rn * Math.sin(angle) + cy;
+    x = nx;
+    y = ny;
+    iter += 1.0;
+  }
+  return iter;
+}
+
 function newtonJS(zx, zy, maxIter) {
   const eps = 1e-6;
   const root3over2 = 0.8660254037844386;
@@ -268,6 +288,7 @@ function getJSFractalFn(name) {
     case "julia": return juliaJS;
     case "burning_ship": return burningShipJS;
     case "tricorn": return tricornJS;
+    case "multibrot": return multibrotJS;
     case "newton": return newtonJS;
     case "phoenix": return phoenixJS;
     case "mandelbrot":
@@ -468,6 +489,8 @@ function render() {
         let iter;
         if (params.fractal === "julia") {
           iter = fn(cx, cy, params.juliaCre, params.juliaCim, max);
+        } else if (params.fractal === "multibrot") {
+          iter = fn(cx, cy, max, params.multibrotPower);
         } else {
           iter = fn(cx, cy, max);
         }
@@ -623,6 +646,13 @@ fractalSelect.addEventListener("change", () => {
   resetView();
 });
 
+multibrotPower.addEventListener("change", () => {
+  params.multibrotPower = parseInt(multibrotPower.value, 10);
+  if (params.fractal === "multibrot") {
+    render();
+  }
+});
+
 paletteSelect.addEventListener("change", () => {
   params.palette = paletteSelect.value;
   render();
@@ -707,9 +737,9 @@ function escapeHtml(s) {
  */
 function highlightFrench(code) {
   const KW = [
-    "déf", "retour", "tantque", "soit", "si", "sinonsi", "sinon",
+    "déf", "fonction", "classe", "retour", "tantque", "soit", "si", "sinonsi", "sinon",
     "pour", "dans", "Vrai", "Faux", "intervalle", "et", "ou", "non",
-    "constante", "affirmer", "importer",
+    "constante", "affirmer", "importer", "soi", "super",
   ];
   const kwRe = new RegExp(`\\b(${KW.join("|")})\\b`, "g");
 
@@ -728,9 +758,9 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre|iterer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
 
 function highlightPython(code) {
@@ -751,9 +781,9 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn|multibrot|newton|phoenix|barnsley_etape|sierpinski_etape|norme_carre|iterer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
 
 // ============================================================

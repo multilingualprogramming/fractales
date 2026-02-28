@@ -132,6 +132,7 @@
         <option value="julia">Julia (c = -0.8 + 0.156i)</option>
         <option value="burning_ship">Burning Ship</option>
         <option value="tricorn">Tricorn</option>
+        <option value="multibrot">Multibrot</option>
         <option value="newton">Newton (z^3 - 1)</option>
         <option value="phoenix">Phoenix</option>
         <option value="barnsley">Barnsley (IFS)</option>
@@ -148,6 +149,21 @@
              min="64" max="1024" step="64" value="256"
              aria-valuemin="64" aria-valuemax="1024" aria-valuenow="256" />
       <span id="iter-value" class="control-value">256</span>
+    </div>
+
+    <div class="ctrl-sep" aria-hidden="true"></div>
+
+    <!-- Puissance Multibrot -->
+    <div class="control-group" role="group" aria-label="Puissance Multibrot">
+      <label class="control-label" for="multibrot-power">Puissance :</label>
+      <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
+        <option value="3">n=3</option>
+        <option value="4">n=4</option>
+        <option value="5" selected>n=5</option>
+        <option value="6">n=6</option>
+        <option value="7">n=7</option>
+        <option value="8">n=8</option>
+      </select>
     </div>
 
     <div class="ctrl-sep" aria-hidden="true"></div>

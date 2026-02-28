@@ -6,10 +6,10 @@ importer fractales_escape
 importer fractales_dynamique
 importer fractales_ifs
 
-soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn"]
+soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot"]
 soit MODES_DYNAMIQUE = ["newton", "phoenix"]
 soit MODES_IFS = ["barnsley", "sierpinski"]
-affirmer longueur(MODES_EVASION) == 4
+affirmer longueur(MODES_EVASION) == 5
 affirmer longueur(MODES_DYNAMIQUE) == 2
 affirmer longueur(MODES_IFS) == 2
 
@@ -24,6 +24,9 @@ déf burning_ship(cx, cy, max_iter):
 
 déf tricorn(cx, cy, max_iter):
     retour fractales_escape.tricorn(cx, cy, max_iter)
+
+déf multibrot(cx, cy, max_iter, puissance):
+    retour fractales_escape.multibrot(cx, cy, max_iter, puissance)
 
 déf newton(zx, zy, max_iter):
     retour fractales_dynamique.newton(zx, zy, max_iter)

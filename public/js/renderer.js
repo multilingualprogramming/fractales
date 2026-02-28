@@ -529,8 +529,8 @@ async function loadSources(fractalName) {
   const module = FRACTAL_SOURCE_MAP[fractalName] ?? "main";
 
   // Mettre à jour les étiquettes des onglets
-  tabFrench.textContent = `???? ${module}.ml`;
-  tabPython.textContent  = `?? ${module}.py`;
+  tabFrench.textContent = `FR ${module}.ml`;
+  tabPython.textContent  = `PY ${module}.py`;
 
   // Retourner le cache si disponible
   if (sourcesCache[module]) {
@@ -711,14 +711,14 @@ function renderBenchmarkBadge(data) {
         <span class="badge-label">${wasmLabel}</span>
       </div>
       <div class="badge-row">
-        <span class="badge-python">?? ${frFmt(python_ms)} ms</span>
+        <span class="badge-python">PY ${frFmt(python_ms)} ms</span>
         <span class="badge-label">Python</span>
       </div>
       ${speedupLabel ? `<div class="badge-row"><span class="badge-speedup">${speedupLabel}</span></div>` : ""}`;
   } else {
     html += `
       <div class="badge-row">
-        <span class="badge-python">?? ${frFmt(python_ms)} ms</span>
+        <span class="badge-python">PY ${frFmt(python_ms)} ms</span>
         <span class="badge-label">Python</span>
       </div>
       <div class="badge-row">

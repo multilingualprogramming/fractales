@@ -38,7 +38,7 @@ const VIEW_PRESETS = {
   julia:        { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
   tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  multibrot:    { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  multibrot:    { centerX: 0.0, centerY: 0.0, span: 2.8 },
   celtic:       { centerX: -0.5, centerY: 0.0, span: 3.2 },
   buffalo:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
   perpendicular_burning_ship: { centerX: -0.5, centerY: -0.4, span: 3.0 },
@@ -51,6 +51,14 @@ const VIEW_PRESETS = {
   magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
 };
+
+function getMultibrotPreset(power) {
+  const p = Number.isFinite(power) ? power : 5;
+  // Higher powers concentrate details near the origin.
+  if (p >= 7) return { centerX: 0.0, centerY: 0.0, span: 2.1 };
+  if (p >= 5) return { centerX: 0.0, centerY: 0.0, span: 2.4 };
+  return { centerX: 0.0, centerY: 0.0, span: 2.8 };
+}
 
 const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
 const LINE_FRACTALS = new Set(["koch"]);
@@ -493,7 +501,9 @@ function zoomAt(px, py, factor) {
 }
 
 function resetView() {
-  const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;
+  const preset = params.fractal === "multibrot"
+    ? getMultibrotPreset(params.multibrotPower)
+    : (VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot);
   view.centerX = preset.centerX;
   view.centerY = preset.centerY;
   view.pixelSize = preset.span / Math.max(canvas.width, 1);
@@ -595,7 +605,7 @@ fractalSelect.addEventListener("change", () => {
 multibrotPower.addEventListener("change", () => {
   params.multibrotPower = parseInt(multibrotPower.value, 10);
   if (params.fractal === "multibrot") {
-    render();
+    resetView();
   }
 });
 

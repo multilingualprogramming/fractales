@@ -3,7 +3,7 @@
 # Strategie: conserver un coeur fonctionnel (sans etat d'instance),
 # puis exposer une facade objet minimale + wrapper d'export plat.
 
-fonction mandelbrot_compat_core(cx, cy, max_iter):
+déf mandelbrot_compat_core(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0
     soit iter = 0.0
@@ -18,13 +18,13 @@ fonction mandelbrot_compat_core(cx, cy, max_iter):
 
 
 classe MandelbrotFractaleCompat:
-    fonction __init__(soi):
+    déf __init__(soi):
         retour 0.0
 
-    fonction iterer(soi, cx, cy, max_iter):
+    déf iterer(soi, cx, cy, max_iter):
         retour mandelbrot_compat_core(cx, cy, max_iter)
 
 
-fonction mandelbrot_classe(cx, cy, max_iter):
+déf mandelbrot_classe(cx, cy, max_iter):
     soit fractale = MandelbrotFractaleCompat()
     retour fractale.iterer(cx, cy, max_iter)

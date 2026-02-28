@@ -48,6 +48,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Installer multilingualprogramming[wasm]
         run: |
           pip install --upgrade pip
@@ -68,6 +73,38 @@ jobs:
 
       - name: Exécuter les tests d'intégration
         run: python scripts/integration_checks.py
+
+      - name: Vérifier la syntaxe JavaScript (Node)
+        run: node --check public/js/renderer.js
+
+      - name: Vérifier l'instanciation WASM (Node)
+        run: |
+          node -e "
+          const fs = require('fs');
+          const bytes = fs.readFileSync('public/mandelbrot.wasm');
+          WebAssembly.instantiate(bytes, {
+            env: {
+              memory: new WebAssembly.Memory({ initial: 16, maximum: 1024 }),
+              print_str() {},
+              print_f64() {},
+              print_bool() {},
+              print_sep() {},
+              print_newline() {},
+            },
+          }).then(({ instance }) => {
+            const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch'];
+            const exports = instance.exports;
+            const missing = required.filter((name) => typeof exports[name] !== 'function');
+            if (missing.length) {
+              console.error('Exports manquants:', missing.join(', '));
+              process.exit(1);
+            }
+            console.log('WASM smoke test OK');
+          }).catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          "
 
       - name: Vérifier les artefacts générés
         run: |

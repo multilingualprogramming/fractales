@@ -7,7 +7,11 @@ Etapes :
   2. Copier vers public/mandelbrot.ml  (servi statiquement par GitHub Pages)
   3. Transpiler vers Python via ProgramExecutor (multilingualprogramming)
   4. Generer un binaire WebAssembly valide (encodage direct du format WASM)
-     pour mandelbrot(cx: f64, cy: f64, max_iter: f64) -> f64
+     avec 4 exports :
+       - mandelbrot(cx: f64, cy: f64, max_iter: f64) -> f64
+       - burning_ship(cx: f64, cy: f64, max_iter: f64) -> f64
+       - tricorn(cx: f64, cy: f64, max_iter: f64) -> f64
+       - julia(zx: f64, zy: f64, c_re: f64, c_im: f64, max_iter: f64) -> f64
   5. Benchmark Python vs WASM sur une grille 200x200 avec max_iter=100
   6. Ecrire public/benchmark.json
 
@@ -57,12 +61,10 @@ def fmt(ms):
 # ============================================================
 # GENERATEUR DE BINAIRE WASM
 #
-# Encode directement le format binaire WebAssembly pour :
-#   mandelbrot(cx: f64, cy: f64, max_iter: f64) -> f64
-#
-# Indices des variables locales :
-#   params : 0=cx, 1=cy, 2=max_iter
-#   locals : 3=x,  4=y,  5=iter,  6=xtemp
+# Encode directement le format binaire WebAssembly pour 4 fonctions.
+# Signatures :
+#   type0: (f64, f64, f64) -> f64
+#   type1: (f64, f64, f64, f64, f64) -> f64
 # ============================================================
 
 def _uleb128(n):
@@ -83,31 +85,80 @@ def _section(sid, content):
     return bytes([sid]) + _uleb128(len(content)) + content
 
 
-def generate_mandelbrot_wasm():
-    """
-    Genere le binaire WASM correspondant exactement a src/mandelbrot.ml.
+def _f64_loop_body(kind):
+    """Genere le corps WASM (sans locals_decl) pour une fractale de type 3 params."""
+    # Indices communs
+    # params : 0=cx, 1=cy, 2=max_iter
+    # locals : 3=x, 4=y, 5=iter, 6=xtemp
+    def lget(i): return bytes([0x20]) + _uleb128(i)
+    def lset(i): return bytes([0x21]) + _uleb128(i)
+    def br(d):   return bytes([0x0C]) + _uleb128(d)
+    def brif(d): return bytes([0x0D]) + _uleb128(d)
+    def f64c(v): return bytes([0x44]) + struct.pack('<d', v)
 
-    Structure de la fonction (en pseudo-code WASM textuel) :
-      block $outer (void)
-        loop $inner (void)
-          ;; si iter >= max_iter: sortir
-          local.get 5 ; local.get 2 ; f64.ge ; br_if 1
-          ;; si x*x+y*y > 4.0: return iter
-          ...f64 ops... ; f64.gt ; if (void) ; local.get 5 ; return ; end
-          ;; xtemp = x*x - y*y + cx
-          ...
-          ;; y = 2*x*y + cy
-          ...
-          ;; x = xtemp
-          ...
-          ;; iter = iter + 1.0
-          ...
-          br 0  ;; continuer la boucle
-        end  ;; loop
-      end  ;; block
-      local.get 5  ;; retourner iter (iter == max_iter)
-    """
+    F64_MUL    = bytes([0xA2])
+    F64_ADD    = bytes([0xA0])
+    F64_SUB    = bytes([0xA1])
+    F64_GE     = bytes([0x66])
+    F64_GT     = bytes([0x64])
+    F64_ABS    = bytes([0x99])
+    RETURN     = bytes([0x0F])
+    END        = bytes([0x0B])
+    BLOCK_VOID = bytes([0x02, 0x40])
+    LOOP_VOID  = bytes([0x03, 0x40])
+    IF_VOID    = bytes([0x04, 0x40])
 
+    body = BLOCK_VOID + LOOP_VOID
+    body += lget(5) + lget(2) + F64_GE + brif(1)  # iter >= max_iter
+
+    # escape: x*x + y*y > 4.0
+    body += lget(3) + lget(3) + F64_MUL
+    body += lget(4) + lget(4) + F64_MUL
+    body += F64_ADD + f64c(4.0) + F64_GT
+    body += IF_VOID + lget(5) + RETURN + END
+
+    if kind == "mandelbrot":
+        # xtemp = x*x - y*y + cx
+        body += lget(3) + lget(3) + F64_MUL
+        body += lget(4) + lget(4) + F64_MUL
+        body += F64_SUB + lget(0) + F64_ADD
+        body += lset(6)
+        # y = 2*x*y + cy
+        body += f64c(2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
+        body += lset(4)
+    elif kind == "tricorn":
+        # xtemp = x*x - y*y + cx
+        body += lget(3) + lget(3) + F64_MUL
+        body += lget(4) + lget(4) + F64_MUL
+        body += F64_SUB + lget(0) + F64_ADD
+        body += lset(6)
+        # y = -2*x*y + cy
+        body += f64c(-2.0) + lget(3) + F64_MUL + lget(4) + F64_MUL + lget(1) + F64_ADD
+        body += lset(4)
+    elif kind == "burning_ship":
+        # xtemp = abs(x)^2 - abs(y)^2 + cx
+        body += lget(3) + F64_ABS + lget(3) + F64_ABS + F64_MUL
+        body += lget(4) + F64_ABS + lget(4) + F64_ABS + F64_MUL
+        body += F64_SUB + lget(0) + F64_ADD
+        body += lset(6)
+        # y = 2*abs(x)*abs(y) + cy
+        body += f64c(2.0) + lget(3) + F64_ABS + F64_MUL + lget(4) + F64_ABS + F64_MUL
+        body += lget(1) + F64_ADD
+        body += lset(4)
+    else:
+        raise ValueError(f"Type de fractale inconnu: {kind}")
+
+    body += lget(6) + lset(3)  # x = xtemp
+    body += lget(5) + f64c(1.0) + F64_ADD + lset(5)  # iter += 1
+    body += br(0) + END + END
+    body += lget(5) + END
+    return body
+
+
+def _f64_loop_body_julia():
+    """Genere le corps WASM (sans locals_decl) pour julia(zx, zy, c_re, c_im, max_iter)."""
+    # params : 0=zx, 1=zy, 2=c_re, 3=c_im, 4=max_iter
+    # locals : 5=iter, 6=xtemp
     def lget(i): return bytes([0x20]) + _uleb128(i)
     def lset(i): return bytes([0x21]) + _uleb128(i)
     def br(d):   return bytes([0x0C]) + _uleb128(d)
@@ -125,64 +176,68 @@ def generate_mandelbrot_wasm():
     LOOP_VOID  = bytes([0x03, 0x40])
     IF_VOID    = bytes([0x04, 0x40])
 
-    body  = BLOCK_VOID + LOOP_VOID
+    body = bytes()
+    body += f64c(0.0) + lset(5)  # iter = 0
+    body += BLOCK_VOID + LOOP_VOID
+    body += lget(5) + lget(4) + F64_GE + brif(1)  # iter >= max_iter
 
-    # Condition de sortie : iter >= max_iter -> sortir du bloc
-    body += lget(5) + lget(2) + F64_GE + brif(1)
-
-    # Condition d'echappement : x*x + y*y > 4.0 -> return iter
-    body += lget(3) + lget(3) + F64_MUL   # x*x
-    body += lget(4) + lget(4) + F64_MUL   # y*y
-    body += F64_ADD                         # x*x + y*y
-    body += f64c(4.0) + F64_GT            # > 4.0 ?
+    # escape: zx*zx + zy*zy > 4.0
+    body += lget(0) + lget(0) + F64_MUL
+    body += lget(1) + lget(1) + F64_MUL
+    body += F64_ADD + f64c(4.0) + F64_GT
     body += IF_VOID + lget(5) + RETURN + END
 
-    # xtemp = x*x - y*y + cx
-    body += lget(3) + lget(3) + F64_MUL   # x*x
-    body += lget(4) + lget(4) + F64_MUL   # y*y
-    body += F64_SUB + lget(0) + F64_ADD   # x*x-y*y + cx
+    # xtemp = zx*zx - zy*zy + c_re
+    body += lget(0) + lget(0) + F64_MUL
+    body += lget(1) + lget(1) + F64_MUL
+    body += F64_SUB + lget(2) + F64_ADD
     body += lset(6)
 
-    # y = 2.0 * x * y + cy
-    body += f64c(2.0) + lget(3) + F64_MUL   # 2*x
-    body += lget(4) + F64_MUL               # *y
-    body += lget(1) + F64_ADD               # +cy
-    body += lset(4)
+    # zy = 2*zx*zy + c_im
+    body += f64c(2.0) + lget(0) + F64_MUL + lget(1) + F64_MUL + lget(3) + F64_ADD
+    body += lset(1)
 
-    # x = xtemp
-    body += lget(6) + lset(3)
+    # zx = xtemp
+    body += lget(6) + lset(0)
 
-    # iter = iter + 1.0
+    # iter += 1
     body += lget(5) + f64c(1.0) + F64_ADD + lset(5)
-
-    body += br(0) + END + END   # br loop ; end loop ; end block
-
-    # Retourner iter (sortie normale)
+    body += br(0) + END + END
     body += lget(5) + END
+    return body
 
-    # Declarations des variables locales : 4 x f64 (x, y, iter, xtemp)
-    locals_decl = _uleb128(1) + _uleb128(4) + bytes([0x7C])
-    func_data   = locals_decl + body
-    func_body   = _uleb128(len(func_data)) + func_data
 
-    # Type section : 1 type = (f64, f64, f64) -> f64
+def _wrap_func_body(locals_count, body):
+    locals_decl = _uleb128(1) + _uleb128(locals_count) + bytes([0x7C])
+    func_data = locals_decl + body
+    return _uleb128(len(func_data)) + func_data
+
+
+def generate_fractals_wasm():
+    """Genere un module WASM exportant mandelbrot, burning_ship, tricorn et julia."""
+    bodies = [
+        _wrap_func_body(4, _f64_loop_body("mandelbrot")),
+        _wrap_func_body(4, _f64_loop_body("burning_ship")),
+        _wrap_func_body(4, _f64_loop_body("tricorn")),
+        _wrap_func_body(2, _f64_loop_body_julia()),
+    ]
+
+    # Type section : 2 types
     type_content = (
-        _uleb128(1) + bytes([0x60]) +
-        _uleb128(3) + bytes([0x7C, 0x7C, 0x7C]) +
-        _uleb128(1) + bytes([0x7C])
+        _uleb128(2) +
+        bytes([0x60]) + _uleb128(3) + bytes([0x7C, 0x7C, 0x7C]) + _uleb128(1) + bytes([0x7C]) +
+        bytes([0x60]) + _uleb128(5) + bytes([0x7C, 0x7C, 0x7C, 0x7C, 0x7C]) + _uleb128(1) + bytes([0x7C])
     )
 
-    # Function section : 1 fonction de type 0
-    func_content = _uleb128(1) + _uleb128(0)
+    # Function section : [type0, type0, type0, type1]
+    func_content = _uleb128(4) + _uleb128(0) + _uleb128(0) + _uleb128(0) + _uleb128(1)
 
-    # Export section : "mandelbrot" -> func 0
-    name = b"mandelbrot"
-    export_content = (
-        _uleb128(1) + _uleb128(len(name)) + name + bytes([0x00]) + _uleb128(0)
-    )
+    exports = [b"mandelbrot", b"burning_ship", b"tricorn", b"julia"]
+    export_content = _uleb128(len(exports))
+    for idx, name in enumerate(exports):
+        export_content += _uleb128(len(name)) + name + bytes([0x00]) + _uleb128(idx)
 
-    # Code section : 1 corps de fonction
-    code_content = _uleb128(1) + func_body
+    code_content = _uleb128(len(bodies)) + b"".join(bodies)
 
     return (
         b"\x00asm\x01\x00\x00\x00" +
@@ -230,7 +285,7 @@ def try_multilingual_transpile(source):
 
 
 def fallback_python_code():
-    """Code Python de repli equivalent a mandelbrot.ml."""
+    """Code Python de repli equivalent au source .ml."""
     return (
         "# Python transpile depuis le source francais multilingual\n"
         "# (transpilation de repli)\n"
@@ -244,6 +299,47 @@ def fallback_python_code():
         "            return iter\n"
         "        xtemp = x * x - y * y + cx\n"
         "        y = 2.0 * x * y + cy\n"
+        "        x = xtemp\n"
+        "        iter = iter + 1.0\n"
+        "    return iter\n"
+        "\n"
+        "def julia(zx, zy, c_re, c_im, max_iter):\n"
+        "    x = zx\n"
+        "    y = zy\n"
+        "    iter = 0.0\n"
+        "    while iter < max_iter:\n"
+        "        if x * x + y * y > 4.0:\n"
+        "            return iter\n"
+        "        xtemp = x * x - y * y + c_re\n"
+        "        y = 2.0 * x * y + c_im\n"
+        "        x = xtemp\n"
+        "        iter = iter + 1.0\n"
+        "    return iter\n"
+        "\n"
+        "def burning_ship(cx, cy, max_iter):\n"
+        "    x = 0.0\n"
+        "    y = 0.0\n"
+        "    iter = 0.0\n"
+        "    while iter < max_iter:\n"
+        "        if x * x + y * y > 4.0:\n"
+        "            return iter\n"
+        "        ax = abs(x)\n"
+        "        ay = abs(y)\n"
+        "        xtemp = ax * ax - ay * ay + cx\n"
+        "        y = 2.0 * ax * ay + cy\n"
+        "        x = xtemp\n"
+        "        iter = iter + 1.0\n"
+        "    return iter\n"
+        "\n"
+        "def tricorn(cx, cy, max_iter):\n"
+        "    x = 0.0\n"
+        "    y = 0.0\n"
+        "    iter = 0.0\n"
+        "    while iter < max_iter:\n"
+        "        if x * x + y * y > 4.0:\n"
+        "            return iter\n"
+        "        xtemp = x * x - y * y + cx\n"
+        "        y = -2.0 * x * y + cy\n"
         "        x = xtemp\n"
         "        iter = iter + 1.0\n"
         "    return iter\n"
@@ -370,7 +466,7 @@ for line in python_code.splitlines()[:12]:
 
 # Etape 4 : Generation du binaire WASM
 print(f"\n[4] Generation du binaire WebAssembly")
-wasm_bytes = generate_mandelbrot_wasm()
+wasm_bytes = generate_fractals_wasm()
 WASM_OUT.write_bytes(wasm_bytes)
 print(f"    {len(wasm_bytes):,} octets -> {WASM_OUT.relative_to(ROOT)}")
 
@@ -383,8 +479,14 @@ try:
     _mod = wasmtime.Module(_eng, wasm_bytes)
     _ins = wasmtime.Instance(_sto, _mod, [])
     _exp = _ins.exports(_sto)
-    _res = _exp["mandelbrot"](_sto, -0.5, 0.0, 100.0)
-    print(f"    Validation wasmtime : mandelbrot(-0.5, 0.0, 100.0) = {_res}")
+    _res_m = _exp["mandelbrot"](_sto, -0.5, 0.0, 100.0)
+    _res_b = _exp["burning_ship"](_sto, -1.8, -0.03, 100.0)
+    _res_t = _exp["tricorn"](_sto, -0.5, 0.0, 100.0)
+    _res_j = _exp["julia"](_sto, 0.0, 0.0, -0.8, 0.156, 100.0)
+    print(f"    Validation wasmtime : mandelbrot(-0.5, 0.0, 100.0) = {_res_m}")
+    print(f"    Validation wasmtime : burning_ship(-1.8, -0.03, 100.0) = {_res_b}")
+    print(f"    Validation wasmtime : tricorn(-0.5, 0.0, 100.0) = {_res_t}")
+    print(f"    Validation wasmtime : julia(0.0, 0.0, -0.8, 0.156, 100.0) = {_res_j}")
 except ImportError:
     print("    wasmtime absent -- validation ignoree (le navigateur chargera le binaire).")
 except Exception as exc:

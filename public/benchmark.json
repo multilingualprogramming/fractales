@@ -1,9 +1,0 @@
-{
-  "python_ms": 36,
-  "wasm_ms": 15,
-  "speedup": 2.4,
-  "grid_size": 200,
-  "max_iter": 100,
-  "wasm_available": true,
-  "wasm_estimated": true
-}

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Explorateur de Fractales — multilingual WebAssembly</title>
   <meta name="description"
-        content="Ensemble de Mandelbrot calculé en WebAssembly depuis du code source écrit en français avec le langage multilingual." />
+        content="Fractales Mandelbrot, Julia, Burning Ship et Tricorn calculées en WebAssembly depuis du code source écrit en français avec le langage multilingual." />
 
   <!-- Feuille de style principale -->
   <link rel="stylesheet" href="css/style.css" />
@@ -50,7 +50,7 @@
   <!-- ============================================================
        ZONE CANVAS
        ============================================================ -->
-  <main id="canvas-container" aria-label="Ensemble de Mandelbrot interactif">
+  <main id="canvas-container" aria-label="Explorateur de fractales interactif">
 
     <canvas id="fractal-canvas">
       Votre navigateur ne supporte pas l'élément canvas.
@@ -123,6 +123,19 @@
        BARRE DE CONTRÔLES
        ============================================================ -->
   <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
+
+    <!-- Sélecteur de fractale -->
+    <div class="control-group" role="group" aria-label="Type de fractale">
+      <label class="control-label" for="fractal-select">Fractale :</label>
+      <select id="fractal-select" aria-label="Choisir une fractale">
+        <option value="mandelbrot">Mandelbrot</option>
+        <option value="julia">Julia (c = -0.8 + 0.156i)</option>
+        <option value="burning_ship">Burning Ship</option>
+        <option value="tricorn">Tricorn</option>
+      </select>
+    </div>
+
+    <div class="ctrl-sep" aria-hidden="true"></div>
 
     <!-- Slider d'itérations -->
     <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">

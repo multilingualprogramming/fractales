@@ -24,12 +24,22 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
+  fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn"
+  juliaCre: -0.8,
+  juliaCim: 0.156,
   palette: "feu",   // "feu" | "ocean" | "aurora"
 };
 
-/** Référence à la fonction WASM exportée (ou null si non chargé) */
-let wasmMandelbrot = null;
-/** True si la fonction WASM est disponible */
+const VIEW_PRESETS = {
+  mandelbrot:   { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  julia:        { centerX: 0.0,  centerY: 0.0, span: 3.0 },
+  burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
+  tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
+};
+
+/** Fonctions fractales exportées par WASM */
+let wasmFunctions = {};
+/** True si le module WASM est disponible */
 let wasmAvailable = false;
 /** Timestamp de début du dernier rendu */
 let renderStart = 0;
@@ -48,6 +58,7 @@ const renderStatus  = document.getElementById("render-status");
 const coordsDisplay = document.getElementById("coords-display");
 const iterSlider    = document.getElementById("iter-slider");
 const iterValue     = document.getElementById("iter-value");
+const fractalSelect = document.getElementById("fractal-select");
 const paletteSelect = document.getElementById("palette-select");
 const btnReset      = document.getElementById("btn-reset");
 const btnToggle     = document.getElementById("btn-toggle-sidebar");
@@ -140,6 +151,61 @@ function mandelbrotJS(cx, cy, maxIter) {
   return iter;
 }
 
+function juliaJS(zx, zy, cRe, cIm, maxIter) {
+  let x = zx, y = zy, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const xtemp = x * x - y * y + cRe;
+    y = 2.0 * x * y + cIm;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function burningShipJS(cx, cy, maxIter) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const ax = Math.abs(x);
+    const ay = Math.abs(y);
+    const xtemp = ax * ax - ay * ay + cx;
+    y = 2.0 * ax * ay + cy;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function tricornJS(cx, cy, maxIter) {
+  let x = 0.0, y = 0.0, iter = 0.0;
+  while (iter < maxIter) {
+    if (x * x + y * y > 4.0) return iter;
+    const xtemp = x * x - y * y + cx;
+    y = -2.0 * x * y + cy;
+    x = xtemp;
+    iter += 1.0;
+  }
+  return iter;
+}
+
+function getJSFractalFn(name) {
+  switch (name) {
+    case "julia": return juliaJS;
+    case "burning_ship": return burningShipJS;
+    case "tricorn": return tricornJS;
+    case "mandelbrot":
+    default: return mandelbrotJS;
+  }
+}
+
+function getActiveFractalFn() {
+  const jsFn = getJSFractalFn(params.fractal);
+  if (!wasmAvailable) return { fn: jsFn, backend: "JS" };
+  const wasmFn = wasmFunctions[params.fractal];
+  return wasmFn ? { fn: wasmFn, backend: "WASM" } : { fn: jsFn, backend: "JS" };
+}
+
 // ============================================================
 // CHARGEMENT WASM
 // ============================================================
@@ -149,8 +215,6 @@ function mandelbrotJS(cx, cy, maxIter) {
  * Retourne true si le module est chargé et la fonction disponible.
  */
 async function loadWasm() {
-  const mandelbrotFn = (cx, cy, maxIter) => mandelbrotJS(cx, cy, maxIter);
-
   try {
     const importObject = {
       env: {
@@ -181,14 +245,19 @@ async function loadWasm() {
       throw new Error("Export 'mandelbrot' introuvable dans le module WASM.");
     }
 
-    wasmMandelbrot = exports.mandelbrot;
+    wasmFunctions = {
+      mandelbrot: typeof exports.mandelbrot === "function" ? exports.mandelbrot : null,
+      burning_ship: typeof exports.burning_ship === "function" ? exports.burning_ship : null,
+      tricorn: typeof exports.tricorn === "function" ? exports.tricorn : null,
+      julia: typeof exports.julia === "function" ? exports.julia : null,
+    };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
     updateStatusBar("WASM prêt");
     return true;
   } catch (err) {
     console.warn("[WASM] Chargement échoué, fallback JavaScript activé :", err.message);
-    wasmMandelbrot = mandelbrotFn;
+    wasmFunctions = {};
     wasmAvailable = false;
     updateStatusBar("JS fallback");
     return false;
@@ -212,7 +281,7 @@ function resizeCanvas() {
 }
 
 /**
- * Lance un rendu complet de l'ensemble de Mandelbrot.
+ * Lance un rendu complet de la fractale courante.
  * Le rendu est découpé en tranches (rows par frame) pour rester réactif.
  */
 function render() {
@@ -229,7 +298,7 @@ function render() {
   }
   const data = imageDataBuffer.data;
 
-  const fn = wasmMandelbrot ?? mandelbrotJS;
+  const { fn, backend } = getActiveFractalFn();
   const cx0 = view.centerX - (w / 2) * view.pixelSize;
   const cy0 = view.centerY - (h / 2) * view.pixelSize;
   const ps  = view.pixelSize;
@@ -251,7 +320,9 @@ function render() {
       const base = py * w * 4;
       for (let px = 0; px < w; px++) {
         const cx = cx0 + px * ps;
-        const iter = fn(cx, cy, max);
+        const iter = params.fractal === "julia"
+          ? fn(cx, cy, params.juliaCre, params.juliaCim, max)
+          : fn(cx, cy, max);
         const [r, g, b] = getColor(iter, max, pal);
         const i = base + px * 4;
         data[i]     = r;
@@ -269,7 +340,6 @@ function render() {
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
-      const backend = wasmAvailable ? "WASM" : "JS";
       updateStatusBar(`${backend} · ${elapsed} ms`, true);
     }
   }
@@ -307,9 +377,10 @@ function zoomAt(px, py, factor) {
 }
 
 function resetView() {
-  view.centerX   = -0.5;
-  view.centerY   = 0.0;
-  view.pixelSize = 3.5 / canvas.width;
+  const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;
+  view.centerX = preset.centerX;
+  view.centerY = preset.centerY;
+  view.pixelSize = preset.span / Math.max(canvas.width, 1);
   render();
 }
 
@@ -397,6 +468,11 @@ iterSlider.addEventListener("input", () => {
   params.maxIter = parseInt(iterSlider.value, 10);
   iterValue.textContent = params.maxIter;
   render();
+});
+
+fractalSelect.addEventListener("change", () => {
+  params.fractal = fractalSelect.value;
+  resetView();
 });
 
 paletteSelect.addEventListener("change", () => {
@@ -503,9 +579,9 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|max_iter|x|y|iter|xtemp)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay)\b/g, `<span class="param">$1</span>`);
 }
 
 function highlightPython(code) {
@@ -526,9 +602,9 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|julia|burning_ship|tricorn)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|max_iter|x|y|iter|xtemp)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay)\b/g, `<span class="param">$1</span>`);
 }
 
 // ============================================================
@@ -607,8 +683,11 @@ function showZoomHint() {
 async function init() {
   resizeCanvas();
 
-  // Vue initiale : montrer l'ensemble complet
-  view.pixelSize = 3.5 / canvas.width;
+  // Vue initiale : preset de la fractale sélectionnée
+  const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;
+  view.centerX = preset.centerX;
+  view.centerY = preset.centerY;
+  view.pixelSize = preset.span / Math.max(canvas.width, 1);
 
   // Lancer un premier rendu JS pendant le chargement WASM
   updateStatusBar("Initialisation…");

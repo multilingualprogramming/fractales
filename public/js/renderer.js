@@ -4,7 +4,7 @@
  * Charge mandelbrot.wasm (compilé depuis le source français multilingual),
  * rend l'ensemble de Mandelbrot sur un <canvas>, et gère toute l'interactivité.
  *
- * Pipeline : source français (.ml) → WASM (build-time) → browser WebAssembly API
+ * Pipeline : source français (.ml) ? WASM (build-time) ? browser WebAssembly API
  */
 
 "use strict";
@@ -25,7 +25,7 @@ const view = {
 const params = {
   maxIter: 256,
   fractal: "mandelbrot", // "mandelbrot" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
-  multibrotPower: 5,
+  multibrotPower: 3,
   juliaCre: -0.8,
   juliaCim: 0.156,
   palette: "aurora",   // "feu" | "ocean" | "aurora"
@@ -86,10 +86,10 @@ const badgeLoading  = document.getElementById("badge-loading");
 // ============================================================
 // Chaque palette est un tableau de stops RGB [r, g, b].
 // La couleur est interpolée linéairement selon t = iter / maxIter.
-// t = 1 (intérieur de l'ensemble) → noir.
+// t = 1 (intérieur de l'ensemble) ? noir.
 
 const PALETTES = {
-  /** Feu : noir → rouge → orange → jaune → blanc */
+  /** Feu : noir ? rouge ? orange ? jaune ? blanc */
   feu: [
     [0,   0,   0  ],
     [90,  0,   0  ],
@@ -100,7 +100,7 @@ const PALETTES = {
     [255, 255, 160],
     [255, 255, 255],
   ],
-  /** Océan : noir → bleu profond → bleu → cyan → blanc */
+  /** Océan : noir ? bleu profond ? bleu ? cyan ? blanc */
   ocean: [
     [0,   0,   0  ],
     [0,   0,   40 ],
@@ -111,7 +111,7 @@ const PALETTES = {
     [160, 240, 255],
     [255, 255, 255],
   ],
-  /** Aurora : noir → vert → indigo → violet → rose */
+  /** Aurora : noir ? vert ? indigo ? violet ? rose */
   aurora: [
     [0,   0,   0  ],
     [0,   15,  20 ],
@@ -132,7 +132,7 @@ const PALETTES = {
  * @returns {[number, number, number]}
  */
 function getColor(iter, max, name) {
-  if (iter >= max) return [0, 0, 0];  // intérieur → noir
+  if (iter >= max) return [0, 0, 0];  // intérieur ? noir
   const stops = PALETTES[name] ?? PALETTES.feu;
   // normaliser dans [0, 1] avec légère correction logarithmique
   const t = Math.sqrt(iter / max);
@@ -339,7 +339,7 @@ function updateStatusBar(msg, autoHide = false) {
 // INTERACTION (ZOOM / PAN)
 // ============================================================
 
-/** Convertit les coordonnées canvas → coordonnées du plan complexe. */
+/** Convertit les coordonnées canvas ? coordonnées du plan complexe. */
 function canvasToComplex(px, py) {
   return {
     re: view.centerX + (px - canvas.width  / 2) * view.pixelSize,
@@ -529,8 +529,8 @@ async function loadSources(fractalName) {
   const module = FRACTAL_SOURCE_MAP[fractalName] ?? "main";
 
   // Mettre à jour les étiquettes des onglets
-  tabFrench.textContent = `🇫🇷 ${module}.ml`;
-  tabPython.textContent  = `🐍 ${module}.py`;
+  tabFrench.textContent = `???? ${module}.ml`;
+  tabPython.textContent  = `?? ${module}.py`;
 
   // Retourner le cache si disponible
   if (sourcesCache[module]) {
@@ -690,7 +690,7 @@ function renderBenchmarkBadge(data) {
   if (benchmarkDisabled && wasm_available) {
     html += `
       <div class="badge-row">
-        <span class="badge-wasm">⚡ WASM généré</span>
+        <span class="badge-wasm">? WASM généré</span>
         <span class="badge-label">pipeline officiel</span>
       </div>
       <div class="badge-row">
@@ -707,18 +707,18 @@ function renderBenchmarkBadge(data) {
       : "";
     html += `
       <div class="badge-row">
-        <span class="badge-wasm">⚡ ~${frFmt(wasm_ms)} ms</span>
+        <span class="badge-wasm">? ~${frFmt(wasm_ms)} ms</span>
         <span class="badge-label">${wasmLabel}</span>
       </div>
       <div class="badge-row">
-        <span class="badge-python">🐍 ${frFmt(python_ms)} ms</span>
+        <span class="badge-python">?? ${frFmt(python_ms)} ms</span>
         <span class="badge-label">Python</span>
       </div>
       ${speedupLabel ? `<div class="badge-row"><span class="badge-speedup">${speedupLabel}</span></div>` : ""}`;
   } else {
     html += `
       <div class="badge-row">
-        <span class="badge-python">🐍 ${frFmt(python_ms)} ms</span>
+        <span class="badge-python">?? ${frFmt(python_ms)} ms</span>
         <span class="badge-label">Python</span>
       </div>
       <div class="badge-row">
@@ -771,6 +771,7 @@ async function init() {
 
 // Démarrer
 init().catch(console.error);
+
 
 
 

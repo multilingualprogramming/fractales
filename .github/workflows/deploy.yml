@@ -58,8 +58,9 @@ jobs:
           python -c "
           from multilingualprogramming.runtime.backend_selector import BackendSelector
           s = BackendSelector()
+          backend = getattr(s, 'backend', getattr(s, '_backend', 'inconnu'))
           print(f'WASM disponible : {s.is_wasm_available()}')
-          print(f'Backend actif   : {s.backend}')
+          print(f'Backend actif   : {backend}')
           "
 
       - name: Compiler le source français vers WebAssembly

@@ -90,4 +90,9 @@ déf multibrot(cx, cy, max_iter, puissance):
         x = nx
         y = ny
         iter = iter + 1.0
-    retour iter
+    soit interieur = max_iter * 0.92 - norme_carre(x, y) * (max_iter * 0.25)
+    si interieur < 0.0:
+        retour 0.0
+    si interieur > max_iter * 0.92:
+        retour max_iter * 0.92
+    retour interieur

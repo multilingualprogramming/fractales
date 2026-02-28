@@ -1,4 +1,4 @@
-﻿/**
+/**
  * renderer.js — Explorateur de Fractales
  *
  * Charge mandelbrot.wasm (compilé depuis le source français multilingual),

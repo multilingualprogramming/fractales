@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Explorateur de Fractales â€” multilingual WebAssembly</title>
+  <title>Explorateur de Fractales — multilingual WebAssembly</title>
   <meta name="description"
-        content="Fractales Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Barnsley et Sierpinski calculÃ©es en WebAssembly/JavaScript depuis du code source Ã©crit en franÃ§ais avec le langage multilingual." />
+        content="Fractales Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Barnsley et Sierpinski calculées en WebAssembly/JavaScript depuis du code source écrit en français avec le langage multilingual." />
 
   <!-- Feuille de style principale -->
   <link rel="stylesheet" href="css/style.css" />
 
-  <!-- PrÃ©chargement des ressources critiques -->
+  <!-- Préchargement des ressources critiques -->
   <link rel="preload" href="mandelbrot.wasm" as="fetch" crossorigin />
   <link rel="preload" href="benchmark.json"  as="fetch" crossorigin />
 </head>
@@ -19,11 +19,11 @@
 <div id="app">
 
   <!-- ============================================================
-       EN-TÃŠTE
+       EN-TÊTE
        ============================================================ -->
   <header id="header">
     <div class="header-brand">
-      <!-- IcÃ´ne fractale SVG inline -->
+      <!-- Icône fractale SVG inline -->
       <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"
            aria-hidden="true">
         <circle cx="14" cy="14" r="13" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
@@ -35,13 +35,13 @@
       </svg>
       Explorateur de <span>Fractales</span>
       <span style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:4px">
-        Â· multilingual â†’ WebAssembly
+        · multilingual → WebAssembly
       </span>
     </div>
 
     <div class="header-actions">
       <button id="btn-toggle-sidebar" class="btn" title="Afficher/masquer le code source">
-        <span class="btn-icon">âŸ¨/âŸ©</span>
+        <span class="btn-icon">⟨/⟩</span>
         <span>Code source</span>
       </button>
     </div>
@@ -53,26 +53,26 @@
   <main id="canvas-container" aria-label="Explorateur de fractales interactif">
 
     <canvas id="fractal-canvas">
-      Votre navigateur ne supporte pas l'Ã©lÃ©ment canvas.
+      Votre navigateur ne supporte pas l'élément canvas.
     </canvas>
 
     <!-- Indicateur de statut du rendu -->
     <div id="render-overlay">
-      <div id="render-status" class="loading-pulse">Initialisationâ€¦</div>
+      <div id="render-status" class="loading-pulse">Initialisation…</div>
     </div>
 
-    <!-- CoordonnÃ©es du curseur -->
+    <!-- Coordonnées du curseur -->
     <div id="coords-display">Re 0.000000  Im 0.000000</div>
 
-    <!-- Astuce de zoom (disparaÃ®t automatiquement) -->
+    <!-- Astuce de zoom (disparaît automatiquement) -->
     <div id="zoom-hint" role="status" aria-live="polite">
-      Clic : zoom Ã—2 &nbsp;Â·&nbsp; Double-clic : dÃ©zoom &nbsp;Â·&nbsp; Molette : zoom libre
+      Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
     </div>
 
   </main>
 
   <!-- ============================================================
-       PANNEAU LATÃ‰RAL
+       PANNEAU LATÉRAL
        ============================================================ -->
   <aside id="sidebar" aria-label="Panneau de code source">
     <div id="sidebar-inner">
@@ -84,35 +84,35 @@
 
       <!-- Badge benchmark -->
       <div id="benchmark-badge" aria-live="polite">
-        <span id="badge-loading" class="loading-pulse">Chargement des donnÃ©es benchmarkâ€¦</span>
+        <span id="badge-loading" class="loading-pulse">Chargement des données benchmark…</span>
       </div>
 
       <!-- Onglets de code -->
       <div class="code-tabs" role="tablist" aria-label="Affichage du code">
         <button id="tab-french" class="tab-btn active"
                 role="tab" aria-selected="true" aria-controls="panel-french">
-          ðŸ‡«ðŸ‡· franÃ§ais.ml
+          🇫🇷 français.ml
         </button>
         <button id="tab-python" class="tab-btn"
                 role="tab" aria-selected="false" aria-controls="panel-python">
-          ðŸ Python transpilÃ©
+          🐍 Python transpilé
         </button>
       </div>
 
-      <!-- Panneau source franÃ§ais -->
+      <!-- Panneau source français -->
       <div id="panel-french" class="code-panel" role="tabpanel" aria-labelledby="tab-french">
         <div class="code-scroll">
-          <pre id="code-french" aria-label="Code source en franÃ§ais multilingual"
-               ><span class="cmt"># Chargementâ€¦</span></pre>
+          <pre id="code-french" aria-label="Code source en français multilingual"
+               ><span class="cmt"># Chargement…</span></pre>
         </div>
       </div>
 
-      <!-- Panneau Python transpilÃ© -->
+      <!-- Panneau Python transpilé -->
       <div id="panel-python" class="code-panel" role="tabpanel"
            aria-labelledby="tab-python" style="display:none">
         <div class="code-scroll">
-          <pre id="code-python" aria-label="Code Python gÃ©nÃ©rÃ© par transpilation"
-               ><span class="cmt"># Chargementâ€¦</span></pre>
+          <pre id="code-python" aria-label="Code Python généré par transpilation"
+               ><span class="cmt"># Chargement…</span></pre>
         </div>
       </div>
 
@@ -120,11 +120,11 @@
   </aside>
 
   <!-- ============================================================
-       BARRE DE CONTRÃ”LES
+       BARRE DE CONTRÔLES
        ============================================================ -->
-  <footer id="controls" role="toolbar" aria-label="ContrÃ´les de rendu">
+  <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
 
-    <!-- SÃ©lecteur de fractale -->
+    <!-- Sélecteur de fractale -->
     <div class="control-group" role="group" aria-label="Type de fractale">
       <label class="control-label" for="fractal-select">Fractale :</label>
       <select id="fractal-select" aria-label="Choisir une fractale">
@@ -149,9 +149,9 @@
 
     <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Slider d'itÃ©rations -->
-    <div class="control-group" role="group" aria-label="Nombre d'itÃ©rations maximum">
-      <label class="control-label" for="iter-slider">ItÃ©rations :</label>
+    <!-- Slider d'itérations -->
+    <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
+      <label class="control-label" for="iter-slider">Itérations :</label>
       <input type="range" id="iter-slider"
              min="64" max="1024" step="64" value="256"
              aria-valuemin="64" aria-valuemax="1024" aria-valuenow="256" />
@@ -175,22 +175,22 @@
 
     <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- SÃ©lecteur de palette -->
+    <!-- Sélecteur de palette -->
     <div class="control-group" role="group" aria-label="Palette de couleurs">
       <label class="control-label" for="palette-select">Palette :</label>
       <select id="palette-select" aria-label="Choisir une palette de couleurs">
-        <option value="feu"   >ðŸ”¥ Feu</option>
-        <option value="ocean" >ðŸŒŠ OcÃ©an</option>
-        <option value="aurora" selected>ðŸŒŒ Aurora</option>
+        <option value="feu"   >🔥 Feu</option>
+        <option value="ocean" >🌊 Océan</option>
+        <option value="aurora" selected>🌌 Aurora</option>
       </select>
     </div>
 
     <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Bouton rÃ©initialiser -->
-    <button id="btn-reset" class="btn" aria-label="RÃ©initialiser la vue">
-      <span class="btn-icon">âŸ³</span>
-      <span>RÃ©initialiser</span>
+    <!-- Bouton réinitialiser -->
+    <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
+      <span class="btn-icon">⟳</span>
+      <span>Réinitialiser</span>
     </button>
 
   </footer>

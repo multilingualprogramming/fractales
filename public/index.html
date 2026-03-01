@@ -1,209 +1,209 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Explorateur de Fractales — multilingual WebAssembly</title>
-  <meta name="description"
-        content="Fractales Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Barnsley et Sierpinski calculées en WebAssembly/JavaScript depuis du code source écrit en français avec le langage multilingual." />
 
-  <!-- Feuille de style principale -->
-  <link rel="stylesheet" href="css/style.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Explorateur de Fractales — multilingual WebAssembly</title>
+    <meta name="description"
+      content="Fractales Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Barnsley et Sierpinski calculées en WebAssembly/JavaScript depuis du code source écrit en français avec le langage multilingual." />
 
-  <!-- Préchargement des ressources critiques -->
-  <link rel="preload" href="mandelbrot.wasm?v=20260228r10" as="fetch" crossorigin />
-  <link rel="preload" href="benchmark.json"  as="fetch" crossorigin />
-</head>
-<body>
+    <!-- Feuille de style principale -->
+    <link rel="stylesheet" href="css/style.css" />
 
-<div id="app">
+    <!-- Préchargement des ressources critiques -->
+    <link rel="preload" href="mandelbrot.wasm?v=20260228r10" as="fetch" crossorigin />
+    <link rel="preload" href="benchmark.json" as="fetch" crossorigin />
+  </head>
 
-  <!-- ============================================================
+  <body>
+
+    <div id="app">
+
+      <!-- ============================================================
        EN-TÊTE
        ============================================================ -->
-  <header id="header">
-    <div class="header-brand">
-      <!-- Icône fractale SVG inline -->
-      <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"
-           aria-hidden="true">
-        <circle cx="14" cy="14" r="13" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
-        <circle cx="9"  cy="14" r="5"  stroke="#00d4ff" stroke-width="1.2" opacity="0.7"/>
-        <circle cx="18" cy="14" r="2"  fill="#00d4ff"   opacity="0.9"/>
-        <circle cx="6"  cy="14" r="1"  fill="#00ff9f"   opacity="0.8"/>
-        <circle cx="22" cy="14" r="1.5" stroke="#9d4edd" stroke-width="1" opacity="0.8"/>
-        <line x1="1" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
-      </svg>
-      Explorateur de <span>Fractales</span>
-      <span style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:4px">
-        · multilingual → WebAssembly
-      </span>
-    </div>
+      <header id="header">
+        <div class="header-brand">
+          <!-- Icône fractale SVG inline -->
+          <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="14" cy="14" r="13" stroke="#00d4ff" stroke-width="1.5" opacity="0.4" />
+            <circle cx="9" cy="14" r="5" stroke="#00d4ff" stroke-width="1.2" opacity="0.7" />
+            <circle cx="18" cy="14" r="2" fill="#00d4ff" opacity="0.9" />
+            <circle cx="6" cy="14" r="1" fill="#00ff9f" opacity="0.8" />
+            <circle cx="22" cy="14" r="1.5" stroke="#9d4edd" stroke-width="1" opacity="0.8" />
+            <line x1="1" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="0.5" opacity="0.3" />
+          </svg>
+          Explorateur de <span>Fractales</span>
+          <span style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:4px">
+            · multilingual → WebAssembly
+          </span>
+        </div>
 
-    <div class="header-actions">
-      <button id="btn-toggle-sidebar" class="btn" title="Afficher/masquer le code source">
-        <span class="btn-icon">⟨/⟩</span>
-        <span>Code source</span>
-      </button>
-    </div>
-  </header>
+        <div class="header-actions">
+          <a class="btn" href="https://github.com/multilingualprogramming/fractales" target="_blank"
+            rel="noopener noreferrer" title="Ouvrir le dépôt GitHub">
+            <span>GitHub</span>
+          </a>
+          <button id="btn-toggle-sidebar" class="btn" title="Afficher/masquer le code source">
+            <span class="btn-icon">⟨/⟩</span>
+            <span>Code source</span>
+          </button>
+        </div>
+      </header>
 
-  <!-- ============================================================
+      <!-- ============================================================
        ZONE CANVAS
        ============================================================ -->
-  <main id="canvas-container" aria-label="Explorateur de fractales interactif">
+      <main id="canvas-container" aria-label="Explorateur de fractales interactif">
 
-    <canvas id="fractal-canvas">
-      Votre navigateur ne supporte pas l'élément canvas.
-    </canvas>
+        <canvas id="fractal-canvas">
+          Votre navigateur ne supporte pas l'élément canvas.
+        </canvas>
 
-    <!-- Indicateur de statut du rendu -->
-    <div id="render-overlay">
-      <div id="render-status" class="loading-pulse">Initialisation…</div>
-    </div>
+        <!-- Indicateur de statut du rendu -->
+        <div id="render-overlay">
+          <div id="render-status" class="loading-pulse">Initialisation…</div>
+        </div>
 
-    <!-- Coordonnées du curseur -->
-    <div id="coords-display">Re 0.000000  Im 0.000000</div>
+        <!-- Coordonnées du curseur -->
+        <div id="coords-display">Re 0.000000 Im 0.000000</div>
 
-    <!-- Astuce de zoom (disparaît automatiquement) -->
-    <div id="zoom-hint" role="status" aria-live="polite">
-      Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
-    </div>
+        <!-- Astuce de zoom (disparaît automatiquement) -->
+        <div id="zoom-hint" role="status" aria-live="polite">
+          Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
+        </div>
 
-  </main>
+      </main>
 
-  <!-- ============================================================
+      <!-- ============================================================
        PANNEAU LATÉRAL
        ============================================================ -->
-  <aside id="sidebar" aria-label="Panneau de code source">
-    <div id="sidebar-inner">
+      <aside id="sidebar" aria-label="Panneau de code source">
+        <div id="sidebar-inner">
 
-      <!-- Titre -->
-      <div class="sidebar-header">
-        <h2>Source &amp; Performances</h2>
-      </div>
+          <!-- Titre -->
+          <div class="sidebar-header">
+            <h2>Source &amp; Performances</h2>
+          </div>
 
-      <!-- Badge benchmark -->
-      <div id="benchmark-badge" aria-live="polite">
-        <span id="badge-loading" class="loading-pulse">Chargement des données benchmark…</span>
-      </div>
+          <!-- Badge benchmark -->
+          <div id="benchmark-badge" aria-live="polite">
+            <span id="badge-loading" class="loading-pulse">Chargement des données benchmark…</span>
+          </div>
 
-      <!-- Onglets de code -->
-      <div class="code-tabs" role="tablist" aria-label="Affichage du code">
-        <button id="tab-french" class="tab-btn active"
-                role="tab" aria-selected="true" aria-controls="panel-french">
-          🇫🇷 français.ml
-        </button>
-        <button id="tab-python" class="tab-btn"
-                role="tab" aria-selected="false" aria-controls="panel-python">
-          🐍 Python transpilé
-        </button>
-      </div>
+          <!-- Onglets de code -->
+          <div class="code-tabs" role="tablist" aria-label="Affichage du code">
+            <button id="tab-french" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-french">
+              🇫🇷 français.ml
+            </button>
+            <button id="tab-python" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-python">
+              🐍 Python transpilé
+            </button>
+          </div>
 
-      <!-- Panneau source français -->
-      <div id="panel-french" class="code-panel" role="tabpanel" aria-labelledby="tab-french">
-        <div class="code-scroll">
-          <pre id="code-french" aria-label="Code source en français multilingual"
-               ><span class="cmt"># Chargement…</span></pre>
+          <!-- Panneau source français -->
+          <div id="panel-french" class="code-panel" role="tabpanel" aria-labelledby="tab-french">
+            <div class="code-scroll">
+              <pre id="code-french"
+                aria-label="Code source en français multilingual"><span class="cmt"># Chargement…</span></pre>
+            </div>
+          </div>
+
+          <!-- Panneau Python transpilé -->
+          <div id="panel-python" class="code-panel" role="tabpanel" aria-labelledby="tab-python" style="display:none">
+            <div class="code-scroll">
+              <pre id="code-python"
+                aria-label="Code Python généré par transpilation"><span class="cmt"># Chargement…</span></pre>
+            </div>
+          </div>
+
         </div>
-      </div>
+      </aside>
 
-      <!-- Panneau Python transpilé -->
-      <div id="panel-python" class="code-panel" role="tabpanel"
-           aria-labelledby="tab-python" style="display:none">
-        <div class="code-scroll">
-          <pre id="code-python" aria-label="Code Python généré par transpilation"
-               ><span class="cmt"># Chargement…</span></pre>
-        </div>
-      </div>
-
-    </div>
-  </aside>
-
-  <!-- ============================================================
+      <!-- ============================================================
        BARRE DE CONTRÔLES
        ============================================================ -->
-  <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
+      <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
 
-    <!-- Sélecteur de fractale -->
-    <div class="control-group" role="group" aria-label="Type de fractale">
-      <label class="control-label" for="fractal-select">Fractale :</label>
-      <select id="fractal-select" aria-label="Choisir une fractale">
-        <option value="mandelbrot">Mandelbrot</option>
-        <option value="mandelbrot_classe">Mandelbrot (classe compat)</option>
-        <option value="julia">Julia (c = -0.8 + 0.156i)</option>
-        <option value="burning_ship">Burning Ship</option>
-        <option value="tricorn">Tricorn</option>
-        <option value="multibrot">Multibrot</option>
-        <option value="celtic">Celtic</option>
-        <option value="buffalo">Buffalo</option>
-        <option value="perpendicular_burning_ship">Perpendicular Burning Ship</option>
-        <option value="newton">Newton (z^3 - 1)</option>
-        <option value="phoenix">Phoenix</option>
-        <option value="barnsley">Barnsley</option>
-        <option value="sierpinski">Sierpinski</option>
-        <option value="koch">Koch</option>
-        <option value="magnet1">Magnet I</option>
-        <option value="magnet2">Magnet II</option>
-        <option value="lambda_fractale">Lambda (logistique)</option>
-      </select>
-    </div>
+        <!-- Sélecteur de fractale -->
+        <div class="control-group" role="group" aria-label="Type de fractale">
+          <label class="control-label" for="fractal-select">Fractale :</label>
+          <select id="fractal-select" aria-label="Choisir une fractale">
+            <option value="mandelbrot">Mandelbrot</option>
+            <option value="mandelbrot_classe">Mandelbrot (classe compat)</option>
+            <option value="julia">Julia (c = -0.8 + 0.156i)</option>
+            <option value="burning_ship">Burning Ship</option>
+            <option value="tricorn">Tricorn</option>
+            <option value="multibrot">Multibrot</option>
+            <option value="celtic">Celtic</option>
+            <option value="buffalo">Buffalo</option>
+            <option value="perpendicular_burning_ship">Perpendicular Burning Ship</option>
+            <option value="newton">Newton (z^3 - 1)</option>
+            <option value="phoenix">Phoenix</option>
+            <option value="barnsley">Barnsley</option>
+            <option value="sierpinski">Sierpinski</option>
+            <option value="koch">Koch</option>
+            <option value="magnet1">Magnet I</option>
+            <option value="magnet2">Magnet II</option>
+            <option value="lambda_fractale">Lambda (logistique)</option>
+          </select>
+        </div>
 
-    <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Slider d'itérations -->
-    <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
-      <label class="control-label" for="iter-slider">Itérations :</label>
-      <input type="range" id="iter-slider"
-             min="64" max="1024" step="64" value="256"
-             aria-valuemin="64" aria-valuemax="1024" aria-valuenow="256" />
-      <span id="iter-value" class="control-value">256</span>
-    </div>
+        <!-- Slider d'itérations -->
+        <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
+          <label class="control-label" for="iter-slider">Itérations :</label>
+          <input type="range" id="iter-slider" min="64" max="1024" step="64" value="256" aria-valuemin="64"
+            aria-valuemax="1024" aria-valuenow="256" />
+          <span id="iter-value" class="control-value">256</span>
+        </div>
 
-    <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Puissance Multibrot -->
-    <div class="control-group" role="group" aria-label="Puissance Multibrot">
-      <label class="control-label" for="multibrot-power">Puissance :</label>
-      <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
-        <option value="3">n=3</option>
-        <option value="4">n=4</option>
-        <option value="5" selected>n=5</option>
-        <option value="6">n=6</option>
-        <option value="7">n=7</option>
-        <option value="8">n=8</option>
-      </select>
-    </div>
+        <!-- Puissance Multibrot -->
+        <div class="control-group" role="group" aria-label="Puissance Multibrot">
+          <label class="control-label" for="multibrot-power">Puissance :</label>
+          <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
+            <option value="3">n=3</option>
+            <option value="4">n=4</option>
+            <option value="5" selected>n=5</option>
+            <option value="6">n=6</option>
+            <option value="7">n=7</option>
+            <option value="8">n=8</option>
+          </select>
+        </div>
 
-    <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Sélecteur de palette -->
-    <div class="control-group" role="group" aria-label="Palette de couleurs">
-      <label class="control-label" for="palette-select">Palette :</label>
-      <select id="palette-select" aria-label="Choisir une palette de couleurs">
-        <option value="feu"   >🔥 Feu</option>
-        <option value="ocean" >🌊 Océan</option>
-        <option value="aurora" selected>🌌 Aurora</option>
-      </select>
-    </div>
+        <!-- Sélecteur de palette -->
+        <div class="control-group" role="group" aria-label="Palette de couleurs">
+          <label class="control-label" for="palette-select">Palette :</label>
+          <select id="palette-select" aria-label="Choisir une palette de couleurs">
+            <option value="feu">🔥 Feu</option>
+            <option value="ocean">🌊 Océan</option>
+            <option value="aurora" selected>🌌 Aurora</option>
+          </select>
+        </div>
 
-    <div class="ctrl-sep" aria-hidden="true"></div>
+        <div class="ctrl-sep" aria-hidden="true"></div>
 
-    <!-- Bouton réinitialiser -->
-    <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
-      <span class="btn-icon">⟳</span>
-      <span>Réinitialiser</span>
-    </button>
+        <!-- Bouton réinitialiser -->
+        <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
+          <span class="btn-icon">⟳</span>
+          <span>Réinitialiser</span>
+        </button>
 
-  </footer>
+      </footer>
 
-</div><!-- /#app -->
+    </div><!-- /#app -->
 
-<!-- ============================================================
+    <!-- ============================================================
      SCRIPT PRINCIPAL (module ES)
      ============================================================ -->
-<script type="module" src="js/renderer.js?v=20260228r10"></script>
+    <script type="module" src="js/renderer.js?v=20260228r10"></script>
 
-</body>
+  </body>
+
 </html>
-
-

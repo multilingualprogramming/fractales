@@ -845,7 +845,7 @@ function renderBenchmarkBadge(data) {
   if (benchmarkDisabled && wasm_available) {
     html += `
       <div class="badge-row">
-        <span class="badge-wasm">? WASM généré</span>
+        <span class="badge-wasm">• WASM généré</span>
         <span class="badge-label">pipeline officiel</span>
       </div>
       <div class="badge-row">

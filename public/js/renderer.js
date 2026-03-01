@@ -89,8 +89,9 @@ const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
 const btnReset      = document.getElementById("btn-reset");
-const btnToggle     = document.getElementById("btn-toggle-sidebar");
-const sidebar       = document.getElementById("sidebar");
+const btnToggle      = document.getElementById("btn-toggle-sidebar");
+const btnCloseSidebar = document.getElementById("btn-close-sidebar");
+const sidebar        = document.getElementById("sidebar");
 const zoomHint      = document.getElementById("zoom-hint");
 const badgeDiv      = document.getElementById("benchmark-badge");
 const badgeLoading  = document.getElementById("badge-loading");
@@ -625,13 +626,22 @@ paletteSelect.addEventListener("change", () => {
 btnReset.addEventListener("click", resetView);
 
 btnToggle.addEventListener("click", () => {
-  sidebar.classList.toggle("collapsed");
-  // Recalculer le pixelSize après changement de taille
-  setTimeout(() => {
-    const newW = canvas.parentElement.clientWidth;
-    view.pixelSize = view.pixelSize * (canvas.width / Math.max(newW, 1));
-    render();
-  }, 280);
+  if (window.innerWidth <= 820) {
+    // Mobile : overlay plein-écran, le canvas ne change pas de taille
+    sidebar.classList.toggle("mobile-open");
+  } else {
+    sidebar.classList.toggle("collapsed");
+    // Recalculer le pixelSize après changement de taille
+    setTimeout(() => {
+      const newW = canvas.parentElement.clientWidth;
+      view.pixelSize = view.pixelSize * (canvas.width / Math.max(newW, 1));
+      render();
+    }, 280);
+  }
+});
+
+btnCloseSidebar.addEventListener("click", () => {
+  sidebar.classList.remove("mobile-open");
 });
 
 window.addEventListener("resize", () => {
@@ -920,6 +930,11 @@ async function init() {
 
   // Charger sources et benchmark en parallèle
   await Promise.all([loadSources(params.fractal), loadBenchmark()]);
+
+  // Adapter le texte de l'astuce selon le dispositif
+  if (zoomHint && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+    zoomHint.textContent = "Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
+  }
 
   showZoomHint();
 }

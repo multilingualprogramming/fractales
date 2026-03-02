@@ -26,7 +26,7 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "mandelbrot_classe" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
+  fractal: "mandelbrot", // "mandelbrot" | "mandelbrot_classe" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "heart" | "perpendicular_mandelbrot" | "perpendicular_celtic" | "duck" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
   multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
@@ -43,6 +43,10 @@ const VIEW_PRESETS = {
   celtic:       { centerX: -0.5, centerY: 0.0, span: 3.2 },
   buffalo:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
   perpendicular_burning_ship: { centerX: -0.5, centerY: -0.4, span: 3.0 },
+  heart:        { centerX: -0.2, centerY: 0.0, span: 3.0 },
+  perpendicular_mandelbrot: { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  perpendicular_celtic: { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  duck:         { centerX: -0.5, centerY: 0.0, span: 3.0 },
   newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
@@ -347,6 +351,10 @@ async function loadWasm() {
       celtic: typeof exports.celtic === "function" ? exports.celtic : null,
       buffalo: typeof exports.buffalo === "function" ? exports.buffalo : null,
       perpendicular_burning_ship: typeof exports.perpendicular_burning_ship === "function" ? exports.perpendicular_burning_ship : null,
+      heart: typeof exports.heart === "function" ? exports.heart : null,
+      perpendicular_mandelbrot: typeof exports.perpendicular_mandelbrot === "function" ? exports.perpendicular_mandelbrot : null,
+      perpendicular_celtic: typeof exports.perpendicular_celtic === "function" ? exports.perpendicular_celtic : null,
+      duck: typeof exports.duck === "function" ? exports.duck : null,
       newton: typeof exports.newton === "function" ? exports.newton : null,
       phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
       barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
@@ -672,6 +680,10 @@ const FRACTAL_SOURCE_MAP = {
   celtic:                      "fractales_variantes",
   buffalo:                     "fractales_variantes",
   perpendicular_burning_ship:  "fractales_variantes",
+  heart:                       "fractales_variantes",
+  perpendicular_mandelbrot:    "fractales_variantes",
+  perpendicular_celtic:        "fractales_variantes",
+  duck:                        "fractales_variantes",
   newton:                      "fractales_dynamique",
   phoenix:                     "fractales_dynamique",
   barnsley:                    "fractales_ifs",
@@ -784,7 +796,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }
@@ -807,7 +819,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
 }

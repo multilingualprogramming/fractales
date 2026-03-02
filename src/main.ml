@@ -14,13 +14,13 @@ importer fractales_classes_compat
 # Démontre : classe, héritage, soi (self), super().__init__
 importer fractales_classes
 
-soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship"]
+soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck"]
 soit MODES_DYNAMIQUE = ["newton", "phoenix"]
 soit MODES_IFS = ["barnsley", "sierpinski"]
 soit MODES_LSYSTEM = ["koch"]
 soit MODES_MAGNETIQUE = ["magnet1", "magnet2", "lambda_fractale"]
 soit MODES_CLASSES_COMPAT = ["mandelbrot_classe"]
-affirmer longueur(MODES_EVASION) == 8
+affirmer longueur(MODES_EVASION) == 12
 affirmer longueur(MODES_DYNAMIQUE) == 2
 affirmer longueur(MODES_IFS) == 2
 affirmer longueur(MODES_LSYSTEM) == 1

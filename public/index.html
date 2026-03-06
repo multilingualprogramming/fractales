@@ -127,40 +127,25 @@
        ============================================================ -->
       <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
 
+        <!-- Sélecteur de famille -->
+        <div class="control-group" role="group" aria-label="Famille de fractales">
+          <label class="control-label" for="family-select">Famille :</label>
+          <select id="family-select" aria-label="Choisir une famille de fractales">
+            <option value="evasion">Évasion</option>
+            <option value="dynamique">Dynamique</option>
+            <option value="ifs">IFS</option>
+            <option value="lsystem">L-système</option>
+            <option value="magnetique">Magnétiques</option>
+            <option value="classe">Classes</option>
+          </select>
+        </div>
+
+        <div class="ctrl-sep" aria-hidden="true"></div>
+
         <!-- Sélecteur de fractale -->
         <div class="control-group" role="group" aria-label="Type de fractale">
           <label class="control-label" for="fractal-select">Fractale :</label>
-          <select id="fractal-select" aria-label="Choisir une fractale">
-            <option value="mandelbrot">Mandelbrot</option>
-            <option value="mandelbrot_classe">Mandelbrot (classe compat)</option>
-            <option value="julia">Julia (c = -0.8 + 0.156i)</option>
-            <option value="burning_ship">Burning Ship</option>
-            <option value="tricorn">Tricorn</option>
-            <option value="multibrot">Multibrot</option>
-            <option value="celtic">Celtic</option>
-            <option value="buffalo">Buffalo</option>
-            <option value="perpendicular_burning_ship">Perpendicular Burning Ship</option>
-            <option value="heart">Heart</option>
-            <option value="perpendicular_mandelbrot">Perpendicular Mandelbrot</option>
-            <option value="perpendicular_celtic">Perpendicular Celtic</option>
-            <option value="duck">Duck</option>
-            <option value="buddhabrot">Buddhabrot</option>
-            <option value="newton">Newton (z^3 - 1)</option>
-            <option value="phoenix">Phoenix</option>
-            <option value="lyapunov">Lyapunov</option>
-            <option value="bassin_newton_generalise">Bassin de Newton généralisé</option>
-            <option value="collatz_complexe">Collatz complexe</option>
-            <option value="attracteur_de_clifford">Attracteur de Clifford</option>
-            <option value="barnsley">Barnsley</option>
-            <option value="sierpinski">Sierpinski</option>
-            <option value="tapis_sierpinski">Tapis de Sierpinski</option>
-            <option value="koch">Koch</option>
-            <option value="dragon_heighway">Dragon de Heighway</option>
-            <option value="arbre_pythagore">Arbre de Pythagore</option>
-            <option value="magnet1">Magnet I</option>
-            <option value="magnet2">Magnet II</option>
-            <option value="lambda_fractale">Lambda (logistique)</option>
-          </select>
+          <select id="fractal-select" aria-label="Choisir une fractale"></select>
         </div>
 
         <div class="ctrl-sep" aria-hidden="true"></div>

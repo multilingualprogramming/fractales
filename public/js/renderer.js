@@ -97,6 +97,7 @@ const renderStatus  = document.getElementById("render-status");
 const coordsDisplay = document.getElementById("coords-display");
 const iterSlider    = document.getElementById("iter-slider");
 const iterValue     = document.getElementById("iter-value");
+const familySelect  = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
@@ -150,6 +151,78 @@ const PALETTES = {
     [255, 200, 240],
   ],
 };
+
+const FRACTAL_FAMILIES = [
+  {
+    id: "evasion",
+    label: "Évasion",
+    fractales: [
+      ["mandelbrot", "Mandelbrot"],
+      ["julia", "Julia (c = -0.8 + 0.156i)"],
+      ["burning_ship", "Burning Ship"],
+      ["tricorn", "Tricorn"],
+      ["multibrot", "Multibrot"],
+      ["celtic", "Celtic"],
+      ["buffalo", "Buffalo"],
+      ["perpendicular_burning_ship", "Perpendicular Burning Ship"],
+      ["heart", "Heart"],
+      ["perpendicular_mandelbrot", "Perpendicular Mandelbrot"],
+      ["perpendicular_celtic", "Perpendicular Celtic"],
+      ["duck", "Duck"],
+      ["buddhabrot", "Buddhabrot"],
+    ],
+  },
+  {
+    id: "dynamique",
+    label: "Dynamique",
+    fractales: [
+      ["newton", "Newton (z^3 - 1)"],
+      ["phoenix", "Phoenix"],
+      ["lyapunov", "Lyapunov"],
+      ["bassin_newton_generalise", "Bassin de Newton généralisé"],
+      ["collatz_complexe", "Collatz complexe"],
+      ["attracteur_de_clifford", "Attracteur de Clifford"],
+    ],
+  },
+  {
+    id: "ifs",
+    label: "IFS",
+    fractales: [
+      ["barnsley", "Barnsley"],
+      ["sierpinski", "Sierpinski"],
+      ["tapis_sierpinski", "Tapis de Sierpinski"],
+    ],
+  },
+  {
+    id: "lsystem",
+    label: "L-système",
+    fractales: [
+      ["koch", "Koch"],
+      ["dragon_heighway", "Dragon de Heighway"],
+      ["arbre_pythagore", "Arbre de Pythagore"],
+    ],
+  },
+  {
+    id: "magnetique",
+    label: "Magnétiques",
+    fractales: [
+      ["magnet1", "Magnet I"],
+      ["magnet2", "Magnet II"],
+      ["lambda_fractale", "Lambda (logistique)"],
+    ],
+  },
+  {
+    id: "classe",
+    label: "Classes",
+    fractales: [
+      ["mandelbrot_classe", "Mandelbrot (classe compat)"],
+    ],
+  },
+];
+
+const FRACTAL_FAMILY_BY_NAME = Object.fromEntries(
+  FRACTAL_FAMILIES.flatMap((famille) => famille.fractales.map(([nom]) => [nom, famille.id]))
+);
 
 /**
  * Retourne la couleur [r, g, b] pour une valeur d'itération.
@@ -223,6 +296,36 @@ function etapeAttracteurClifford(x, y) {
   ];
 }
 
+function findFractalFamily(fractalName) {
+  return FRACTAL_FAMILY_BY_NAME[fractalName] ?? FRACTAL_FAMILIES[0].id;
+}
+
+function populateFractalSelect(familyId, selectedFractal = null) {
+  const family = FRACTAL_FAMILIES.find((item) => item.id === familyId) ?? FRACTAL_FAMILIES[0];
+  const activeFractal = selectedFractal && family.fractales.some(([nom]) => nom === selectedFractal)
+    ? selectedFractal
+    : family.fractales[0][0];
+  fractalSelect.innerHTML = family.fractales
+    .map(([value, label]) => `<option value="${value}">${label}</option>`)
+    .join("");
+  fractalSelect.value = activeFractal;
+  return activeFractal;
+}
+
+function syncSelectors(selectedFractal = params.fractal) {
+  const familyId = findFractalFamily(selectedFractal);
+  familySelect.value = familyId;
+  const activeFractal = populateFractalSelect(familyId, selectedFractal);
+  params.fractal = activeFractal;
+}
+
+function setActiveFractal(fractalName) {
+  params.fractal = fractalName;
+  syncSelectors(fractalName);
+  resetView();
+  loadSources(params.fractal);
+}
+
 function kochGenerate(iterations) {
   let s = "F";
   for (let i = 0; i < iterations; i++) {
@@ -263,6 +366,10 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   let y = estTapis ? -0.7 : (estClifford ? 0.1 : 0.0);
   let emitted = 0;
   let iter = 0;
+  const couleurClifford = getColor(Math.min(params.maxIter * 0.72, params.maxIter - 1), params.maxIter, params.palette);
+  const couleurBarnsley = getColor(Math.min(params.maxIter * 0.62, params.maxIter - 1), params.maxIter, params.palette);
+  const couleurSierpinski = getColor(Math.min(params.maxIter * 0.78, params.maxIter - 1), params.maxIter, params.palette);
+  const couleurTapis = getColor(Math.min(params.maxIter * 0.86, params.maxIter - 1), params.maxIter, params.palette);
 
   const putPoint = (px, py) => {
     if (px < 0 || py < 0 || px >= w || py >= h) return;
@@ -272,17 +379,21 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       data[i + 1] = Math.min(240, data[i + 1] + 6);
       data[i + 2] = Math.min(255, data[i + 2] + 14);
     } else if (estClifford) {
-      data[i] = Math.min(180, data[i] + 4);
-      data[i + 1] = Math.min(255, data[i + 1] + 10);
-      data[i + 2] = Math.min(255, data[i + 2] + 18);
+      data[i] = Math.min(255, data[i] + Math.max(3, (couleurClifford[0] / 18) | 0));
+      data[i + 1] = Math.min(255, data[i + 1] + Math.max(3, (couleurClifford[1] / 18) | 0));
+      data[i + 2] = Math.min(255, data[i + 2] + Math.max(3, (couleurClifford[2] / 18) | 0));
     } else if (isBarnsley) {
-      data[i] = Math.min(120, data[i] + 3);
-      data[i + 1] = Math.min(255, data[i + 1] + 24);
-      data[i + 2] = Math.min(140, data[i + 2] + 4);
+      data[i] = Math.min(255, data[i] + Math.max(2, (couleurBarnsley[0] / 16) | 0));
+      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurBarnsley[1] / 16) | 0));
+      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurBarnsley[2] / 16) | 0));
+    } else if (estTapis) {
+      data[i] = Math.min(255, data[i] + Math.max(2, (couleurTapis[0] / 17) | 0));
+      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurTapis[1] / 17) | 0));
+      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurTapis[2] / 17) | 0));
     } else {
-      data[i] = Math.min(160, data[i] + 10);
-      data[i + 1] = Math.min(230, data[i + 1] + 16);
-      data[i + 2] = Math.min(255, data[i + 2] + 24);
+      data[i] = Math.min(255, data[i] + Math.max(2, (couleurSierpinski[0] / 16) | 0));
+      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurSierpinski[1] / 16) | 0));
+      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurSierpinski[2] / 16) | 0));
     }
     data[i + 3] = 255;
   };
@@ -752,10 +863,13 @@ iterSlider.addEventListener("input", () => {
   render();
 });
 
+familySelect.addEventListener("change", () => {
+  const fractale = populateFractalSelect(familySelect.value, null);
+  setActiveFractal(fractale);
+});
+
 fractalSelect.addEventListener("change", () => {
-  params.fractal = fractalSelect.value;
-  resetView();
-  loadSources(params.fractal);
+  setActiveFractal(fractalSelect.value);
 });
 
 multibrotPower.addEventListener("change", () => {
@@ -1070,6 +1184,7 @@ function showZoomHint() {
 
 async function init() {
   resizeCanvas();
+  syncSelectors(params.fractal);
 
   // Vue initiale : preset de la fractale sélectionnée
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

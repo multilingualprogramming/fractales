@@ -3,6 +3,30 @@ déf abs_dynamique(v):
         retour -v
     retour v
 
+déf normaliser_angle_dynamique(x):
+    soit angle = x
+    soit deux_pi = 6.283185307179586
+    tantque angle > 3.141592653589793:
+        angle = angle - deux_pi
+    tantque angle < -3.141592653589793:
+        angle = angle + deux_pi
+    retour angle
+
+déf sinus_dynamique(x):
+    soit angle = normaliser_angle_dynamique(x)
+    soit angle2 = angle * angle
+    soit angle3 = angle2 * angle
+    soit angle5 = angle3 * angle2
+    soit angle7 = angle5 * angle2
+    retour angle - angle3 / 6.0 + angle5 / 120.0 - angle7 / 5040.0
+
+déf cosinus_dynamique(x):
+    soit angle = normaliser_angle_dynamique(x)
+    soit angle2 = angle * angle
+    soit angle4 = angle2 * angle2
+    soit angle6 = angle4 * angle2
+    retour 1.0 - angle2 / 2.0 + angle4 / 24.0 - angle6 / 720.0
+
 déf complexe_diviser_dynamique_re(a_re, a_im, b_re, b_im):
     soit denom = b_re * b_re + b_im * b_im
     si denom == 0.0:
@@ -172,3 +196,36 @@ déf collatz_complexe(cx, cy, max_iter):
         iter = iter + 1.0
 
     retour iter
+
+déf attracteur_de_clifford(cx, cy, max_iter):
+    soit a = -1.4
+    soit b = 1.7
+    soit c = 1.0
+    soit d = 0.7
+    soit x = 0.1
+    soit y = 0.1
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 320.0:
+        iter_lim = 320.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit suivant_x = sinus_dynamique(a * y) + c * cosinus_dynamique(a * x)
+        soit suivant_y = sinus_dynamique(b * x) + d * cosinus_dynamique(b * y)
+        x = suivant_x
+        y = suivant_y
+        si iter > 18.0:
+            soit dx = x - cx
+            soit dy = y - cy
+            soit distance = dx * dx + dy * dy
+            si distance < meilleur:
+                meilleur = distance
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 180.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score

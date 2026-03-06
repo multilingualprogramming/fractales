@@ -53,6 +53,7 @@ const VIEW_PRESETS = {
   lyapunov:     { centerX: 3.1,  centerY: 3.1, span: 1.7 },
   bassin_newton_generalise: { centerX: 0.0, centerY: 0.0, span: 3.2 },
   collatz_complexe: { centerX: -0.35, centerY: 0.0, span: 3.6 },
+  attracteur_de_clifford: { centerX: 0.0, centerY: 0.0, span: 4.8 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
   tapis_sierpinski: { centerX: 0.0, centerY: 0.0, span: 2.2 },
@@ -72,7 +73,7 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "attracteur_de_clifford"]);
 const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
@@ -211,6 +212,17 @@ function etapeTapisSierpinski(x, y, r) {
   return [x / 3 + dx / 3, y / 3 + dy / 3];
 }
 
+function etapeAttracteurClifford(x, y) {
+  const a = -1.4;
+  const b = 1.7;
+  const c = 1.0;
+  const d = 0.7;
+  return [
+    Math.sin(a * y) + c * Math.cos(a * x),
+    Math.sin(b * x) + d * Math.cos(b * y),
+  ];
+}
+
 function kochGenerate(iterations) {
   let s = "F";
   for (let i = 0; i < iterations; i++) {
@@ -239,13 +251,16 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   const isBarnsley = params.fractal === "barnsley";
   const estSierpinski = params.fractal === "sierpinski";
   const estTapis = params.fractal === "tapis_sierpinski";
+  const estClifford = params.fractal === "attracteur_de_clifford";
   const estBuddhabrot = params.fractal === "buddhabrot";
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
-  const pointsTarget = estBuddhabrot ? Math.max(8000, params.maxIter * 70) : Math.max(30000, params.maxIter * 900);
-  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : 40);
-  const pointsPerFrame = estBuddhabrot ? 400 : 25000;
-  let x = estTapis ? -0.7 : 0.0;
-  let y = estTapis ? -0.7 : 0.0;
+  const pointsTarget = estBuddhabrot
+    ? Math.max(8000, params.maxIter * 70)
+    : (estClifford ? Math.max(140000, params.maxIter * 1800) : Math.max(30000, params.maxIter * 900));
+  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : (estClifford ? 120 : 40));
+  const pointsPerFrame = estBuddhabrot ? 400 : (estClifford ? 30000 : 25000);
+  let x = estTapis ? -0.7 : (estClifford ? 0.1 : 0.0);
+  let y = estTapis ? -0.7 : (estClifford ? 0.1 : 0.0);
   let emitted = 0;
   let iter = 0;
 
@@ -256,6 +271,10 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       data[i] = Math.min(255, data[i] + 10);
       data[i + 1] = Math.min(240, data[i + 1] + 6);
       data[i + 2] = Math.min(255, data[i + 2] + 14);
+    } else if (estClifford) {
+      data[i] = Math.min(180, data[i] + 4);
+      data[i + 1] = Math.min(255, data[i + 1] + 10);
+      data[i + 2] = Math.min(255, data[i + 2] + 18);
     } else if (isBarnsley) {
       data[i] = Math.min(120, data[i] + 3);
       data[i + 1] = Math.min(255, data[i + 1] + 24);
@@ -304,6 +323,8 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
         const r = rng();
         if (isBarnsley) {
           [x, y] = barnsleyStep(x, y, r);
+        } else if (estClifford) {
+          [x, y] = etapeAttracteurClifford(x, y);
         } else if (estTapis) {
           [x, y] = etapeTapisSierpinski(x, y, r);
         } else if (estSierpinski) {
@@ -324,7 +345,8 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
-      updateStatusBar((estBuddhabrot ? "Mode densite" : "Mode IFS") + " - " + elapsed + " ms", true);
+      const etiquetteMode = estBuddhabrot ? "Mode densite" : (estClifford ? "Mode attracteur" : "Mode IFS");
+      updateStatusBar(etiquetteMode + " - " + elapsed + " ms", true);
     }
   };
   requestAnimationFrame(step);
@@ -470,6 +492,7 @@ async function loadWasm() {
       lyapunov: typeof exports.lyapunov === "function" ? exports.lyapunov : null,
       bassin_newton_generalise: typeof exports.bassin_newton_generalise === "function" ? exports.bassin_newton_generalise : null,
       collatz_complexe: typeof exports.collatz_complexe === "function" ? exports.collatz_complexe : null,
+      attracteur_de_clifford: typeof exports.attracteur_de_clifford === "function" ? exports.attracteur_de_clifford : null,
       barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
       sierpinski: typeof exports.sierpinski === "function" ? exports.sierpinski : null,
       tapis_sierpinski: typeof exports.tapis_sierpinski === "function" ? exports.tapis_sierpinski : null,
@@ -806,6 +829,7 @@ const FRACTAL_SOURCE_MAP = {
   lyapunov:                    "fractales_dynamique",
   bassin_newton_generalise:    "fractales_dynamique",
   collatz_complexe:            "fractales_dynamique",
+  attracteur_de_clifford:      "fractales_dynamique",
   barnsley:                    "fractales_ifs",
   sierpinski:                  "fractales_ifs",
   tapis_sierpinski:            "fractales_ifs",
@@ -919,7 +943,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|etapeTapisSierpinski|koch_generer|genererDragonHeighway|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|attracteur_de_clifford|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|etapeTapisSierpinski|etapeAttracteurClifford|koch_generer|genererDragonHeighway|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
@@ -942,7 +966,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|attracteur_de_clifford|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }

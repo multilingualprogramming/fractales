@@ -220,7 +220,7 @@ déf main():
     afficher(f"    WAT ecrit : {SORTIE_WAT.relative_to(RACINE)}")
     afficher(f"    WASM ecrit: {SORTIE_WASM.relative_to(RACINE)} ({longueur(octets_wasm):,} octets)")
 
-    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot", "newton", "phoenix", "lyapunov", "bassin_newton_generalise", "collatz_complexe", "barnsley", "sierpinski", "tapis_sierpinski", "koch", "dragon_heighway", "arbre_pythagore", "magnet1", "magnet2", "lambda_fractale", "mandelbrot_classe"]
+    soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot", "newton", "phoenix", "lyapunov", "bassin_newton_generalise", "collatz_complexe", "attracteur_de_clifford", "barnsley", "sierpinski", "tapis_sierpinski", "koch", "dragon_heighway", "arbre_pythagore", "magnet1", "magnet2", "lambda_fractale", "mandelbrot_classe"]
     valider_exports_wasm(octets_wasm, exports_requises)
     afficher(f"    Exports valides: {', '.join(exports_requises)}")
 

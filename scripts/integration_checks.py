@@ -30,6 +30,7 @@ REQUIRED_EXPORTS = {
     "lyapunov",
     "bassin_newton_generalise",
     "collatz_complexe",
+    "attracteur_de_clifford",
     "barnsley",
     "sierpinski",
     "tapis_sierpinski",

@@ -15,13 +15,13 @@ importer fractales_classes_compat
 importer fractales_classes
 
 soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot"]
-soit MODES_DYNAMIQUE = ["newton", "phoenix", "lyapunov", "bassin_newton_generalise", "collatz_complexe", "attracteur_de_clifford"]
+soit MODES_DYNAMIQUE = ["newton", "phoenix", "lyapunov", "lyapunov_multisequence", "bassin_newton_generalise", "orbitale_de_nova", "collatz_complexe", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon"]
 soit MODES_IFS = ["barnsley", "sierpinski", "tapis_sierpinski"]
 soit MODES_LSYSTEM = ["koch", "dragon_heighway", "arbre_pythagore"]
 soit MODES_MAGNETIQUE = ["magnet1", "magnet2", "lambda_fractale"]
 soit MODES_CLASSES_COMPAT = ["mandelbrot_classe"]
 affirmer longueur(MODES_EVASION) == 13
-affirmer longueur(MODES_DYNAMIQUE) == 6
+affirmer longueur(MODES_DYNAMIQUE) == 11
 affirmer longueur(MODES_IFS) == 3
 affirmer longueur(MODES_LSYSTEM) == 3
 affirmer longueur(MODES_MAGNETIQUE) == 3

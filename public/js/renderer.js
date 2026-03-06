@@ -26,7 +26,7 @@ const view = {
 /** Paramètres de rendu */
 const params = {
   maxIter: 256,
-  fractal: "mandelbrot", // "mandelbrot" | "mandelbrot_classe" | "julia" | "burning_ship" | "tricorn" | "multibrot" | "celtic" | "buffalo" | "perpendicular_burning_ship" | "heart" | "perpendicular_mandelbrot" | "perpendicular_celtic" | "duck" | "newton" | "phoenix" | "barnsley" | "sierpinski" | "koch" | "magnet1" | "magnet2" | "lambda_fractale"
+  fractal: "mandelbrot", // fractale active
   multibrotPower: 5,
   juliaCre: -0.8,
   juliaCim: 0.156,
@@ -47,11 +47,18 @@ const VIEW_PRESETS = {
   perpendicular_mandelbrot: { centerX: -0.5, centerY: 0.0, span: 3.2 },
   perpendicular_celtic: { centerX: -0.5, centerY: 0.0, span: 3.2 },
   duck:         { centerX: -0.5, centerY: 0.0, span: 3.0 },
+  buddhabrot:   { centerX: -0.5, centerY: 0.0, span: 3.2 },
   newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
   phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  lyapunov:     { centerX: 3.1,  centerY: 3.1, span: 1.7 },
+  bassin_newton_generalise: { centerX: 0.0, centerY: 0.0, span: 3.2 },
+  collatz_complexe: { centerX: -0.35, centerY: 0.0, span: 3.6 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
+  tapis_sierpinski: { centerX: 0.0, centerY: 0.0, span: 2.2 },
   koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
+  dragon_heighway: { centerX: 0.2, centerY: 0.0, span: 2.8 },
+  arbre_pythagore: { centerX: 0.0, centerY: 0.7, span: 2.6 },
   magnet1:      { centerX: 1.5,  centerY: 0.0, span: 4.0 },
   magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
@@ -65,8 +72,8 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski"]);
-const LINE_FRACTALS = new Set(["koch"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "buddhabrot"]);
+const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
@@ -193,6 +200,17 @@ function sierpinskiStep(x, y, r) {
   return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
 }
 
+function etapeTapisSierpinski(x, y, r) {
+  const cellules = [
+    [-1, -1], [0, -1], [1, -1],
+    [-1,  0],          [1,  0],
+    [-1,  1], [0,  1], [1,  1],
+  ];
+  const index = Math.min(cellules.length - 1, (r * cellules.length) | 0);
+  const [dx, dy] = cellules[index];
+  return [x / 3 + dx / 3, y / 3 + dy / 3];
+}
+
 function kochGenerate(iterations) {
   let s = "F";
   for (let i = 0; i < iterations; i++) {
@@ -203,21 +221,42 @@ function kochGenerate(iterations) {
   return s;
 }
 
+function genererDragonHeighway(iterations) {
+  let s = "FX";
+  for (let i = 0; i < iterations; i++) {
+    let next = "";
+    for (const ch of s) {
+      if (ch === "X") next += "X+YF+";
+      else if (ch === "Y") next += "-FX-Y";
+      else next += ch;
+    }
+    s = next;
+  }
+  return s;
+}
+
 function renderPointFractal(w, h, data, cx0, cy0, ps) {
   const isBarnsley = params.fractal === "barnsley";
+  const estSierpinski = params.fractal === "sierpinski";
+  const estTapis = params.fractal === "tapis_sierpinski";
+  const estBuddhabrot = params.fractal === "buddhabrot";
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
-  const pointsTarget = Math.max(30000, params.maxIter * 900);
-  const burnIn = isBarnsley ? 80 : 40;
-  const pointsPerFrame = 25000;
-  let x = 0.0;
-  let y = 0.0;
+  const pointsTarget = estBuddhabrot ? Math.max(8000, params.maxIter * 70) : Math.max(30000, params.maxIter * 900);
+  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : 40);
+  const pointsPerFrame = estBuddhabrot ? 400 : 25000;
+  let x = estTapis ? -0.7 : 0.0;
+  let y = estTapis ? -0.7 : 0.0;
   let emitted = 0;
   let iter = 0;
 
   const putPoint = (px, py) => {
     if (px < 0 || py < 0 || px >= w || py >= h) return;
     const i = (py * w + px) * 4;
-    if (isBarnsley) {
+    if (estBuddhabrot) {
+      data[i] = Math.min(255, data[i] + 10);
+      data[i + 1] = Math.min(240, data[i + 1] + 6);
+      data[i + 2] = Math.min(255, data[i + 2] + 14);
+    } else if (isBarnsley) {
       data[i] = Math.min(120, data[i] + 3);
       data[i + 1] = Math.min(255, data[i + 1] + 24);
       data[i + 2] = Math.min(140, data[i + 2] + 4);
@@ -232,14 +271,51 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   const step = () => {
     const end = Math.min(emitted + pointsPerFrame, pointsTarget);
     while (emitted < end) {
-      const r = rng();
-      [x, y] = isBarnsley ? barnsleyStep(x, y, r) : sierpinskiStep(x, y, r);
-      iter += 1;
-      if (iter <= burnIn) continue;
-      const px = ((x - cx0) / ps) | 0;
-      const py = ((y - cy0) / ps) | 0;
-      putPoint(px, py);
-      emitted += 1;
+      if (estBuddhabrot) {
+        const cre = -2.1 + rng() * 3.0;
+        const cim = -1.6 + rng() * 3.2;
+        let zx = 0.0;
+        let zy = 0.0;
+        const trajectoire = [];
+        let echappe = false;
+        const limite = Math.max(24, Math.min(160, params.maxIter));
+        for (let i = 0; i < limite; i++) {
+          const nx = zx * zx - zy * zy + cre;
+          const ny = 2.0 * zx * zy + cim;
+          zx = nx;
+          zy = ny;
+          trajectoire.push([zx, zy]);
+          if (zx * zx + zy * zy > 16.0) {
+            echappe = true;
+            break;
+          }
+        }
+        if (!echappe || trajectoire.length < 12) {
+          emitted += 1;
+          continue;
+        }
+        for (const [ox, oy] of trajectoire) {
+          const px = ((ox - cx0) / ps) | 0;
+          const py = ((oy - cy0) / ps) | 0;
+          putPoint(px, py);
+        }
+        emitted += 1;
+      } else {
+        const r = rng();
+        if (isBarnsley) {
+          [x, y] = barnsleyStep(x, y, r);
+        } else if (estTapis) {
+          [x, y] = etapeTapisSierpinski(x, y, r);
+        } else if (estSierpinski) {
+          [x, y] = sierpinskiStep(x, y, r);
+        }
+        iter += 1;
+        if (iter <= burnIn) continue;
+        const px = ((x - cx0) / ps) | 0;
+        const py = ((y - cy0) / ps) | 0;
+        putPoint(px, py);
+        emitted += 1;
+      }
     }
     ctx.putImageData(imageDataBuffer, 0, 0);
     if (emitted < pointsTarget) {
@@ -248,18 +324,13 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
-      updateStatusBar("IFS mode - " + elapsed + " ms", true);
+      updateStatusBar((estBuddhabrot ? "Mode densite" : "Mode IFS") + " - " + elapsed + " ms", true);
     }
   };
   requestAnimationFrame(step);
 }
 
 function renderLineFractal(w, h) {
-  const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
-  const commands = kochGenerate(n);
-  const seg = (w * 0.8) / Math.pow(3, n);
-  const turn = Math.PI / 3;
-
   ctx.fillStyle = "rgb(0, 0, 0)";
   ctx.fillRect(0, 0, w, h);
 
@@ -267,28 +338,66 @@ function renderLineFractal(w, h) {
   ctx.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
   ctx.lineWidth = Math.max(1, Math.min(2, w / 800));
   ctx.beginPath();
-  let x = w * 0.1;
-  let y = h * 0.65;
-  let a = 0.0;
-  ctx.moveTo(x, y);
 
-  for (const c of commands) {
-    if (c === "F") {
-      x += seg * Math.cos(a);
-      y += seg * Math.sin(a);
-      ctx.lineTo(x, y);
-    } else if (c === "+") {
-      a += turn;
-    } else if (c === "-") {
-      a -= turn;
+  if (params.fractal === "koch") {
+    const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
+    const commands = kochGenerate(n);
+    const seg = (w * 0.8) / Math.pow(3, n);
+    const turn = Math.PI / 3;
+    let x = w * 0.1;
+    let y = h * 0.65;
+    let a = 0.0;
+    ctx.moveTo(x, y);
+    for (const c of commands) {
+      if (c === "F") {
+        x += seg * Math.cos(a);
+        y += seg * Math.sin(a);
+        ctx.lineTo(x, y);
+      } else if (c === "+") {
+        a += turn;
+      } else if (c === "-") {
+        a -= turn;
+      }
     }
+  } else if (params.fractal === "dragon_heighway") {
+    const n = Math.max(8, Math.min(15, Math.floor(params.maxIter / 64) + 7));
+    const commands = genererDragonHeighway(n);
+    const seg = Math.min(w, h) * 0.6 / Math.pow(Math.SQRT2, n);
+    const turn = Math.PI / 2;
+    let x = w * 0.48;
+    let y = h * 0.55;
+    let a = 0.0;
+    ctx.moveTo(x, y);
+    for (const c of commands) {
+      if (c === "F") {
+        x += seg * Math.cos(a);
+        y += seg * Math.sin(a);
+        ctx.lineTo(x, y);
+      } else if (c === "+") {
+        a += turn;
+      } else if (c === "-") {
+        a -= turn;
+      }
+    }
+  } else if (params.fractal === "arbre_pythagore") {
+    const profondeur = Math.max(5, Math.min(11, Math.floor(params.maxIter / 96) + 4));
+    function dessinerBranche(x, y, angle, taille, niveau) {
+      if (niveau <= 0) return;
+      const x1 = x + taille * Math.cos(angle);
+      const y1 = y - taille * Math.sin(angle);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x1, y1);
+      dessinerBranche(x1, y1, angle - Math.PI / 5, taille * 0.72, niveau - 1);
+      dessinerBranche(x1, y1, angle + Math.PI / 4, taille * 0.68, niveau - 1);
+    }
+    dessinerBranche(w * 0.5, h * 0.92, Math.PI / 2, h * 0.16, profondeur);
   }
 
   ctx.stroke();
   const elapsed = (performance.now() - renderStart).toFixed(0);
   rendering = false;
   canvas.parentElement.classList.remove("rendering");
-  updateStatusBar("L-system mode - " + elapsed + " ms", true);
+  updateStatusBar("Mode geometrique - " + elapsed + " ms", true);
 }
 
 function getActiveFractalFn() {
@@ -355,11 +464,18 @@ async function loadWasm() {
       perpendicular_mandelbrot: typeof exports.perpendicular_mandelbrot === "function" ? exports.perpendicular_mandelbrot : null,
       perpendicular_celtic: typeof exports.perpendicular_celtic === "function" ? exports.perpendicular_celtic : null,
       duck: typeof exports.duck === "function" ? exports.duck : null,
+      buddhabrot: typeof exports.buddhabrot === "function" ? exports.buddhabrot : null,
       newton: typeof exports.newton === "function" ? exports.newton : null,
       phoenix: typeof exports.phoenix === "function" ? exports.phoenix : null,
+      lyapunov: typeof exports.lyapunov === "function" ? exports.lyapunov : null,
+      bassin_newton_generalise: typeof exports.bassin_newton_generalise === "function" ? exports.bassin_newton_generalise : null,
+      collatz_complexe: typeof exports.collatz_complexe === "function" ? exports.collatz_complexe : null,
       barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
       sierpinski: typeof exports.sierpinski === "function" ? exports.sierpinski : null,
+      tapis_sierpinski: typeof exports.tapis_sierpinski === "function" ? exports.tapis_sierpinski : null,
       koch: typeof exports.koch === "function" ? exports.koch : null,
+      dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
+      arbre_pythagore: typeof exports.arbre_pythagore === "function" ? exports.arbre_pythagore : null,
       magnet1: typeof exports.magnet1 === "function" ? exports.magnet1 : null,
       magnet2: typeof exports.magnet2 === "function" ? exports.magnet2 : null,
       lambda_fractale: typeof exports.lambda_fractale === "function" ? exports.lambda_fractale : null,
@@ -684,11 +800,18 @@ const FRACTAL_SOURCE_MAP = {
   perpendicular_mandelbrot:    "fractales_variantes",
   perpendicular_celtic:        "fractales_variantes",
   duck:                        "fractales_variantes",
+  buddhabrot:                  "fractales_escape",
   newton:                      "fractales_dynamique",
   phoenix:                     "fractales_dynamique",
+  lyapunov:                    "fractales_dynamique",
+  bassin_newton_generalise:    "fractales_dynamique",
+  collatz_complexe:            "fractales_dynamique",
   barnsley:                    "fractales_ifs",
   sierpinski:                  "fractales_ifs",
+  tapis_sierpinski:            "fractales_ifs",
   koch:                        "fractales_lsystem",
+  dragon_heighway:             "fractales_lsystem",
+  arbre_pythagore:             "fractales_lsystem",
   magnet1:                     "fractales_magnetiques",
   magnet2:                     "fractales_magnetiques",
   lambda_fractale:             "fractales_magnetiques",
@@ -796,9 +919,9 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|etapeTapisSierpinski|koch_generer|genererDragonHeighway|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
 
 function highlightPython(code) {
@@ -819,9 +942,9 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|newton|phoenix|barnsley|sierpinski|koch|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|bassin_newton_generalise|collatz_complexe|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|puissance|rn|angle|r|theta|nx|ny)\b/g, `<span class="param">$1</span>`);
+    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
 
 // ============================================================

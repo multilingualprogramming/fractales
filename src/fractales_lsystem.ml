@@ -49,3 +49,70 @@ déf koch(cx, cy, max_iter):
     si score < 8.0:
         retour 8.0
     retour score
+
+déf dragon_heighway(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y + 0.1)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit nmax = min_koch(max_iter, 14.0)
+
+    tantque niveau < nmax:
+        soit nx = x + y
+        soit ny = y - x
+        x = nx
+        y = ny
+        si x < 0.0:
+            x = -x
+        y = y - 0.5
+        soit d = (abs_koch(x - 0.35) + abs_koch(y)) / echelle
+        si d < dist:
+            dist = d
+        echelle = echelle * 1.41421356237
+        niveau = niveau + 1.0
+
+    soit seuil = 0.03
+    si dist < seuil:
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (seuil * 10.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
+déf arbre_pythagore(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy + 1.0
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit nmax = min_koch(max_iter, 11.0)
+
+    tantque niveau < nmax:
+        soit d_tronc_x = abs_koch(x) - 0.18
+        soit d_tronc_y = abs_koch(y + 0.75) - 0.25
+        soit d_tronc = abs_koch(d_tronc_x) + abs_koch(d_tronc_y)
+        si d_tronc < dist:
+            dist = d_tronc
+
+        y = y - 0.55
+        soit ancien_x = x
+        soit ancien_y = y
+        si x < 0.0:
+            x = (ancien_x + ancien_y) * 0.70710678118
+            y = (ancien_y - ancien_x) * 0.70710678118
+            x = x + 0.32
+        sinon:
+            x = (ancien_x - ancien_y) * 0.70710678118
+            y = (ancien_x + ancien_y) * 0.70710678118
+            x = x - 0.32
+        echelle = echelle * 1.41421356237
+        niveau = niveau + 1.0
+
+    soit seuil = 0.035
+    si dist < seuil:
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (seuil * 9.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score

@@ -86,3 +86,26 @@ déf sierpinski(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf tapis_sierpinski(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit niveau = 0.0
+    soit iter_lim = max_iter
+    si iter_lim > 9.0:
+        iter_lim = 9.0
+
+    tantque niveau < iter_lim:
+        x = (x + 1.0) / 2.0
+        y = (y + 1.0) / 2.0
+        soit local_x = x * 3.0
+        soit local_y = y * 3.0
+        local_x = local_x - (local_x % 1.0)
+        local_y = local_y - (local_y % 1.0)
+        si local_x == 1.0 et local_y == 1.0:
+            retour niveau
+        x = x * 3.0 - local_x
+        y = y * 3.0 - local_y
+        niveau = niveau + 1.0
+
+    retour max_iter * 0.9

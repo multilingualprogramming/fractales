@@ -1,6 +1,6 @@
 # Explorateur de Fractales
 
-Application GitHub Pages qui rend 20 fractales en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend 27 fractales en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -14,11 +14,11 @@ sélectionnée** et son équivalent **Python transpilé** — les deux onglets s
 
 | Groupe | Fractales |
 |---|---|
-| Évasion | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck |
-| Dynamique | Newton (z³−1), Phoenix |
-| IFS | Barnsley (fougère), Sierpinski |
-| L-système | Koch (flocon de neige) |
-| Magnétiques *(nouveaux)* | Magnet I, Magnet II, Lambda (logistique complexe) |
+| Évasion | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot |
+| Dynamique | Newton (z³−1), Phoenix, Lyapunov, Bassin de Newton généralisé, Collatz complexe |
+| IFS | Barnsley (fougère), Sierpinski, Tapis de Sierpinski |
+| L-système | Koch (flocon de neige), Dragon de Heighway, Arbre de Pythagore |
+| Magnétiques | Magnet I, Magnet II, Lambda (logistique complexe) |
 
 ---
 
@@ -185,7 +185,7 @@ index.html
 │   ├── fractales_dynamique.ml     # Newton, Phoenix
 │   ├── fractales_ifs.ml           # Barnsley (fougère), Sierpinski
 │   ├── fractales_lsystem.ml       # Koch (flocon de neige)
-│   ├── fractales_magnetiques.ml   # ★ Magnet I, Magnet II, Lambda (nouveaux)
+│   ├── fractales_magnetiques.ml   # ★ Magnet I, Magnet II, Lambda
 │   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super)
 ├── scripts/
 │   ├── compile_wasm.ml            # Pipeline de build (source multilingual)

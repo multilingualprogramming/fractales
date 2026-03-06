@@ -98,3 +98,28 @@ déf multibrot(cx, cy, max_iter, puissance):
         y = ry + cy
         iter = iter + 1.0
     retour iter
+
+déf buddhabrot(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    soit accumulation = 0.0
+    soit meilleur = 1.0e9
+
+    tantque iter < max_iter:
+        soit xtemp = x * x - y * y + cx
+        soit ytemp = 2.0 * x * y + cy
+        x = xtemp
+        y = ytemp
+        soit rayon = x * x + y * y
+        si rayon > 16.0:
+            retour accumulation
+        soit d = (x - 0.25) * (x - 0.25) + y * y
+        si d < meilleur:
+            meilleur = d
+        accumulation = accumulation + 1.0 / (1.0 + meilleur * 40.0)
+        iter = iter + 1.0
+
+    si accumulation > max_iter:
+        retour max_iter
+    retour accumulation

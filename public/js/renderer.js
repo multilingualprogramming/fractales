@@ -57,7 +57,7 @@ const VIEW_PRESETS = {
   collatz_complexe: { centerX: -0.35, centerY: 0.0, span: 3.6 },
   attracteur_de_clifford: { centerX: 0.0, centerY: 0.0, span: 4.8 },
   attracteur_de_peter_de_jong: { centerX: 0.0, centerY: 0.0, span: 4.8 },
-  attracteur_ikeda: { centerX: 1.9, centerY: 2.5, span: 6.8 },
+  attracteur_ikeda: { centerX: 1.9, centerY: 2.5, span: 4.8 },
   attracteur_de_henon: { centerX: 0.3, centerY: 0.1, span: 3.0 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
@@ -461,10 +461,19 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
 
   const putPoint = (px, py) => {
     if (px < 0 || py < 0 || px >= w || py >= h) return;
-    const index = py * w + px;
-    densites[index] += 1;
-    if (densites[index] > maxDensite) {
-      maxDensite = densites[index];
+    const ajouterDensite = (xPoint, yPoint, poids = 1) => {
+      if (xPoint < 0 || yPoint < 0 || xPoint >= w || yPoint >= h) return;
+      const index = yPoint * w + xPoint;
+      densites[index] += poids;
+      if (densites[index] > maxDensite) {
+        maxDensite = densites[index];
+      }
+    };
+    ajouterDensite(px, py, 1);
+    if (estIkeda) {
+      ajouterDensite(px + 1, py, 1);
+      ajouterDensite(px, py + 1, 1);
+      ajouterDensite(px + 1, py + 1, 1);
     }
   };
 

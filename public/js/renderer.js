@@ -53,11 +53,11 @@ const VIEW_PRESETS = {
   lyapunov:     { centerX: 3.1,  centerY: 3.1, span: 1.7 },
   lyapunov_multisequence: { centerX: 3.1, centerY: 3.1, span: 1.7 },
   bassin_newton_generalise: { centerX: 0.0, centerY: 0.0, span: 3.2 },
-  orbitale_de_nova: { centerX: 0.0, centerY: 0.0, span: 3.2 },
+  orbitale_de_nova: { centerX: 0.0, centerY: 0.0, span: 2.1 },
   collatz_complexe: { centerX: -0.35, centerY: 0.0, span: 3.6 },
   attracteur_de_clifford: { centerX: 0.0, centerY: 0.0, span: 4.8 },
   attracteur_de_peter_de_jong: { centerX: 0.0, centerY: 0.0, span: 4.8 },
-  attracteur_ikeda: { centerX: 0.9, centerY: 0.3, span: 4.6 },
+  attracteur_ikeda: { centerX: 1.9, centerY: 2.5, span: 6.8 },
   attracteur_de_henon: { centerX: 0.3, centerY: 0.1, span: 3.0 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
@@ -246,7 +246,14 @@ function getColor(iter, max, name) {
   const stops = PALETTES[name] ?? PALETTES.feu;
   // normaliser dans [0, 1] avec légère correction logarithmique
   const t = Math.sqrt(iter / max);
-  const scaled = t * (stops.length - 1);
+  return getColorFromRatio(t, stops);
+}
+
+function getColorFromRatio(t, paletteOrName) {
+  const stops = Array.isArray(paletteOrName) ? paletteOrName : (PALETTES[paletteOrName] ?? PALETTES.feu);
+  const normalise = Math.max(0, Math.min(1, t));
+  if (normalise >= 1) return [0, 0, 0];
+  const scaled = normalise * (stops.length - 1);
   const lo = Math.floor(scaled) | 0;
   const hi = Math.min(lo + 1, stops.length - 1);
   const frac = scaled - lo;
@@ -257,6 +264,44 @@ function getColor(iter, max, name) {
     (c0[1] + (c1[1] - c0[1]) * frac) | 0,
     (c0[2] + (c1[2] - c0[2]) * frac) | 0,
   ];
+}
+
+function getBasinColor(iter, max, name) {
+  if (iter >= max) return [0, 0, 0];
+  const base = Math.floor(iter);
+  const fraction = iter - base;
+  const progression = Math.min(0.95, Math.sqrt(Math.max(0, base) / Math.max(1, max)));
+  let decalage = 0.0;
+  if (fraction >= 0.75) decalage = 0.20;
+  else if (fraction >= 0.55) decalage = 0.12;
+  else if (fraction >= 0.35) decalage = 0.06;
+  else if (fraction >= 0.10) decalage = 0.0;
+  return getColorFromRatio(Math.min(0.98, progression * 0.7 + 0.18 + decalage), name);
+}
+
+function coloriserDensite(data, densites, maxDensite, palette) {
+  if (maxDensite <= 0) {
+    data.fill(0);
+    return;
+  }
+  const logMax = Math.log(1 + maxDensite);
+  for (let i = 0; i < densites.length; i++) {
+    const densite = densites[i];
+    const base = i * 4;
+    if (densite <= 0) {
+      data[base] = 0;
+      data[base + 1] = 0;
+      data[base + 2] = 0;
+      data[base + 3] = 255;
+      continue;
+    }
+    const ratio = Math.log(1 + densite) / logMax;
+    const [r, g, b] = getColorFromRatio(Math.pow(ratio, 0.72), palette);
+    data[base] = r;
+    data[base + 1] = g;
+    data[base + 2] = b;
+    data[base + 3] = 255;
+  }
 }
 
 
@@ -411,51 +456,16 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   let y = estTapis ? -0.7 : (estIkeda ? 0.2 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0)));
   let emitted = 0;
   let iter = 0;
-  const couleurClifford = getColor(Math.min(params.maxIter * 0.72, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurPeterDeJong = getColor(Math.min(params.maxIter * 0.68, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurIkeda = getColor(Math.min(params.maxIter * 0.64, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurHenon = getColor(Math.min(params.maxIter * 0.7, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurBarnsley = getColor(Math.min(params.maxIter * 0.62, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurSierpinski = getColor(Math.min(params.maxIter * 0.78, params.maxIter - 1), params.maxIter, params.palette);
-  const couleurTapis = getColor(Math.min(params.maxIter * 0.86, params.maxIter - 1), params.maxIter, params.palette);
+  const densites = new Uint32Array(w * h);
+  let maxDensite = 0;
 
   const putPoint = (px, py) => {
     if (px < 0 || py < 0 || px >= w || py >= h) return;
-    const i = (py * w + px) * 4;
-    if (estBuddhabrot) {
-      data[i] = Math.min(255, data[i] + 10);
-      data[i + 1] = Math.min(240, data[i + 1] + 6);
-      data[i + 2] = Math.min(255, data[i + 2] + 14);
-    } else if (estClifford) {
-      data[i] = Math.min(255, data[i] + Math.max(3, (couleurClifford[0] / 18) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(3, (couleurClifford[1] / 18) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(3, (couleurClifford[2] / 18) | 0));
-    } else if (estPeterDeJong) {
-      data[i] = Math.min(255, data[i] + Math.max(3, (couleurPeterDeJong[0] / 18) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(3, (couleurPeterDeJong[1] / 18) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(3, (couleurPeterDeJong[2] / 18) | 0));
-    } else if (estIkeda) {
-      data[i] = Math.min(255, data[i] + Math.max(3, (couleurIkeda[0] / 18) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(3, (couleurIkeda[1] / 18) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(3, (couleurIkeda[2] / 18) | 0));
-    } else if (estHenon) {
-      data[i] = Math.min(255, data[i] + Math.max(3, (couleurHenon[0] / 18) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(3, (couleurHenon[1] / 18) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(3, (couleurHenon[2] / 18) | 0));
-    } else if (isBarnsley) {
-      data[i] = Math.min(255, data[i] + Math.max(2, (couleurBarnsley[0] / 16) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurBarnsley[1] / 16) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurBarnsley[2] / 16) | 0));
-    } else if (estTapis) {
-      data[i] = Math.min(255, data[i] + Math.max(2, (couleurTapis[0] / 17) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurTapis[1] / 17) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurTapis[2] / 17) | 0));
-    } else {
-      data[i] = Math.min(255, data[i] + Math.max(2, (couleurSierpinski[0] / 16) | 0));
-      data[i + 1] = Math.min(255, data[i + 1] + Math.max(2, (couleurSierpinski[1] / 16) | 0));
-      data[i + 2] = Math.min(255, data[i + 2] + Math.max(2, (couleurSierpinski[2] / 16) | 0));
+    const index = py * w + px;
+    densites[index] += 1;
+    if (densites[index] > maxDensite) {
+      maxDensite = densites[index];
     }
-    data[i + 3] = 255;
   };
 
   const step = () => {
@@ -515,6 +525,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
         emitted += 1;
       }
     }
+    coloriserDensite(data, densites, maxDensite, params.palette);
     ctx.putImageData(imageDataBuffer, 0, 0);
     if (emitted < pointsTarget) {
       requestAnimationFrame(step);
@@ -765,6 +776,7 @@ function render() {
 
   let row = 0;
   const ROWS_PER_FRAME = 8;
+  const estFractaleBassin = params.fractal === "newton" || params.fractal === "bassin_newton_generalise" || params.fractal === "orbitale_de_nova";
 
   function step() {
     const endRow = Math.min(row + ROWS_PER_FRAME, h);
@@ -786,8 +798,14 @@ function render() {
           // High-degree multibrot escapes in very few iterations; stretch values
           // so the set structure stays visible instead of near-black.
           iterColor = Math.min(max - 1, 12 + iter * 14);
+        } else if (params.fractal === "orbitale_de_nova" && iter < max) {
+          // Nova converges very quickly in large regions; stretch the returned
+          // iteration bands so all palettes show visible separation.
+          iterColor = Math.min(max - 1, 18 + iter * 10);
         }
-        const [r, g, b] = getColor(iterColor, max, pal);
+        const [r, g, b] = estFractaleBassin
+          ? getBasinColor(iter, max, pal)
+          : getColor(iterColor, max, pal);
         const i = base + px * 4;
         data[i] = r;
         data[i + 1] = g;

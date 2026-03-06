@@ -65,11 +65,11 @@ déf newton(zx, zy, max_iter):
         soit d2 = (x + 0.5) * (x + 0.5) + (y - racine3_sur_2) * (y - racine3_sur_2)
         soit d3 = (x + 0.5) * (x + 0.5) + (y + racine3_sur_2) * (y + racine3_sur_2)
         si d1 < eps_convergence:
-            retour iter
+            retour iter + 0.12
         sinonsi d2 < eps_convergence:
-            retour iter
+            retour iter + 0.42
         sinonsi d3 < eps_convergence:
-            retour iter
+            retour iter + 0.72
 
         iter = iter + 1.0
     retour iter
@@ -200,13 +200,13 @@ déf bassin_newton_generalise(zx, zy, max_iter):
         soit d3 = x * x + (y - 1.0) * (y - 1.0)
         soit d4 = x * x + (y + 1.0) * (y + 1.0)
         si d1 < eps_convergence:
-            retour iter
+            retour iter + 0.12
         sinonsi d2 < eps_convergence:
-            retour iter
+            retour iter + 0.32
         sinonsi d3 < eps_convergence:
-            retour iter
+            retour iter + 0.62
         sinonsi d4 < eps_convergence:
-            retour iter
+            retour iter + 0.82
 
         soit mouvement = delta_re * delta_re + delta_im * delta_im
         si mouvement < eps_convergence:
@@ -244,11 +244,11 @@ déf orbitale_de_nova(zx, zy, max_iter):
         soit d2 = (x + 0.5) * (x + 0.5) + (y - 0.8660254037844386) * (y - 0.8660254037844386)
         soit d3 = (x + 0.5) * (x + 0.5) + (y + 0.8660254037844386) * (y + 0.8660254037844386)
         si d1 < eps_convergence:
-            retour iter
+            retour iter + 0.12
         sinonsi d2 < eps_convergence:
-            retour iter
+            retour iter + 0.42
         sinonsi d3 < eps_convergence:
-            retour iter
+            retour iter + 0.72
         si norme_correction < eps_convergence:
             retour iter
 
@@ -347,8 +347,8 @@ déf attracteur_de_peter_de_jong(cx, cy, max_iter):
 
 déf attracteur_ikeda(cx, cy, max_iter):
     soit u = 0.918
-    soit x = 0.1
-    soit y = 0.1
+    soit x = 0.4
+    soit y = 0.2
     soit meilleur = 1.0e9
     soit iter_lim = max_iter
     si iter_lim > 340.0:

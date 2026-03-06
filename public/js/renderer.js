@@ -72,7 +72,7 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "buddhabrot"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski"]);
 const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */

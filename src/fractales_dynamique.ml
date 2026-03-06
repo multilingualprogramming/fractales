@@ -160,12 +160,13 @@ déf collatz_complexe(cx, cy, max_iter):
             retour iter
         soit xtemp = 0.0
         soit ytemp = 0.0
-        si x < 0.0:
-            xtemp = 0.5 * x + cx
-            ytemp = 0.5 * y + cy
+        soit rayon = x * x + y * y
+        si rayon < 1.0:
+            xtemp = 0.5 * x - 0.5 * y + cx
+            ytemp = 0.5 * x + 0.5 * y + cy
         sinon:
-            xtemp = 1.5 * x + 0.5 + cx
-            ytemp = 1.5 * y + cy
+            xtemp = 1.5 * x - y + 0.25 + cx
+            ytemp = x + 1.5 * y + cy
         x = xtemp
         y = ytemp
         iter = iter + 1.0

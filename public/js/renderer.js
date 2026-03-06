@@ -295,7 +295,8 @@ function coloriserDensite(data, densites, maxDensite, palette) {
       continue;
     }
     const ratio = Math.log(1 + densite) / logMax;
-    const [r, g, b] = getColorFromRatio(Math.pow(ratio, 0.72), palette);
+    const ratioVisible = 0.18 + Math.pow(ratio, 0.55) * 0.80;
+    const [r, g, b] = getColorFromRatio(ratioVisible, palette);
     data[base] = r;
     data[base + 1] = g;
     data[base + 2] = b;

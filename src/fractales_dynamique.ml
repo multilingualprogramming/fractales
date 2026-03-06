@@ -346,9 +346,9 @@ déf attracteur_de_peter_de_jong(cx, cy, max_iter):
     retour score
 
 déf attracteur_ikeda(cx, cy, max_iter):
-    soit u = 0.918
-    soit x = 0.4
-    soit y = 0.2
+    soit u = 0.9
+    soit x = 0.1
+    soit y = 0.1
     soit meilleur = 1.0e9
     soit iter_lim = max_iter
     si iter_lim > 340.0:

@@ -57,7 +57,7 @@ const VIEW_PRESETS = {
   collatz_complexe: { centerX: -0.35, centerY: 0.0, span: 3.6 },
   attracteur_de_clifford: { centerX: 0.0, centerY: 0.0, span: 4.8 },
   attracteur_de_peter_de_jong: { centerX: 0.0, centerY: 0.0, span: 4.8 },
-  attracteur_ikeda: { centerX: 1.9, centerY: 2.5, span: 4.8 },
+  attracteur_ikeda: { centerX: 0.68, centerY: -0.67, span: 3.9 },
   attracteur_de_henon: { centerX: 0.3, centerY: 0.1, span: 3.0 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
@@ -363,7 +363,7 @@ function etapeAttracteurPeterDeJong(x, y) {
 }
 
 function etapeAttracteurIkeda(x, y) {
-  const u = 0.918;
+  const u = 0.9;
   const rayon = x * x + y * y;
   const angle = 0.4 - 6.0 / (1.0 + rayon);
   const cosT = Math.cos(angle);
@@ -452,8 +452,8 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
     : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? Math.max(140000, params.maxIter * 1800) : Math.max(30000, params.maxIter * 900));
   const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? 120 : 40));
   const pointsPerFrame = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? 30000 : 25000);
-  let x = estTapis ? -0.7 : (estIkeda ? 0.4 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.1 : 0.0)));
-  let y = estTapis ? -0.7 : (estIkeda ? 0.2 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0)));
+  let x = estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.1 : 0.0)));
+  let y = estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0)));
   let emitted = 0;
   let iter = 0;
   const densites = new Uint32Array(w * h);

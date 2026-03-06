@@ -251,8 +251,7 @@ function getColor(iter, max, name) {
 
 function getColorFromRatio(t, paletteOrName) {
   const stops = Array.isArray(paletteOrName) ? paletteOrName : (PALETTES[paletteOrName] ?? PALETTES.feu);
-  const normalise = Math.max(0, Math.min(1, t));
-  if (normalise >= 1) return [0, 0, 0];
+  const normalise = Math.max(0, Math.min(0.999999, t));
   const scaled = normalise * (stops.length - 1);
   const lo = Math.floor(scaled) | 0;
   const hi = Math.min(lo + 1, stops.length - 1);

@@ -364,12 +364,17 @@ function ajusterIterationsExport(largeur, hauteur, maxIter) {
 
 function interpolerLineaire(a, b, t) {
   const fn = wasmExportFunctions.interpoler_lineaire;
-  return fn ? fn(a, b, t) : a + (b - a) * t;
+  if (fn && Number.isInteger(a) && Number.isInteger(b) && Number.isInteger(t)) {
+    return fn(a, b, t);
+  }
+  return a + (b - a) * t;
 }
 
 function interpolerLogarithmique(a, b, t) {
   const fn = wasmExportFunctions.interpoler_logarithmique;
-  if (fn) return fn(a, b, t);
+  if (fn && Number.isInteger(a) && Number.isInteger(b) && Number.isInteger(t)) {
+    return fn(a, b, t);
+  }
   if (a <= 0 || b <= 0) return interpolerLineaire(a, b, t);
   return a * ((b / a) ** t);
 }

@@ -148,3 +148,152 @@ déf arbre_pythagore(cx, cy, max_iter):
     si score < 6.0:
         retour 6.0
     retour score
+
+déf apollonian_gasket(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = 1.0e9
+    soit niveau = 0.0
+    soit iter_lim = min_koch(max_iter, 10.0)
+
+    tantque niveau < iter_lim:
+        soit d0 = abs_koch((x * x + y * y) - 0.81)
+        soit d1 = abs_koch(((x - 0.5) * (x - 0.5) + y * y) - 0.09)
+        soit d2 = abs_koch(((x + 0.5) * (x + 0.5) + y * y) - 0.09)
+        soit d3 = abs_koch((x * x + (y - 0.57) * (y - 0.57)) - 0.09)
+        si d0 < dist:
+            dist = d0
+        si d1 < dist:
+            dist = d1
+        si d2 < dist:
+            dist = d2
+        si d3 < dist:
+            dist = d3
+        x = x * 1.9
+        y = y * 1.9
+        si x > 1.0:
+            x = x - 1.2
+        sinonsi x < -1.0:
+            x = x + 1.2
+        si y > 1.0:
+            y = y - 1.2
+        niveau = niveau + 1.0
+
+    soit seuil = 0.025
+    si dist < seuil:
+        retour max_iter * 0.92
+    soit score = max_iter * 0.9 - (dist / (seuil * 12.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
+déf t_square_fractal(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit iter_lim = min_koch(max_iter, 9.0)
+
+    tantque niveau < iter_lim:
+        soit d_carre = max(abs_koch(x), abs_koch(y)) / echelle
+        si d_carre < dist:
+            dist = d_carre
+        x = x * 2.0
+        y = y * 2.0
+        si x > 0.5:
+            x = x - 1.0
+        sinonsi x < -0.5:
+            x = x + 1.0
+        si y > 0.5:
+            y = y - 1.0
+        sinonsi y < -0.5:
+            y = y + 1.0
+        echelle = echelle * 2.0
+        niveau = niveau + 1.0
+
+    soit seuil = 0.035
+    si dist < seuil:
+        retour max_iter * 0.9
+    retour max_iter * 0.9 - min_koch(dist / (seuil * 8.0), 0.9) * (max_iter * 0.8)
+
+déf h_fractal(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit iter_lim = min_koch(max_iter, 10.0)
+
+    tantque niveau < iter_lim:
+        soit barre_h = abs_koch(abs_koch(y) - 0.25 / echelle)
+        soit montant_g = abs_koch(abs_koch(x) - 0.25 / echelle)
+        soit d = barre_h + montant_g
+        si d < dist:
+            dist = d
+        x = x * 2.0
+        y = y * 2.0
+        si x > 0.5:
+            x = x - 1.0
+        sinonsi x < -0.5:
+            x = x + 1.0
+        si y > 0.5:
+            y = y - 1.0
+        sinonsi y < -0.5:
+            y = y + 1.0
+        echelle = echelle * 2.0
+        niveau = niveau + 1.0
+
+    soit seuil = 0.03
+    si dist < seuil:
+        retour max_iter * 0.91
+    retour max_iter * 0.9 - min_koch(dist / (seuil * 8.0), 0.9) * (max_iter * 0.8)
+
+déf hilbert_curve(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit iter_lim = min_koch(max_iter, 8.0)
+
+    tantque niveau < iter_lim:
+        x = (x + 1.0) * 0.5
+        y = (y + 1.0) * 0.5
+        soit d = abs_koch((x % 0.5) - 0.25) + abs_koch((y % 0.5) - 0.25)
+        si d < dist:
+            dist = d
+        soit ancien_x = x
+        x = y
+        y = 1.0 - ancien_x
+        niveau = niveau + 1.0
+
+    soit seuil = 0.08
+    si dist < seuil:
+        retour max_iter * 0.9
+    retour max_iter * 0.9 - min_koch(dist / (seuil * 6.0), 0.9) * (max_iter * 0.8)
+
+déf peano_curve(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit iter_lim = min_koch(max_iter, 7.0)
+
+    tantque niveau < iter_lim:
+        x = (x + 1.0) * 0.5
+        y = (y + 1.0) * 0.5
+        soit local_x = x * 3.0
+        soit local_y = y * 3.0
+        local_x = local_x - (local_x % 1.0)
+        local_y = local_y - (local_y % 1.0)
+        soit d = abs_koch(x - 0.5) + abs_koch(y - 0.5)
+        si d < dist:
+            dist = d
+        x = x * 3.0 - local_x
+        y = y * 3.0 - local_y
+        niveau = niveau + 1.0
+
+    soit seuil = 0.08
+    si dist < seuil:
+        retour max_iter * 0.9
+    retour max_iter * 0.9 - min_koch(dist / (seuil * 6.0), 0.9) * (max_iter * 0.8)

@@ -451,3 +451,28 @@ déf lorenz_attractor(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf feigenbaum_tree(cx, cy, max_iter):
+    soit r = 3.4 + (cx + 1.0) * 0.3
+    soit x = 0.5
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 260.0:
+        iter_lim = 260.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        x = r * x * (1.0 - x)
+        si iter > 60.0:
+            soit py = x * 2.0 - 1.0
+            soit d = (py - cy) * (py - cy)
+            si d < meilleur:
+                meilleur = d
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 420.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score

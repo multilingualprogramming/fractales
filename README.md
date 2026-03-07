@@ -1,6 +1,6 @@
 # Explorateur de Fractales
 
-Application GitHub Pages qui rend 38 fractales en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend 42 fractales en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 

@@ -409,3 +409,45 @@ déf attracteur_de_henon(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf projeter_lorenz_x(x, y, z):
+    retour (x - y) * 0.12
+
+déf projeter_lorenz_y(x, y, z):
+    retour (z - 26.0) * 0.07 - (x + y) * 0.02
+
+déf lorenz_attractor(cx, cy, max_iter):
+    soit sigma = 10.0
+    soit rho = 28.0
+    soit beta = 2.6666666667
+    soit dt = 0.01
+    soit x = 0.1
+    soit y = 0.0
+    soit z = 0.0
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 520.0:
+        iter_lim = 520.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit dx = sigma * (y - x)
+        soit dy = x * (rho - z) - y
+        soit dz = x * y - beta * z
+        x = x + dx * dt
+        y = y + dy * dt
+        z = z + dz * dt
+        si iter > 35.0:
+            soit px = projeter_lorenz_x(x, y, z)
+            soit py = projeter_lorenz_y(x, y, z)
+            soit distance = (px - cx) * (px - cx) + (py - cy) * (py - cy)
+            si distance < meilleur:
+                meilleur = distance
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 420.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score

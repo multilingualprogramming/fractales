@@ -80,6 +80,38 @@ déf dragon_heighway(cx, cy, max_iter):
         retour 6.0
     retour score
 
+déf dragon_curve(cx, cy, max_iter):
+    retour dragon_heighway(cx, cy, max_iter)
+
+déf cantor_set(cx, cy, max_iter):
+    soit x = (cx + 1.0) * 0.5
+    soit y = cy
+    soit dist = abs_koch(y)
+    soit niveau = 0.0
+    soit iter_lim = min_koch(max_iter, 12.0)
+
+    si x < 0.0 ou x > 1.0:
+        retour 0.0
+
+    tantque niveau < iter_lim:
+        soit triple = x * 3.0
+        soit chiffre = triple - (triple % 1.0)
+        si chiffre == 1.0:
+            retour niveau
+        x = triple - chiffre
+        soit d = abs_koch(y) + 1.0 / (3.0 * (niveau + 1.0))
+        si d < dist:
+            dist = d
+        niveau = niveau + 1.0
+
+    soit seuil = 0.06
+    si dist < seuil:
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (seuil * 10.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
 déf arbre_pythagore(cx, cy, max_iter):
     soit x = cx
     soit y = cy + 1.0

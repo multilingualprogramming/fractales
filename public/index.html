@@ -71,7 +71,17 @@
 
         <!-- Astuce de zoom (disparaît automatiquement) -->
         <div id="zoom-hint" role="status" aria-live="polite">
-          Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
+          Glisser : déplacement &nbsp;·&nbsp; Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
+        </div>
+
+        <div id="pan-controls" aria-label="Contrôles de déplacement">
+          <div class="pan-title">Déplacement</div>
+          <div class="pan-grid">
+            <button id="btn-pan-up" class="pan-btn" type="button" aria-label="Déplacer vers le haut">↑</button>
+            <button id="btn-pan-left" class="pan-btn" type="button" aria-label="Déplacer vers la gauche">←</button>
+            <button id="btn-pan-right" class="pan-btn" type="button" aria-label="Déplacer vers la droite">→</button>
+            <button id="btn-pan-down" class="pan-btn" type="button" aria-label="Déplacer vers le bas">↓</button>
+          </div>
         </div>
 
       </main>
@@ -182,9 +192,9 @@
             <option value="feu">🔥 Feu</option>
             <option value="ocean">🌊 Océan</option>
             <option value="aurora" selected>🌌 Aurora</option>
-            <option value="braise">Braise</option>
-            <option value="lagon">Lagon</option>
-            <option value="crepuscule">Crépuscule</option>
+            <option value="braise">🔥 Braise</option>
+            <option value="lagon">🫧 Lagon</option>
+            <option value="crepuscule">🌇 Crépuscule</option>
           </select>
         </div>
 

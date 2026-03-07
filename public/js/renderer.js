@@ -112,6 +112,10 @@ const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
 const btnReset      = document.getElementById("btn-reset");
+const btnPanUp      = document.getElementById("btn-pan-up");
+const btnPanLeft    = document.getElementById("btn-pan-left");
+const btnPanRight   = document.getElementById("btn-pan-right");
+const btnPanDown    = document.getElementById("btn-pan-down");
 const btnToggle      = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
 const sidebar        = document.getElementById("sidebar");
@@ -914,6 +918,12 @@ function zoomAt(px, py, factor) {
   render();
 }
 
+function deplacerVue(deltaX, deltaY) {
+  view.centerX += deltaX;
+  view.centerY += deltaY;
+  render();
+}
+
 function resetView() {
   const preset = params.fractal === "multibrot"
     ? getMultibrotPreset(params.multibrotPower)
@@ -1032,6 +1042,22 @@ paletteSelect.addEventListener("change", () => {
 });
 
 btnReset.addEventListener("click", resetView);
+
+btnPanUp.addEventListener("click", () => {
+  deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
+});
+
+btnPanDown.addEventListener("click", () => {
+  deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
+});
+
+btnPanLeft.addEventListener("click", () => {
+  deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
+});
+
+btnPanRight.addEventListener("click", () => {
+  deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
+});
 
 btnToggle.addEventListener("click", () => {
   if (window.innerWidth <= 820) {
@@ -1364,7 +1390,7 @@ async function init() {
 
   // Adapter le texte de l'astuce selon le dispositif
   if (zoomHint && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
-    zoomHint.textContent = "Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
+    zoomHint.textContent = "Glisser : déplacement · Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
   }
 
   showZoomHint();

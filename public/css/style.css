@@ -162,6 +162,62 @@ body {
   pointer-events: none;
 }
 
+#pan-controls {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(8, 12, 20, 0.78);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.pan-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.pan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+  gap: 6px;
+  grid-template-areas:
+    ". haut ."
+    "gauche . droite"
+    ". bas .";
+}
+
+#btn-pan-up { grid-area: haut; }
+#btn-pan-left { grid-area: gauche; }
+#btn-pan-right { grid-area: droite; }
+#btn-pan-down { grid-area: bas; }
+
+.pan-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--text-bright);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.pan-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-glow);
+  background: rgba(0, 212, 255, 0.16);
+}
+
 /* ---- Panneau latéral ---- */
 #sidebar {
   grid-area: sidebar;

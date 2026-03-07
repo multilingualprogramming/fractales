@@ -74,14 +74,19 @@ def main() -> None:
         js,
         "zoomerCentre must zoom around the canvas center",
     )
+    require(
+        r"function attacherActionControle\(bouton,\s*action\)\s*\{",
+        js,
+        "missing shared control action helper",
+    )
 
     button_expectations = {
-        "btnPanUp": r'btnPanUp\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\);',
-        "btnPanDown": r'btnPanDown\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*canvas\.height \* view\.pixelSize \* 0\.18\);',
-        "btnPanLeft": r'btnPanLeft\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(-canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
-        "btnPanRight": r'btnPanRight\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
-        "btnZoomIn": r'btnZoomIn\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1\.5\);',
-        "btnZoomOut": r'btnZoomOut\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1 / 1\.5\);',
+        "btnPanUp": r'attacherActionControle\(btnPanUp,\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\);',
+        "btnPanDown": r'attacherActionControle\(btnPanDown,\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*canvas\.height \* view\.pixelSize \* 0\.18\);',
+        "btnPanLeft": r'attacherActionControle\(btnPanLeft,\s*\(\)\s*=>\s*\{\s*deplacerVue\(-canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
+        "btnPanRight": r'attacherActionControle\(btnPanRight,\s*\(\)\s*=>\s*\{\s*deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
+        "btnZoomIn": r'attacherActionControle\(btnZoomIn,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1\.5\);',
+        "btnZoomOut": r'attacherActionControle\(btnZoomOut,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1 / 1\.5\);',
         "btnReset": r'btnReset\.addEventListener\("click",\s*resetView\);',
         "familySelect": r'familySelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*const fractale = populateFractalSelect\(familySelect\.value,\s*null\);\s*setActiveFractal\(fractale\);',
         "fractalSelect": r'fractalSelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setActiveFractal\(fractalSelect\.value\);',
@@ -109,7 +114,7 @@ def main() -> None:
         js,
         "missing keyboard shortcut handler",
     )
-    for key_name in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", '"+"', '"="', '"-"', '"_"']:
+    for key_name in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", '"+"', '"="', '"-"', '"_"', '"NumpadAdd"', '"NumpadSubtract"']:
         if key_name not in js:
             fail(f"missing keyboard shortcut mapping for {key_name}")
 

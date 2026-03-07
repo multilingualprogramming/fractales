@@ -1557,6 +1557,18 @@ function zoomerCentre(factor) {
   zoomAt(canvas.width / 2, canvas.height / 2, factor);
 }
 
+function attacherActionControle(bouton, action) {
+  bouton.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  });
+  bouton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+}
+
 function resetView() {
   const preset = params.fractal === "multibrot"
     ? getMultibrotPreset(params.multibrotPower)
@@ -1676,27 +1688,27 @@ paletteSelect.addEventListener("change", () => {
 
 btnReset.addEventListener("click", resetView);
 
-btnPanUp.addEventListener("click", () => {
+attacherActionControle(btnPanUp, () => {
   deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
 });
 
-btnPanDown.addEventListener("click", () => {
+attacherActionControle(btnPanDown, () => {
   deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
 });
 
-btnPanLeft.addEventListener("click", () => {
+attacherActionControle(btnPanLeft, () => {
   deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
 });
 
-btnPanRight.addEventListener("click", () => {
+attacherActionControle(btnPanRight, () => {
   deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
 });
 
-btnZoomIn.addEventListener("click", () => {
+attacherActionControle(btnZoomIn, () => {
   zoomerCentre(1.5);
 });
 
-btnZoomOut.addEventListener("click", () => {
+attacherActionControle(btnZoomOut, () => {
   zoomerCentre(1 / 1.5);
 });
 
@@ -1725,10 +1737,10 @@ window.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowRight") {
     event.preventDefault();
     deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
-  } else if (event.key === "+" || event.key === "=") {
+  } else if (event.key === "+" || event.key === "=" || event.code === "NumpadAdd") {
     event.preventDefault();
     zoomerCentre(1.5);
-  } else if (event.key === "-" || event.key === "_") {
+  } else if (event.key === "-" || event.key === "_" || event.code === "NumpadSubtract") {
     event.preventDefault();
     zoomerCentre(1 / 1.5);
   }

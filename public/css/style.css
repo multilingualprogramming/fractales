@@ -175,6 +175,8 @@ body {
   border-radius: var(--radius-lg);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+  z-index: 5;
+  pointer-events: auto;
 }
 
 #pan-controls.collapsed {

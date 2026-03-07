@@ -280,11 +280,28 @@ body {
   display: none;
 }
 
+#pan-controls.collapsed .zoom-row {
+  display: none;
+}
+
 .pan-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.zoom-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.zoom-btn {
+  min-width: 34px;
+  min-height: 34px;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .pan-title {

@@ -134,6 +134,8 @@ const btnPanUp      = document.getElementById("btn-pan-up");
 const btnPanLeft    = document.getElementById("btn-pan-left");
 const btnPanRight   = document.getElementById("btn-pan-right");
 const btnPanDown    = document.getElementById("btn-pan-down");
+const btnZoomIn     = document.getElementById("btn-zoom-in");
+const btnZoomOut    = document.getElementById("btn-zoom-out");
 const btnTogglePan  = document.getElementById("btn-toggle-pan");
 const btnToggle      = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
@@ -768,6 +770,101 @@ function dessinerApollonien(ctxCible, x, y, rayon, niveau) {
   dessinerApollonien(ctxCible, x, y - r * 0.866, r, niveau - 1);
 }
 
+function creerTraceurMonde(ctxCible, w, h, vueCible) {
+  const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
+  const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
+  return {
+    moveTo(x, y) {
+      ctxCible.moveTo((x - cx0) / vueCible.pixelSize, (y - cy0) / vueCible.pixelSize);
+    },
+    lineTo(x, y) {
+      ctxCible.lineTo((x - cx0) / vueCible.pixelSize, (y - cy0) / vueCible.pixelSize);
+    },
+  };
+}
+
+function dessinerCarreMonde(traceur, x, y, taille) {
+  const demi = taille / 2;
+  traceur.moveTo(x - demi, y - demi);
+  traceur.lineTo(x + demi, y - demi);
+  traceur.lineTo(x + demi, y + demi);
+  traceur.lineTo(x - demi, y + demi);
+  traceur.lineTo(x - demi, y - demi);
+}
+
+function dessinerTSquareMonde(traceur, x, y, taille, niveau) {
+  if (niveau <= 0) return;
+  dessinerCarreMonde(traceur, x, y, taille);
+  const demi = taille / 2;
+  const suivant = taille / 2;
+  dessinerTSquareMonde(traceur, x - demi, y - demi, suivant, niveau - 1);
+  dessinerTSquareMonde(traceur, x + demi, y - demi, suivant, niveau - 1);
+  dessinerTSquareMonde(traceur, x - demi, y + demi, suivant, niveau - 1);
+  dessinerTSquareMonde(traceur, x + demi, y + demi, suivant, niveau - 1);
+}
+
+function dessinerHFractalMonde(traceur, x, y, taille, niveau) {
+  if (niveau <= 0) return;
+  const demi = taille / 2;
+  traceur.moveTo(x - demi, y - demi);
+  traceur.lineTo(x - demi, y + demi);
+  traceur.moveTo(x + demi, y - demi);
+  traceur.lineTo(x + demi, y + demi);
+  traceur.moveTo(x - demi, y);
+  traceur.lineTo(x + demi, y);
+  const suivant = taille / 2;
+  dessinerHFractalMonde(traceur, x - demi, y - demi, suivant, niveau - 1);
+  dessinerHFractalMonde(traceur, x - demi, y + demi, suivant, niveau - 1);
+  dessinerHFractalMonde(traceur, x + demi, y - demi, suivant, niveau - 1);
+  dessinerHFractalMonde(traceur, x + demi, y + demi, suivant, niveau - 1);
+}
+
+function dessinerCantorMonde(traceur, maxIter) {
+  const profondeur = Math.max(3, Math.min(8, Math.floor(maxIter / 64) + 2));
+  function dessinerSegment(x, largeur, niveau) {
+    const y = -0.78 + niveau * 0.18;
+    traceur.moveTo(x, y);
+    traceur.lineTo(x + largeur, y);
+    if (niveau >= profondeur) return;
+    const tiers = largeur / 3;
+    dessinerSegment(x, tiers, niveau + 1);
+    dessinerSegment(x + tiers * 2, tiers, niveau + 1);
+  }
+  dessinerSegment(-1.0, 2.0, 0);
+}
+
+function dessinerCercleMonde(traceur, x, y, rayon, segments = 40) {
+  traceur.moveTo(x + rayon, y);
+  for (let i = 1; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    traceur.lineTo(x + Math.cos(angle) * rayon, y + Math.sin(angle) * rayon);
+  }
+}
+
+function dessinerApollonienMonde(traceur, x, y, rayon, niveau) {
+  if (niveau <= 0 || rayon < 0.01) return;
+  dessinerCercleMonde(traceur, x, y, rayon);
+  const r = rayon / 2;
+  dessinerApollonienMonde(traceur, x - r, y, r, niveau - 1);
+  dessinerApollonienMonde(traceur, x + r, y, r, niveau - 1);
+  dessinerApollonienMonde(traceur, x, y - r * 0.866, r, niveau - 1);
+}
+
+function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, rotation) {
+  traceur.moveTo(x, y);
+  for (const c of commands) {
+    if (c === "F") {
+      x += segment * Math.cos(angle);
+      y += segment * Math.sin(angle);
+      traceur.lineTo(x, y);
+    } else if (c === "+") {
+      angle += rotation;
+    } else if (c === "-") {
+      angle -= rotation;
+    }
+  }
+}
+
 function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const isBarnsley = params.fractal === "barnsley";
   const estSierpinski = params.fractal === "sierpinski";
@@ -908,126 +1005,14 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
 }
 
 function renderLineFractal(w, h) {
-  const fond = getPaletteBackground(params.palette);
-  ctx.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
-  ctx.fillRect(0, 0, w, h);
-
-  const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params.palette);
-  ctx.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
-  ctx.lineWidth = Math.max(1, Math.min(2, w / 800));
-  ctx.beginPath();
-
-  if (params.fractal === "koch") {
-    const n = Math.max(0, Math.min(6, Math.floor((params.maxIter - 64) / 128)));
-    const commands = kochGenerate(n);
-    const seg = (w * 0.8) / Math.pow(3, n);
-    const turn = Math.PI / 3;
-    let x = w * 0.1;
-    let y = h * 0.65;
-    let a = 0.0;
-    ctx.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctx.lineTo(x, y);
-      } else if (c === "+") {
-        a += turn;
-      } else if (c === "-") {
-        a -= turn;
-      }
-    }
-  } else if (params.fractal === "dragon_heighway" || params.fractal === "dragon_curve") {
-    const n = Math.max(8, Math.min(15, Math.floor(params.maxIter / 64) + 7));
-    const commands = genererDragonHeighway(n);
-    const seg = Math.min(w, h) * 0.6 / Math.pow(Math.SQRT2, n);
-    const turn = Math.PI / 2;
-    let x = w * 0.48;
-    let y = h * 0.55;
-    let a = 0.0;
-    ctx.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctx.lineTo(x, y);
-      } else if (c === "+") {
-        a += turn;
-      } else if (c === "-") {
-        a -= turn;
-      }
-    }
-  } else if (params.fractal === "cantor_set") {
-    ctx.lineWidth = Math.max(1.5, Math.min(5, h / 180));
-    dessinerCantor(ctx, w, h, params.maxIter);
-  } else if (params.fractal === "apollonian_gasket") {
-    ctx.lineWidth = Math.max(1, Math.min(2, w / 900));
-    dessinerApollonien(ctx, w * 0.5, h * 0.57, Math.min(w, h) * 0.22, Math.max(3, Math.min(6, Math.floor(params.maxIter / 80) + 2)));
-  } else if (params.fractal === "t_square_fractal") {
-    ctx.lineWidth = Math.max(1, Math.min(2, w / 900));
-    dessinerTSquare(ctx, w * 0.5, h * 0.5, Math.min(w, h) * 0.34, Math.max(3, Math.min(6, Math.floor(params.maxIter / 80) + 2)));
-  } else if (params.fractal === "h_fractal") {
-    dessinerHFractal(ctx, w * 0.5, h * 0.5, Math.min(w, h) * 0.45, Math.max(3, Math.min(6, Math.floor(params.maxIter / 80) + 2)));
-  } else if (params.fractal === "hilbert_curve") {
-    const n = Math.max(1, Math.min(5, Math.floor(params.maxIter / 80) + 1));
-    const commands = genererHilbert(n);
-    const seg = Math.min(w, h) * 0.72 / (Math.pow(2, n) - 1);
-    let x = w * 0.14;
-    let y = h * 0.86;
-    let a = -Math.PI / 2;
-    ctx.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctx.lineTo(x, y);
-      } else if (c === "+") {
-        a += Math.PI / 2;
-      } else if (c === "-") {
-        a -= Math.PI / 2;
-      }
-    }
-  } else if (params.fractal === "peano_curve") {
-    const n = Math.max(1, Math.min(3, Math.floor(params.maxIter / 112) + 1));
-    const commands = genererPeano(n);
-    const seg = Math.min(w, h) * 0.72 / (Math.pow(3, n) - 1);
-    let x = w * 0.14;
-    let y = h * 0.86;
-    let a = -Math.PI / 2;
-    ctx.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctx.lineTo(x, y);
-      } else if (c === "+") {
-        a += Math.PI / 2;
-      } else if (c === "-") {
-        a -= Math.PI / 2;
-      }
-    }
-  } else if (params.fractal === "arbre_pythagore") {
-    const profondeur = Math.max(5, Math.min(11, Math.floor(params.maxIter / 96) + 4));
-    function dessinerBranche(x, y, angle, taille, niveau) {
-      if (niveau <= 0) return;
-      const x1 = x + taille * Math.cos(angle);
-      const y1 = y - taille * Math.sin(angle);
-      ctx.moveTo(x, y);
-      ctx.lineTo(x1, y1);
-      dessinerBranche(x1, y1, angle - Math.PI / 5, taille * 0.72, niveau - 1);
-      dessinerBranche(x1, y1, angle + Math.PI / 4, taille * 0.68, niveau - 1);
-    }
-    dessinerBranche(w * 0.5, h * 0.92, Math.PI / 2, h * 0.16, profondeur);
-  }
-
-  ctx.stroke();
+  dessinerFractaleLineaire(ctx, w, h, view, params);
   const elapsed = (performance.now() - renderStart).toFixed(0);
   rendering = false;
   canvas.parentElement.classList.remove("rendering");
   updateStatusBar("Mode géométrique - " + elapsed + " ms", true);
 }
 
-function dessinerFractaleLineaire(ctxCible, w, h, renduParams) {
+function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
   const fond = getPaletteBackground(renduParams.palette);
   ctxCible.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
   ctxCible.fillRect(0, 0, w, h);
@@ -1036,108 +1021,44 @@ function dessinerFractaleLineaire(ctxCible, w, h, renduParams) {
   ctxCible.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
   ctxCible.lineWidth = Math.max(1, Math.min(2, w / 800));
   ctxCible.beginPath();
+  const traceur = creerTraceurMonde(ctxCible, w, h, vueCible);
 
   if (renduParams.fractal === "koch") {
     const n = Math.max(0, Math.min(6, Math.floor((renduParams.maxIter - 64) / 128)));
     const commands = kochGenerate(n);
-    const seg = (w * 0.8) / Math.pow(3, n);
-    const turn = Math.PI / 3;
-    let x = w * 0.1;
-    let y = h * 0.65;
-    let a = 0.0;
-    ctxCible.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctxCible.lineTo(x, y);
-      } else if (c === "+") {
-        a += turn;
-      } else if (c === "-") {
-        a -= turn;
-      }
-    }
+    dessinerCommandeLineaireMonde(traceur, commands, 0.05, -0.28, 0.0, 0.8 / Math.pow(3, n), Math.PI / 3);
   } else if (renduParams.fractal === "dragon_heighway" || renduParams.fractal === "dragon_curve") {
     const n = Math.max(8, Math.min(15, Math.floor(renduParams.maxIter / 64) + 7));
     const commands = genererDragonHeighway(n);
-    const seg = Math.min(w, h) * 0.6 / Math.pow(Math.SQRT2, n);
-    const turn = Math.PI / 2;
-    let x = w * 0.48;
-    let y = h * 0.55;
-    let a = 0.0;
-    ctxCible.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctxCible.lineTo(x, y);
-      } else if (c === "+") {
-        a += turn;
-      } else if (c === "-") {
-        a -= turn;
-      }
-    }
+    dessinerCommandeLineaireMonde(traceur, commands, -0.6, 0.0, 0.0, 1.7 / Math.pow(Math.SQRT2, n), Math.PI / 2);
   } else if (renduParams.fractal === "cantor_set") {
-    ctxCible.lineWidth = Math.max(1.5, Math.min(5, h / 180));
-    dessinerCantor(ctxCible, w, h, renduParams.maxIter);
+    dessinerCantorMonde(traceur, renduParams.maxIter);
   } else if (renduParams.fractal === "apollonian_gasket") {
-    ctxCible.lineWidth = Math.max(1, Math.min(2, w / 900));
-    dessinerApollonien(ctxCible, w * 0.5, h * 0.57, Math.min(w, h) * 0.22, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
+    dessinerApollonienMonde(traceur, 0.0, 0.55, 0.58, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
   } else if (renduParams.fractal === "t_square_fractal") {
-    ctxCible.lineWidth = Math.max(1, Math.min(2, w / 900));
-    dessinerTSquare(ctxCible, w * 0.5, h * 0.5, Math.min(w, h) * 0.34, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
+    dessinerTSquareMonde(traceur, 0.0, 0.0, 1.2, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
   } else if (renduParams.fractal === "h_fractal") {
-    dessinerHFractal(ctxCible, w * 0.5, h * 0.5, Math.min(w, h) * 0.45, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
+    dessinerHFractalMonde(traceur, 0.0, 0.0, 1.8, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
   } else if (renduParams.fractal === "hilbert_curve") {
     const n = Math.max(1, Math.min(5, Math.floor(renduParams.maxIter / 80) + 1));
     const commands = genererHilbert(n);
-    const seg = Math.min(w, h) * 0.72 / (Math.pow(2, n) - 1);
-    let x = w * 0.14;
-    let y = h * 0.86;
-    let a = -Math.PI / 2;
-    ctxCible.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctxCible.lineTo(x, y);
-      } else if (c === "+") {
-        a += Math.PI / 2;
-      } else if (c === "-") {
-        a -= Math.PI / 2;
-      }
-    }
+    dessinerCommandeLineaireMonde(traceur, commands, -0.8, 0.8, -Math.PI / 2, 1.6 / Math.max(1, (Math.pow(2, n) - 1)), Math.PI / 2);
   } else if (renduParams.fractal === "peano_curve") {
     const n = Math.max(1, Math.min(3, Math.floor(renduParams.maxIter / 112) + 1));
     const commands = genererPeano(n);
-    const seg = Math.min(w, h) * 0.72 / (Math.pow(3, n) - 1);
-    let x = w * 0.14;
-    let y = h * 0.86;
-    let a = -Math.PI / 2;
-    ctxCible.moveTo(x, y);
-    for (const c of commands) {
-      if (c === "F") {
-        x += seg * Math.cos(a);
-        y += seg * Math.sin(a);
-        ctxCible.lineTo(x, y);
-      } else if (c === "+") {
-        a += Math.PI / 2;
-      } else if (c === "-") {
-        a -= Math.PI / 2;
-      }
-    }
+    dessinerCommandeLineaireMonde(traceur, commands, -0.8, 0.8, -Math.PI / 2, 1.6 / Math.max(1, (Math.pow(3, n) - 1)), Math.PI / 2);
   } else if (renduParams.fractal === "arbre_pythagore") {
     const profondeur = Math.max(5, Math.min(11, Math.floor(renduParams.maxIter / 96) + 4));
     function dessinerBranche(x, y, angle, taille, niveau) {
       if (niveau <= 0) return;
       const x1 = x + taille * Math.cos(angle);
       const y1 = y - taille * Math.sin(angle);
-      ctxCible.moveTo(x, y);
-      ctxCible.lineTo(x1, y1);
+      traceur.moveTo(x, y);
+      traceur.lineTo(x1, y1);
       dessinerBranche(x1, y1, angle - Math.PI / 5, taille * 0.72, niveau - 1);
       dessinerBranche(x1, y1, angle + Math.PI / 4, taille * 0.68, niveau - 1);
     }
-    dessinerBranche(w * 0.5, h * 0.92, Math.PI / 2, h * 0.16, profondeur);
+    dessinerBranche(0.0, 1.35, Math.PI / 2, 0.42, profondeur);
   }
 
   ctxCible.stroke();
@@ -1330,7 +1251,7 @@ async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
     return;
   }
   if (LINE_FRACTALS.has(renduParams.fractal)) {
-    dessinerFractaleLineaire(ctxCible, w, h, renduParams);
+    dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams);
     return;
   }
   const image = ctxCible.createImageData(w, h);
@@ -1632,6 +1553,10 @@ function deplacerVue(deltaX, deltaY) {
   render();
 }
 
+function zoomerCentre(factor) {
+  zoomAt(canvas.width / 2, canvas.height / 2, factor);
+}
+
 function resetView() {
   const preset = params.fractal === "multibrot"
     ? getMultibrotPreset(params.multibrotPower)
@@ -1767,10 +1692,46 @@ btnPanRight.addEventListener("click", () => {
   deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
 });
 
+btnZoomIn.addEventListener("click", () => {
+  zoomerCentre(1.5);
+});
+
+btnZoomOut.addEventListener("click", () => {
+  zoomerCentre(1 / 1.5);
+});
+
 btnTogglePan.addEventListener("click", () => {
   const masque = panControls.classList.toggle("collapsed");
   btnTogglePan.textContent = masque ? "+" : "−";
   btnTogglePan.setAttribute("aria-label", masque ? "Afficher les contrôles de déplacement" : "Masquer les contrôles de déplacement");
+});
+
+window.addEventListener("keydown", (event) => {
+  const cible = event.target;
+  const etiquette = cible && typeof cible.tagName === "string" ? cible.tagName.toLowerCase() : "";
+  if (etiquette === "input" || etiquette === "select" || etiquette === "textarea" || (cible && cible.isContentEditable)) {
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
+  } else if (event.key === "ArrowDown") {
+    event.preventDefault();
+    deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
+  } else if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
+  } else if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    zoomerCentre(1.5);
+  } else if (event.key === "-" || event.key === "_") {
+    event.preventDefault();
+    zoomerCentre(1 / 1.5);
+  }
 });
 
 function lireEntier(input, fallback) {

@@ -35,6 +35,8 @@ def main() -> None:
         "btn-pan-down",
         "btn-pan-left",
         "btn-pan-right",
+        "btn-zoom-in",
+        "btn-zoom-out",
         "family-select",
         "fractal-select",
         "btn-toggle-pan",
@@ -49,6 +51,8 @@ def main() -> None:
         "btnPanDown",
         "btnPanLeft",
         "btnPanRight",
+        "btnZoomIn",
+        "btnZoomOut",
         "btnReset",
         "familySelect",
         "fractalSelect",
@@ -65,12 +69,19 @@ def main() -> None:
         js,
         "deplacerVue must update the view and trigger render()",
     )
+    require(
+        r"function zoomerCentre\(factor\)\s*\{\s*zoomAt\(canvas\.width / 2,\s*canvas\.height / 2,\s*factor\);",
+        js,
+        "zoomerCentre must zoom around the canvas center",
+    )
 
     button_expectations = {
         "btnPanUp": r'btnPanUp\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\);',
         "btnPanDown": r'btnPanDown\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*canvas\.height \* view\.pixelSize \* 0\.18\);',
         "btnPanLeft": r'btnPanLeft\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(-canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
         "btnPanRight": r'btnPanRight\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
+        "btnZoomIn": r'btnZoomIn\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1\.5\);',
+        "btnZoomOut": r'btnZoomOut\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1 / 1\.5\);',
         "btnReset": r'btnReset\.addEventListener\("click",\s*resetView\);',
         "familySelect": r'familySelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*const fractale = populateFractalSelect\(familySelect\.value,\s*null\);\s*setActiveFractal\(fractale\);',
         "fractalSelect": r'fractalSelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setActiveFractal\(fractalSelect\.value\);',
@@ -93,6 +104,14 @@ def main() -> None:
         js,
         "point rendering must receive the render token",
     )
+    require(
+        r'window\.addEventListener\("keydown",\s*\(event\)\s*=>\s*\{',
+        js,
+        "missing keyboard shortcut handler",
+    )
+    for key_name in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", '"+"', '"="', '"-"', '"_"']:
+        if key_name not in js:
+            fail(f"missing keyboard shortcut mapping for {key_name}")
 
     print("[ui-smoke] all checks passed")
 

@@ -116,9 +116,11 @@ const btnPanUp      = document.getElementById("btn-pan-up");
 const btnPanLeft    = document.getElementById("btn-pan-left");
 const btnPanRight   = document.getElementById("btn-pan-right");
 const btnPanDown    = document.getElementById("btn-pan-down");
+const btnTogglePan  = document.getElementById("btn-toggle-pan");
 const btnToggle      = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
 const sidebar        = document.getElementById("sidebar");
+const panControls    = document.getElementById("pan-controls");
 const zoomHint      = document.getElementById("zoom-hint");
 const badgeDiv      = document.getElementById("benchmark-badge");
 const badgeLoading  = document.getElementById("badge-loading");
@@ -1057,6 +1059,12 @@ btnPanLeft.addEventListener("click", () => {
 
 btnPanRight.addEventListener("click", () => {
   deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
+});
+
+btnTogglePan.addEventListener("click", () => {
+  const masque = panControls.classList.toggle("collapsed");
+  btnTogglePan.textContent = masque ? "+" : "−";
+  btnTogglePan.setAttribute("aria-label", masque ? "Afficher les contrôles de déplacement" : "Masquer les contrôles de déplacement");
 });
 
 btnToggle.addEventListener("click", () => {

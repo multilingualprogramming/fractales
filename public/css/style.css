@@ -177,12 +177,45 @@ body {
   backdrop-filter: blur(10px);
 }
 
+#pan-controls.collapsed {
+  padding-bottom: 8px;
+}
+
+#pan-controls.collapsed .pan-grid {
+  display: none;
+}
+
+.pan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .pan-title {
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
   text-align: center;
+}
+
+.pan-toggle-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--text-bright);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.pan-toggle-btn:hover {
+  border-color: var(--border-glow);
+  background: rgba(0, 212, 255, 0.16);
 }
 
 .pan-grid {

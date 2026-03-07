@@ -1,6 +1,6 @@
 # Explorateur de Fractales
 
-Application GitHub Pages qui rend 33 fractales en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend 38 fractales en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -18,7 +18,7 @@ sélectionnée** et son équivalent **Python transpilé** — les deux onglets s
 | Dynamique | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon |
 | IFS | Barnsley (fougère), Sierpinski, Tapis de Sierpinski |
 | L-système | Koch (flocon de neige), Dragon de Heighway, Arbre de Pythagore |
-| Magnétiques | Magnet I, Magnet II, Lambda (logistique complexe) |
+| Magnétiques | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
 
 ---
 
@@ -122,6 +122,30 @@ déf lambda_fractale(cx, cy, max_iter):
     ...
 ```
 
+### Variantes magnétiques supplémentaires
+
+```text
+déf magnet3(cx, cy, max_iter):
+    # Variante rationnelle cubique de la famille Magnet
+    ...
+
+déf lambda_cubique(cx, cy, max_iter):
+    # z_{n+1} = c · z · (1 − z²)
+    ...
+
+déf magnet_cosinus(cx, cy, max_iter):
+    # Paramètre magnétique modulé par cos/sin
+    ...
+
+déf magnet_sinus(cx, cy, max_iter):
+    # Variante magnétique sinusoïdale
+    ...
+
+déf nova_magnetique(cx, cy, max_iter):
+    # Croisement entre Nova et transformation magnétique
+    ...
+```
+
 ---
 
 ## Mots-clés multilingual français
@@ -162,7 +186,7 @@ multilingualprogramming        (bibliothèque Python)
 index.html
   └── renderer.js (module ES)
         ├── WebAssembly.instantiateStreaming("mandelbrot.wasm")
-        │     └── exports: mandelbrot / julia / … / magnet1 / magnet2 / lambda_fractale
+        │     └── exports: mandelbrot / julia / … / magnet1 / magnet2 / magnet3 / lambda_fractale / lambda_cubique / magnet_cosinus / magnet_sinus / nova_magnetique
         ├── Rendu progressif par tranches (requestAnimationFrame)
         ├── FRACTAL_SOURCE_MAP  → module .ml contenant la fractale active
         ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py") (contextuel)
@@ -185,7 +209,7 @@ index.html
 │   ├── fractales_dynamique.ml     # Newton, Phoenix
 │   ├── fractales_ifs.ml           # Barnsley (fougère), Sierpinski
 │   ├── fractales_lsystem.ml       # Koch (flocon de neige)
-│   ├── fractales_magnetiques.ml   # ★ Magnet I, Magnet II, Lambda
+│   ├── fractales_magnetiques.ml   # ★ Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
 │   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super)
 ├── scripts/
 │   ├── compile_wasm.ml            # Pipeline de build (source multilingual)

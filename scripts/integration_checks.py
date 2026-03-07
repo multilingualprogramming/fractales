@@ -44,7 +44,12 @@ REQUIRED_EXPORTS = {
     "arbre_pythagore",
     "magnet1",
     "magnet2",
+    "magnet3",
     "lambda_fractale",
+    "lambda_cubique",
+    "magnet_cosinus",
+    "magnet_sinus",
+    "nova_magnetique",
 }
 
 

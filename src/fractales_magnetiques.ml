@@ -13,6 +13,30 @@
 # Utilitaires arithmétiques complexes
 # ============================================================
 
+déf normaliser_angle_magnetique(x):
+    soit angle = x
+    soit deux_pi = 6.283185307179586
+    tantque angle > 3.141592653589793:
+        angle = angle - deux_pi
+    tantque angle < -3.141592653589793:
+        angle = angle + deux_pi
+    retour angle
+
+déf sinus_magnetique(x):
+    soit angle = normaliser_angle_magnetique(x)
+    soit angle2 = angle * angle
+    soit angle3 = angle2 * angle
+    soit angle5 = angle3 * angle2
+    soit angle7 = angle5 * angle2
+    retour angle - angle3 / 6.0 + angle5 / 120.0 - angle7 / 5040.0
+
+déf cosinus_magnetique(x):
+    soit angle = normaliser_angle_magnetique(x)
+    soit angle2 = angle * angle
+    soit angle4 = angle2 * angle2
+    soit angle6 = angle4 * angle2
+    retour 1.0 - angle2 / 2.0 + angle4 / 24.0 - angle6 / 720.0
+
 déf complexe_diviser_re(a_re, a_im, b_re, b_im):
     soit denom = b_re * b_re + b_im * b_im
     si denom < 1.0e-12:
@@ -128,5 +152,147 @@ déf lambda_fractale(cx, cy, max_iter):
         # z_{n+1} = c · p = (cx·p_re - cy·p_im, cx·p_im + cy·p_re)
         x = cx * p_re - cy * p_im
         y = cx * p_im + cy * p_re
+        iter = iter + 1.0
+    retour iter
+
+# ============================================================
+# Magnet type III
+# Variante rationnelle d'ordre cubique avec dénominateur décalé
+# ============================================================
+
+déf magnet3(cx, cy, max_iter):
+    soit rayon_echappement_carre = 10000.0
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > rayon_echappement_carre:
+            retour iter
+        soit x2 = x * x
+        soit y2 = y * y
+        soit z3_re = x * x2 - 3.0 * x * y2
+        soit z3_im = 3.0 * x2 * y - y * y2
+        soit z2_re = x2 - y2
+        soit z2_im = 2.0 * x * y
+        soit num_re = z3_re + (cx - 1.0) * z2_re - cy * z2_im + cx - 1.0
+        soit num_im = z3_im + (cx - 1.0) * z2_im + cy * z2_re + cy
+        soit den_re = 3.0 * z2_re + 2.0 * x + cx - 2.0
+        soit den_im = 3.0 * z2_im + 2.0 * y + cy
+        soit q_re = complexe_diviser_re(num_re, num_im, den_re, den_im)
+        soit q_im = complexe_diviser_im(num_re, num_im, den_re, den_im)
+        x = q_re * q_re - q_im * q_im
+        y = 2.0 * q_re * q_im
+        iter = iter + 1.0
+    retour iter
+
+# ============================================================
+# Lambda cubique
+# z_{n+1} = c · z · (1 - z²), z₀ = 0.5
+# ============================================================
+
+déf lambda_cubique(cx, cy, max_iter):
+    soit rayon_echappement_carre = 10000.0
+    soit x = 0.5
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > rayon_echappement_carre:
+            retour iter
+        soit z2_re = x * x - y * y
+        soit z2_im = 2.0 * x * y
+        soit w_re = 1.0 - z2_re
+        soit w_im = -z2_im
+        soit p_re = x * w_re - y * w_im
+        soit p_im = x * w_im + y * w_re
+        x = cx * p_re - cy * p_im
+        y = cx * p_im + cy * p_re
+        iter = iter + 1.0
+    retour iter
+
+# ============================================================
+# Magnet cosinus
+# c est déformé par cos/sin avant d'entrer dans la transformation rationnelle
+# ============================================================
+
+déf magnet_cosinus(cx, cy, max_iter):
+    soit rayon_echappement_carre = 10000.0
+    soit c_re = cosinus_magnetique(cx) - cy * 0.25
+    soit c_im = sinus_magnetique(cy) + cx * 0.15
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > rayon_echappement_carre:
+            retour iter
+        soit num_re = x * x - y * y + c_re - 1.0
+        soit num_im = 2.0 * x * y + c_im
+        soit den_re = 2.0 * x + c_re - 2.0
+        soit den_im = 2.0 * y + c_im
+        soit q_re = complexe_diviser_re(num_re, num_im, den_re, den_im)
+        soit q_im = complexe_diviser_im(num_re, num_im, den_re, den_im)
+        x = q_re * q_re - q_im * q_im
+        y = 2.0 * q_re * q_im
+        iter = iter + 1.0
+    retour iter
+
+# ============================================================
+# Magnet sinus
+# Variante magnétique basée sur une modulation sinusoïdale du paramètre
+# ============================================================
+
+déf magnet_sinus(cx, cy, max_iter):
+    soit rayon_echappement_carre = 10000.0
+    soit c_re = sinus_magnetique(cx) - cy * 0.18
+    soit c_im = cosinus_magnetique(cy) + cx * 0.12
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > rayon_echappement_carre:
+            retour iter
+        soit x2 = x * x
+        soit y2 = y * y
+        soit num_re = x2 - y2 + c_re - 1.0
+        soit num_im = 2.0 * x * y + c_im
+        soit den_re = 2.0 * x + c_re - 2.0
+        soit den_im = 2.0 * y + c_im
+        soit q_re = complexe_diviser_re(num_re, num_im, den_re, den_im)
+        soit q_im = complexe_diviser_im(num_re, num_im, den_re, den_im)
+        x = q_re * q_re - q_im * q_im + 0.05 * c_re
+        y = 2.0 * q_re * q_im + 0.05 * c_im
+        iter = iter + 1.0
+    retour iter
+
+# ============================================================
+# Nova magnétique
+# Croisement entre une itération de Nova et une attraction magnétique
+# ============================================================
+
+déf nova_magnetique(cx, cy, max_iter):
+    soit rayon_echappement_carre = 10000.0
+    soit x = cx
+    soit y = cy
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > rayon_echappement_carre:
+            retour iter
+        soit x2 = x * x
+        soit y2 = y * y
+        soit z3_re = x * x2 - 3.0 * x * y2
+        soit z3_im = 3.0 * x2 * y - y * y2
+        soit z2_re = x2 - y2
+        soit z2_im = 2.0 * x * y
+        soit f_re = z3_re - 1.0
+        soit f_im = z3_im
+        soit den_re = 3.0 * z2_re + cx - 1.0
+        soit den_im = 3.0 * z2_im + cy
+        soit delta_re = complexe_diviser_re(f_re, f_im, den_re, den_im)
+        soit delta_im = complexe_diviser_im(f_re, f_im, den_re, den_im)
+        soit q_re = x - 0.55 * delta_re
+        soit q_im = y - 0.55 * delta_im
+        soit mag_re = complexe_diviser_re(q_re, q_im, q_re + cx - 1.5, q_im + cy)
+        soit mag_im = complexe_diviser_im(q_re, q_im, q_re + cx - 1.5, q_im + cy)
+        x = mag_re * mag_re - mag_im * mag_im
+        y = 2.0 * mag_re * mag_im
         iter = iter + 1.0
     retour iter

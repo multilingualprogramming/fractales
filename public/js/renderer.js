@@ -67,7 +67,12 @@ const VIEW_PRESETS = {
   arbre_pythagore: { centerX: 0.0, centerY: 0.7, span: 2.6 },
   magnet1:      { centerX: 1.5,  centerY: 0.0, span: 4.0 },
   magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
+  magnet3:      { centerX: 1.2,  centerY: 0.0, span: 4.4 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
+  lambda_cubique: { centerX: 0.0, centerY: 0.0, span: 6.2 },
+  magnet_cosinus: { centerX: 0.0, centerY: 0.0, span: 4.6 },
+  magnet_sinus:   { centerX: 0.0, centerY: 0.0, span: 4.6 },
+  nova_magnetique: { centerX: 0.0, centerY: 0.0, span: 3.2 },
 };
 
 function getMultibrotPreset(power) {
@@ -122,39 +127,36 @@ const badgeLoading  = document.getElementById("badge-loading");
 // t = 1 (intérieur de l'ensemble) ? noir.
 
 const PALETTES = {
-  /** Feu : noir ? rouge ? orange ? jaune ? blanc */
-  feu: [
-    [0,   0,   0  ],
-    [90,  0,   0  ],
-    [180, 0,   0  ],
-    [255, 60,  0  ],
-    [255, 150, 0  ],
-    [255, 220, 30 ],
-    [255, 255, 160],
-    [255, 255, 255],
-  ],
-  /** Océan : noir ? bleu profond ? bleu ? cyan ? blanc */
-  ocean: [
-    [0,   0,   0  ],
-    [0,   0,   40 ],
-    [0,   20,  100],
-    [0,   80,  180],
-    [0,   160, 220],
-    [40,  210, 240],
-    [160, 240, 255],
-    [255, 255, 255],
-  ],
-  /** Aurora : noir ? vert ? indigo ? violet ? rose */
-  aurora: [
-    [0,   0,   0  ],
-    [0,   15,  20 ],
-    [0,   80,  60 ],
-    [0,   180, 90 ],
-    [50,  120, 210],
-    [157, 78,  221],
-    [220, 100, 200],
-    [255, 200, 240],
-  ],
+  feu: {
+    fond: [8, 2, 0],
+    interieur: [26, 8, 2],
+    stops: [[30, 4, 0], [90, 0, 0], [170, 20, 0], [235, 70, 10], [255, 145, 20], [255, 200, 40], [255, 236, 120], [255, 255, 235]],
+  },
+  ocean: {
+    fond: [2, 8, 18],
+    interieur: [6, 18, 34],
+    stops: [[5, 20, 34], [0, 52, 92], [0, 96, 150], [0, 142, 192], [26, 182, 220], [88, 220, 236], [176, 242, 248], [245, 255, 255]],
+  },
+  aurora: {
+    fond: [4, 10, 14],
+    interieur: [10, 20, 24],
+    stops: [[12, 26, 34], [0, 82, 70], [0, 156, 108], [44, 132, 206], [108, 96, 224], [176, 82, 216], [232, 126, 196], [255, 224, 236]],
+  },
+  braise: {
+    fond: [14, 5, 2],
+    interieur: [30, 10, 4],
+    stops: [[44, 8, 2], [110, 16, 0], [176, 40, 4], [220, 84, 10], [248, 138, 22], [255, 190, 74], [255, 230, 150], [255, 248, 228]],
+  },
+  lagon: {
+    fond: [2, 12, 16],
+    interieur: [4, 22, 28],
+    stops: [[8, 34, 46], [0, 74, 86], [0, 118, 126], [0, 156, 156], [24, 194, 178], [96, 226, 208], [182, 244, 230], [244, 255, 250]],
+  },
+  crepuscule: {
+    fond: [10, 8, 18],
+    interieur: [20, 18, 34],
+    stops: [[28, 22, 48], [60, 34, 92], [104, 46, 142], [156, 62, 172], [214, 96, 158], [246, 146, 122], [255, 204, 162], [255, 242, 224]],
+  },
 };
 
 const FRACTAL_FAMILIES = [
@@ -218,7 +220,12 @@ const FRACTAL_FAMILIES = [
     fractales: [
       ["magnet1", "Magnet I"],
       ["magnet2", "Magnet II"],
+      ["magnet3", "Magnet III"],
       ["lambda_fractale", "Lambda (logistique)"],
+      ["lambda_cubique", "Lambda cubique"],
+      ["magnet_cosinus", "Magnet cosinus"],
+      ["magnet_sinus", "Magnet sinus"],
+      ["nova_magnetique", "Nova magnétique"],
     ],
   },
   {
@@ -242,15 +249,15 @@ const FRACTAL_FAMILY_BY_NAME = Object.fromEntries(
  * @returns {[number, number, number]}
  */
 function getColor(iter, max, name) {
-  if (iter >= max) return [0, 0, 0];  // intérieur ? noir
-  const stops = PALETTES[name] ?? PALETTES.feu;
+  if (iter >= max) return getPaletteInterior(name);
+  const stops = getPaletteStops(name);
   // normaliser dans [0, 1] avec légère correction logarithmique
   const t = Math.sqrt(iter / max);
   return getColorFromRatio(t, stops);
 }
 
 function getColorFromRatio(t, paletteOrName) {
-  const stops = Array.isArray(paletteOrName) ? paletteOrName : (PALETTES[paletteOrName] ?? PALETTES.feu);
+  const stops = Array.isArray(paletteOrName) ? paletteOrName : getPaletteStops(paletteOrName);
   const normalise = Math.max(0, Math.min(0.999999, t));
   const scaled = normalise * (stops.length - 1);
   const lo = Math.floor(scaled) | 0;
@@ -265,8 +272,24 @@ function getColorFromRatio(t, paletteOrName) {
   ];
 }
 
+function getPaletteConfig(name) {
+  return PALETTES[name] ?? PALETTES.feu;
+}
+
+function getPaletteStops(name) {
+  return getPaletteConfig(name).stops;
+}
+
+function getPaletteBackground(name) {
+  return getPaletteConfig(name).fond;
+}
+
+function getPaletteInterior(name) {
+  return getPaletteConfig(name).interieur;
+}
+
 function getBasinColor(iter, max, name) {
-  if (iter >= max) return [0, 0, 0];
+  if (iter >= max) return getPaletteInterior(name);
   const base = Math.floor(iter);
   const fraction = iter - base;
   const progression = Math.min(0.95, Math.sqrt(Math.max(0, base) / Math.max(1, max)));
@@ -279,8 +302,14 @@ function getBasinColor(iter, max, name) {
 }
 
 function coloriserDensite(data, densites, maxDensite, palette) {
+  const fond = getPaletteBackground(palette);
   if (maxDensite <= 0) {
-    data.fill(0);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = fond[0];
+      data[i + 1] = fond[1];
+      data[i + 2] = fond[2];
+      data[i + 3] = 255;
+    }
     return;
   }
   const logMax = Math.log(1 + maxDensite);
@@ -288,9 +317,9 @@ function coloriserDensite(data, densites, maxDensite, palette) {
     const densite = densites[i];
     const base = i * 4;
     if (densite <= 0) {
-      data[base] = 0;
-      data[base + 1] = 0;
-      data[base + 2] = 0;
+      data[base] = fond[0];
+      data[base + 1] = fond[1];
+      data[base + 2] = fond[2];
       data[base + 3] = 255;
       continue;
     }
@@ -550,7 +579,8 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
 }
 
 function renderLineFractal(w, h) {
-  ctx.fillStyle = "rgb(0, 0, 0)";
+  const fond = getPaletteBackground(params.palette);
+  ctx.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
   ctx.fillRect(0, 0, w, h);
 
   const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params.palette);
@@ -703,7 +733,12 @@ async function loadWasm() {
       arbre_pythagore: typeof exports.arbre_pythagore === "function" ? exports.arbre_pythagore : null,
       magnet1: typeof exports.magnet1 === "function" ? exports.magnet1 : null,
       magnet2: typeof exports.magnet2 === "function" ? exports.magnet2 : null,
+      magnet3: typeof exports.magnet3 === "function" ? exports.magnet3 : null,
       lambda_fractale: typeof exports.lambda_fractale === "function" ? exports.lambda_fractale : null,
+      lambda_cubique: typeof exports.lambda_cubique === "function" ? exports.lambda_cubique : null,
+      magnet_cosinus: typeof exports.magnet_cosinus === "function" ? exports.magnet_cosinus : null,
+      magnet_sinus: typeof exports.magnet_sinus === "function" ? exports.magnet_sinus : null,
+      nova_magnetique: typeof exports.nova_magnetique === "function" ? exports.nova_magnetique : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
@@ -763,7 +798,6 @@ function render() {
   updateStatusBar("Rendering...");
 
   if (POINT_FRACTALS.has(params.fractal)) {
-    data.fill(0);
     renderPointFractal(w, h, data, cx0, cy0, ps);
     return;
   }
@@ -775,7 +809,8 @@ function render() {
 
   const { fn, backend } = getActiveFractalFn();
   if (!fn) {
-    ctx.fillStyle = "rgb(0, 0, 0)";
+    const fond = getPaletteBackground(params.palette);
+    ctx.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
     ctx.fillRect(0, 0, w, h);
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
@@ -786,6 +821,8 @@ function render() {
   let row = 0;
   const ROWS_PER_FRAME = 8;
   const estFractaleBassin = params.fractal === "newton" || params.fractal === "bassin_newton_generalise" || params.fractal === "orbitale_de_nova";
+  const estFractaleLyapunov = params.fractal === "lyapunov" || params.fractal === "lyapunov_multisequence";
+  const estFractaleMagnetique = params.fractal === "magnet1" || params.fractal === "magnet2" || params.fractal === "magnet3" || params.fractal === "lambda_fractale" || params.fractal === "lambda_cubique" || params.fractal === "magnet_cosinus" || params.fractal === "magnet_sinus" || params.fractal === "nova_magnetique";
 
   function step() {
     const endRow = Math.min(row + ROWS_PER_FRAME, h);
@@ -811,10 +848,22 @@ function render() {
           // Nova converges very quickly in large regions; stretch the returned
           // iteration bands so all palettes show visible separation.
           iterColor = Math.min(max - 1, 18 + iter * 10);
+        } else if (estFractaleLyapunov && iter < max) {
+          iterColor = Math.min(max - 1, 10 + iter * 1.8);
+        } else if (estFractaleMagnetique && iter < max) {
+          iterColor = Math.min(max - 1, 14 + iter * 4.2);
         }
-        const [r, g, b] = estFractaleBassin
-          ? getBasinColor(iter, max, pal)
-          : getColor(iterColor, max, pal);
+        let couleur;
+        if (estFractaleBassin) {
+          couleur = getBasinColor(iter, max, pal);
+        } else if (estFractaleLyapunov) {
+          couleur = getColorFromRatio(0.12 + Math.pow(Math.min(0.999, iterColor / max), 0.85) * 0.82, pal);
+        } else if (estFractaleMagnetique) {
+          couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / max), 0.68) * 0.88, pal);
+        } else {
+          couleur = getColor(iterColor, max, pal);
+        }
+        const [r, g, b] = couleur;
         const i = base + px * 4;
         data[i] = r;
         data[i + 1] = g;
@@ -1055,7 +1104,12 @@ const FRACTAL_SOURCE_MAP = {
   arbre_pythagore:             "fractales_lsystem",
   magnet1:                     "fractales_magnetiques",
   magnet2:                     "fractales_magnetiques",
+  magnet3:                     "fractales_magnetiques",
   lambda_fractale:             "fractales_magnetiques",
+  lambda_cubique:              "fractales_magnetiques",
+  magnet_cosinus:              "fractales_magnetiques",
+  magnet_sinus:                "fractales_magnetiques",
+  nova_magnetique:             "fractales_magnetiques",
 };
 
 /** Cache : { moduleName: { mlHtml, pyHtml } } */
@@ -1160,7 +1214,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|koch_generer|genererDragonHeighway|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|koch_generer|genererDragonHeighway|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
@@ -1183,7 +1237,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|lambda_fractale|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|barnsley|sierpinski|tapis_sierpinski|koch|dragon_heighway|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|koch_generer|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }

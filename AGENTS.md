@@ -43,6 +43,7 @@ Run these checks after meaningful changes:
 node --check public\js\renderer.js
 python scripts\compile_wasm.py
 python scripts\integration_checks.py
+python scripts\ui_smoke_checks.py
 ```
 
 ## Editing Notes

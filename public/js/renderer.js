@@ -108,6 +108,8 @@ let wasmAvailable = false;
 let renderStart = 0;
 /** True si un rendu est en cours */
 let rendering = false;
+/** Identifiant monotone pour invalider les rendus obsolètes */
+let renderToken = 0;
 /** ImageData réutilisable */
 let imageDataBuffer = null;
 let vueExportDepart = null;
@@ -766,7 +768,7 @@ function dessinerApollonien(ctxCible, x, y, rayon, niveau) {
   dessinerApollonien(ctxCible, x, y - r * 0.866, r, niveau - 1);
 }
 
-function renderPointFractal(w, h, data, cx0, cy0, ps) {
+function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const isBarnsley = params.fractal === "barnsley";
   const estSierpinski = params.fractal === "sierpinski";
   const estTapis = params.fractal === "tapis_sierpinski";
@@ -814,6 +816,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
   };
 
   const step = () => {
+    if (token !== renderToken) return;
     const end = Math.min(emitted + pointsPerFrame, pointsTarget);
     while (emitted < end) {
       if (estBuddhabrot) {
@@ -888,10 +891,12 @@ function renderPointFractal(w, h, data, cx0, cy0, ps) {
       }
     }
     coloriserDensite(data, densites, maxDensite, params.palette);
+    if (token !== renderToken) return;
     ctx.putImageData(imageDataBuffer, 0, 0);
     if (emitted < pointsTarget) {
       requestAnimationFrame(step);
     } else {
+      if (token !== renderToken) return;
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
@@ -1479,7 +1484,7 @@ function resizeCanvas() {
  * Le rendu est découpé en tranches (rows par frame) pour rester réactif.
  */
 function render() {
-  if (rendering) return;
+  const token = ++renderToken;
 
   resizeCanvas();
   const w = canvas.width;
@@ -1503,7 +1508,7 @@ function render() {
   updateStatusBar("Rendu en cours…");
 
   if (POINT_FRACTALS.has(params.fractal)) {
-    renderPointFractal(w, h, data, cx0, cy0, ps);
+    renderPointFractal(w, h, data, cx0, cy0, ps, token);
     return;
   }
 
@@ -1530,6 +1535,7 @@ function render() {
   const estFractaleMagnetique = params.fractal === "magnet1" || params.fractal === "magnet2" || params.fractal === "magnet3" || params.fractal === "lambda_fractale" || params.fractal === "lambda_cubique" || params.fractal === "magnet_cosinus" || params.fractal === "magnet_sinus" || params.fractal === "nova_magnetique";
 
   function step() {
+    if (token !== renderToken) return;
     const endRow = Math.min(row + ROWS_PER_FRAME, h);
     for (let py = row; py < endRow; py++) {
       const cy = cy0 + py * ps;
@@ -1582,6 +1588,7 @@ function render() {
     if (row < h) {
       requestAnimationFrame(step);
     } else {
+      if (token !== renderToken) return;
       const elapsed = (performance.now() - renderStart).toFixed(0);
       rendering = false;
       canvas.parentElement.classList.remove("rendering");

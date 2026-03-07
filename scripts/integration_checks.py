@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+import re
 from pathlib import Path
 
 
@@ -79,6 +80,48 @@ def require_file(path: Path) -> None:
         fail(f"missing file: {path.relative_to(ROOT)}")
 
 
+def extract_js_array(text: str, name: str) -> list[str]:
+    pattern = rf"const {re.escape(name)} = new Set\(\[(.*?)\]\);"
+    match = re.search(pattern, text, re.DOTALL)
+    if not match:
+        fail(f"unable to parse {name} from public/js/renderer.js")
+    values = re.findall(r'"([^"]+)"', match.group(1))
+    return values
+
+
+def extract_js_object_keys(text: str, name: str) -> list[str]:
+    pattern = rf"const {re.escape(name)} = \{{(.*?)\n\}};"
+    match = re.search(pattern, text, re.DOTALL)
+    if not match:
+        fail(f"unable to parse {name} from public/js/renderer.js")
+    return re.findall(r"^\s*([a-zA-Z0-9_]+)\s*:", match.group(1), re.MULTILINE)
+
+
+def extract_main_mode_names(text: str) -> set[str]:
+    mode_lists = re.findall(r'soit MODES_[A-Z_]+ = \[(.*?)\]', text)
+    if not mode_lists:
+        fail("unable to parse MODES_* from src/main.ml")
+    names: set[str] = set()
+    for raw_list in mode_lists:
+        names.update(re.findall(r'"([^"]+)"', raw_list))
+    return names
+
+
+def extract_source_function_names() -> set[str]:
+    names: set[str] = set()
+    for path in SRC.glob("*.ml"):
+        text = path.read_text(encoding="utf-8")
+        names.update(re.findall(r"^déf\s+([a-zA-Z0-9_]+)\s*\(", text, re.MULTILINE))
+    return names
+
+
+def extract_renderer_family_names(text: str) -> set[str]:
+    family_match = re.search(r"const FRACTAL_FAMILIES = \[(.*?)\n\];", text, re.DOTALL)
+    if not family_match:
+        fail("unable to parse FRACTAL_FAMILIES from public/js/renderer.js")
+    return set(re.findall(r'\["([^"]+)",\s*"[^"]+"\]', family_match.group(1)))
+
+
 def check_wat() -> None:
     wat_path = PUBLIC / "main.wat"
     require_file(wat_path)
@@ -121,12 +164,76 @@ def check_renderer_contract() -> None:
         if marker in text:
             fail(f"renderer.js contains encoding artifact marker: {marker!r}")
 
+    point_fractals = set(extract_js_array(text, "POINT_FRACTALS"))
+    line_fractals = set(extract_js_array(text, "LINE_FRACTALS"))
+    view_presets = set(extract_js_object_keys(text, "VIEW_PRESETS"))
+    source_map = set(extract_js_object_keys(text, "FRACTAL_SOURCE_MAP"))
+    families = extract_renderer_family_names(text)
+    wasm_keys = set(
+        re.findall(
+            r'([a-zA-Z0-9_]+):\s*typeof exports\.\1 === "function"',
+            text,
+        )
+    )
+    if not wasm_keys:
+        fail("unable to parse wasmFunctions entries from public/js/renderer.js")
+
+    special_non_fractal_exports = {
+        "interpoler_lineaire",
+        "interpoler_logarithmique",
+        "ajuster_iterations_export",
+        "mandelbrot_classe",
+    }
+    registered_fractals = REQUIRED_EXPORTS - special_non_fractal_exports
+
+    missing_family = sorted(registered_fractals - families)
+    if missing_family:
+        fail(f"fractals missing from FRACTAL_FAMILIES: {missing_family}")
+
+    missing_presets = sorted(registered_fractals - view_presets)
+    if missing_presets:
+        fail(f"fractals missing from VIEW_PRESETS: {missing_presets}")
+
+    missing_source_map = sorted(registered_fractals - source_map)
+    if missing_source_map:
+        fail(f"fractals missing from FRACTAL_SOURCE_MAP: {missing_source_map}")
+
+    missing_wasm_keys = sorted(registered_fractals - wasm_keys)
+    if missing_wasm_keys:
+        fail(f"fractals missing from wasmFunctions mapping: {missing_wasm_keys}")
+
+    render_classified = point_fractals | line_fractals | wasm_keys
+    unclassified = sorted(registered_fractals - render_classified)
+    if unclassified:
+        fail(f"fractals not classified for rendering: {unclassified}")
+
 
 def check_source_keywords() -> None:
     for path in SRC.glob("*.ml"):
         text = path.read_text(encoding="utf-8")
         if "fonction " in text:
             fail(f"legacy keyword 'fonction' still present in {path.relative_to(ROOT)}")
+
+
+def check_fractal_registration_consistency() -> None:
+    main_text = (SRC / "main.ml").read_text(encoding="utf-8")
+    renderer_text = (PUBLIC / "js" / "renderer.js").read_text(encoding="utf-8")
+
+    main_names = extract_main_mode_names(main_text)
+    source_functions = extract_source_function_names()
+    renderer_names = extract_renderer_family_names(renderer_text)
+
+    missing_source_impl = sorted((main_names - {"mandelbrot_classe"}) - source_functions)
+    if missing_source_impl:
+        fail(f"fractals registered in src/main.ml without source implementation: {missing_source_impl}")
+
+    missing_in_renderer = sorted(main_names - renderer_names)
+    if missing_in_renderer:
+        fail(f"fractals registered in src/main.ml but missing from renderer families: {missing_in_renderer}")
+
+    missing_in_exports = sorted((main_names - {"mandelbrot_classe"}) - REQUIRED_EXPORTS)
+    if missing_in_exports:
+        fail(f"fractals registered in src/main.ml but missing from REQUIRED_EXPORTS: {missing_in_exports}")
 
 
 def main() -> None:
@@ -140,6 +247,7 @@ def main() -> None:
     check_wasm_exports()
     check_renderer_contract()
     check_source_keywords()
+    check_fractal_registration_consistency()
 
     print("[integration] all checks passed")
 

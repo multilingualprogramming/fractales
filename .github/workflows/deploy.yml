@@ -74,6 +74,9 @@ jobs:
       - name: Exécuter les tests d'intégration
         run: python scripts/integration_checks.py
 
+      - name: Exécuter les smoke tests UI
+        run: python scripts/ui_smoke_checks.py
+
       - name: Vérifier la syntaxe JavaScript (Node)
         run: node --check public/js/renderer.js
 

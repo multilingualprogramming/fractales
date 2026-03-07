@@ -8,6 +8,7 @@ importer fractales_variantes
 importer fractales_ifs
 importer fractales_lsystem
 importer fractales_magnetiques
+importer fractales_export
 importer fractales_classes_compat
 #
 # Module orienté objet (transpilation Python uniquement) :

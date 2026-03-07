@@ -8,6 +8,11 @@ La barre latérale affiche le **code source `.ml` du module contenant la fractal
 sélectionnée** et son équivalent **Python transpilé** — les deux onglets se mettent
 à jour dynamiquement à chaque changement de fractale.
 
+L'application peut aussi **exporter la zone courante en PNG** et **générer une
+vidéo WebM de zoom**. La planification d'export reste décrite en **français
+multilingual** dans `fractales_export.ml`, tandis que le navigateur gère le
+rendu hors écran, l'encodage et le téléchargement.
+
 ---
 
 ## Fractales disponibles
@@ -31,6 +36,7 @@ src/
   fractales_dynamique.ml       │  → compilés vers WebAssembly (WASM)
   fractales_ifs.ml             │
   fractales_lsystem.ml         │
+  fractales_export.ml          │  aides d'interpolation/export en français
   fractales_magnetiques.ml     ┘
   fractales_classes.ml         ← OOP (classe/soi/super) → Python uniquement
   main.ml                      ← point d'entrée humain (imports + assertions)
@@ -186,12 +192,13 @@ multilingualprogramming        (bibliothèque Python)
 index.html
   └── renderer.js (module ES)
         ├── WebAssembly.instantiateStreaming("mandelbrot.wasm")
-        │     └── exports: mandelbrot / julia / … / magnet1 / magnet2 / magnet3 / lambda_fractale / lambda_cubique / magnet_cosinus / magnet_sinus / nova_magnetique
+        │     └── exports: mandelbrot / julia / … / magnet1 / magnet2 / magnet3 / lambda_fractale / lambda_cubique / magnet_cosinus / magnet_sinus / nova_magnetique / interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export
         ├── Rendu progressif par tranches (requestAnimationFrame)
         ├── FRACTAL_SOURCE_MAP  → module .ml contenant la fractale active
         ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py") (contextuel)
-        ├── Palettes : Feu / Océan / Aurora
+        ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule
         ├── Zoom/pan : clic, molette, pincement tactile
+        ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom
         └── fetch("benchmark.json") → badge de performance
 ```
 
@@ -209,6 +216,7 @@ index.html
 │   ├── fractales_dynamique.ml     # Newton, Phoenix
 │   ├── fractales_ifs.ml           # Barnsley (fougère), Sierpinski
 │   ├── fractales_lsystem.ml       # Koch (flocon de neige)
+│   ├── fractales_export.ml        # ★ Interpolation et réglages d'export en français
 │   ├── fractales_magnetiques.ml   # ★ Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
 │   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super)
 ├── scripts/
@@ -217,7 +225,7 @@ index.html
 │   └── integration_checks.py      # Tests d'intégration CI
 ├── public/                        # Racine statique déployée sur GitHub Pages
 │   ├── index.html
-│   ├── js/renderer.js             # Chargeur WASM + rendu canvas + affichage contextuel
+│   ├── js/renderer.js             # Chargeur WASM + rendu canvas + export image/vidéo
 │   ├── css/style.css
 │   ├── mandelbrot.wasm            # ← généré (binaire WebAssembly)
 │   ├── main.ml / main_wasm_bundle.ml
@@ -253,6 +261,21 @@ python -m http.server 8080 --directory public
 
 > Les fichiers `.wasm` doivent être servis avec le MIME `application/wasm`.
 > Le serveur intégré Python gère cela automatiquement depuis Python 3.7+.
+
+---
+
+## Export
+
+Le bouton `Exporter` ouvre un panneau avec trois fonctions :
+
+- `PNG courant` : enregistre le canevas visible tel quel.
+- `PNG haute résolution` : relance le rendu hors écran avec une largeur et une hauteur choisies.
+- `Créer la vidéo` : interpole entre une vue de départ et une vue d'arrivée pour produire un zoom `WebM`.
+
+La séparation des rôles reste volontaire :
+
+- `src/fractales_export.ml` contient les helpers français `interpoler_lineaire`, `interpoler_logarithmique` et `ajuster_iterations_export`.
+- `public/js/renderer.js` pilote le rendu hors écran, `MediaRecorder`, `toBlob()` et le téléchargement des fichiers.
 
 ---
 

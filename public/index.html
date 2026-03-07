@@ -87,6 +87,61 @@
           </div>
         </div>
 
+        <section id="export-panel" class="hidden" aria-label="Panneau d'export">
+          <div class="export-header">
+            <h3>Export</h3>
+            <button id="btn-close-export" class="btn export-close-btn" type="button" aria-label="Fermer le panneau d'export">✕</button>
+          </div>
+
+          <div class="export-section">
+            <div class="export-section-title">Image</div>
+            <div class="export-grid">
+              <label class="export-field">
+                <span>Largeur</span>
+                <input id="export-image-width" type="number" min="320" max="4096" step="64" value="1920" />
+              </label>
+              <label class="export-field">
+                <span>Hauteur</span>
+                <input id="export-image-height" type="number" min="240" max="4096" step="64" value="1080" />
+              </label>
+            </div>
+            <div class="export-actions">
+              <button id="btn-export-current" class="btn" type="button">PNG courant</button>
+              <button id="btn-export-image" class="btn" type="button">PNG haute résolution</button>
+            </div>
+          </div>
+
+          <div class="export-section">
+            <div class="export-section-title">Vidéo de zoom</div>
+            <div class="export-grid">
+              <label class="export-field">
+                <span>Largeur</span>
+                <input id="export-video-width" type="number" min="320" max="2560" step="64" value="1280" />
+              </label>
+              <label class="export-field">
+                <span>Hauteur</span>
+                <input id="export-video-height" type="number" min="240" max="2560" step="64" value="720" />
+              </label>
+              <label class="export-field">
+                <span>Durée (s)</span>
+                <input id="export-video-duration" type="number" min="2" max="30" step="1" value="8" />
+              </label>
+              <label class="export-field">
+                <span>Images/s</span>
+                <input id="export-video-fps" type="number" min="12" max="60" step="1" value="24" />
+              </label>
+            </div>
+            <div class="export-actions">
+              <button id="btn-capture-start" class="btn" type="button">Enregistrer la vue de départ</button>
+              <button id="btn-capture-end" class="btn" type="button">Enregistrer la vue d'arrivée</button>
+            </div>
+            <div id="export-video-state" class="export-state">Départ : non défini · Arrivée : non définie</div>
+            <div class="export-actions">
+              <button id="btn-export-video" class="btn" type="button">Créer la vidéo</button>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <!-- ============================================================
@@ -207,6 +262,11 @@
         <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
           <span class="btn-icon">⟳</span>
           <span>Réinitialiser</span>
+        </button>
+
+        <button id="btn-open-export" class="btn" aria-label="Ouvrir le panneau d'export">
+          <span class="btn-icon">⬇</span>
+          <span>Exporter</span>
         </button>
 
       </footer>

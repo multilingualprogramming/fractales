@@ -50,6 +50,9 @@ REQUIRED_EXPORTS = {
     "magnet_cosinus",
     "magnet_sinus",
     "nova_magnetique",
+    "interpoler_lineaire",
+    "interpoler_logarithmique",
+    "ajuster_iterations_export",
 }
 
 

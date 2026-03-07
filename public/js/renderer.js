@@ -88,6 +88,7 @@ const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
+let wasmExportFunctions = {};
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
 /** Timestamp de début du dernier rendu */
@@ -96,6 +97,8 @@ let renderStart = 0;
 let rendering = false;
 /** ImageData réutilisable */
 let imageDataBuffer = null;
+let vueExportDepart = null;
+let vueExportArrivee = null;
 
 // ============================================================
 // ÉLÉMENTS DOM
@@ -119,11 +122,26 @@ const btnPanDown    = document.getElementById("btn-pan-down");
 const btnTogglePan  = document.getElementById("btn-toggle-pan");
 const btnToggle      = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
+const btnOpenExport = document.getElementById("btn-open-export");
+const btnCloseExport = document.getElementById("btn-close-export");
+const btnExportCurrent = document.getElementById("btn-export-current");
+const btnExportImage = document.getElementById("btn-export-image");
+const btnCaptureStart = document.getElementById("btn-capture-start");
+const btnCaptureEnd = document.getElementById("btn-capture-end");
+const btnExportVideo = document.getElementById("btn-export-video");
 const sidebar        = document.getElementById("sidebar");
 const panControls    = document.getElementById("pan-controls");
 const zoomHint      = document.getElementById("zoom-hint");
 const badgeDiv      = document.getElementById("benchmark-badge");
 const badgeLoading  = document.getElementById("badge-loading");
+const exportPanel   = document.getElementById("export-panel");
+const exportImageWidth = document.getElementById("export-image-width");
+const exportImageHeight = document.getElementById("export-image-height");
+const exportVideoWidth = document.getElementById("export-video-width");
+const exportVideoHeight = document.getElementById("export-video-height");
+const exportVideoDuration = document.getElementById("export-video-duration");
+const exportVideoFps = document.getElementById("export-video-fps");
+const exportVideoState = document.getElementById("export-video-state");
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -337,6 +355,83 @@ function coloriserDensite(data, densites, maxDensite, palette) {
     data[base + 2] = b;
     data[base + 3] = 255;
   }
+}
+
+function ajusterIterationsExport(largeur, hauteur, maxIter) {
+  const fn = wasmExportFunctions.ajuster_iterations_export;
+  return fn ? Math.max(maxIter, Math.round(fn(largeur, hauteur, maxIter))) : Math.max(maxIter, Math.round(maxIter * (1 + (largeur * hauteur) / 480000 * 0.35)));
+}
+
+function interpolerLineaire(a, b, t) {
+  const fn = wasmExportFunctions.interpoler_lineaire;
+  return fn ? fn(a, b, t) : a + (b - a) * t;
+}
+
+function interpolerLogarithmique(a, b, t) {
+  const fn = wasmExportFunctions.interpoler_logarithmique;
+  if (fn) return fn(a, b, t);
+  if (a <= 0 || b <= 0) return interpolerLineaire(a, b, t);
+  return a * ((b / a) ** t);
+}
+
+function capturerVueCourante() {
+  return {
+    centerX: view.centerX,
+    centerY: view.centerY,
+    pixelSize: view.pixelSize,
+    fractal: params.fractal,
+    maxIter: params.maxIter,
+    palette: params.palette,
+    multibrotPower: params.multibrotPower,
+    juliaCre: params.juliaCre,
+    juliaCim: params.juliaCim,
+  };
+}
+
+function clonerParamsExport(source = params) {
+  return {
+    fractal: source.fractal,
+    maxIter: source.maxIter,
+    palette: source.palette,
+    multibrotPower: source.multibrotPower,
+    juliaCre: source.juliaCre,
+    juliaCim: source.juliaCim,
+  };
+}
+
+function formaterNomExport(suffixe, extension) {
+  const date = new Date();
+  const morceaux = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+    "_",
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
+  ].join("");
+  return `${params.fractal}_${suffixe}_${morceaux}.${extension}`;
+}
+
+function telechargerBlob(blob, nomFichier) {
+  const url = URL.createObjectURL(blob);
+  const lien = document.createElement("a");
+  lien.href = url;
+  lien.download = nomFichier;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function mettreAJourEtatVideo() {
+  const depart = vueExportDepart ? "défini" : "non défini";
+  const arrivee = vueExportArrivee ? "définie" : "non définie";
+  exportVideoState.textContent = `Départ : ${depart} · Arrivée : ${arrivee}`;
+}
+
+function attendre(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 
@@ -655,6 +750,246 @@ function renderLineFractal(w, h) {
   updateStatusBar("Mode geometrique - " + elapsed + " ms", true);
 }
 
+function dessinerFractaleLineaire(ctxCible, w, h, renduParams) {
+  const fond = getPaletteBackground(renduParams.palette);
+  ctxCible.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
+  ctxCible.fillRect(0, 0, w, h);
+
+  const stroke = getColor(Math.min(renduParams.maxIter * 0.6, renduParams.maxIter - 1), renduParams.maxIter, renduParams.palette);
+  ctxCible.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
+  ctxCible.lineWidth = Math.max(1, Math.min(2, w / 800));
+  ctxCible.beginPath();
+
+  if (renduParams.fractal === "koch") {
+    const n = Math.max(0, Math.min(6, Math.floor((renduParams.maxIter - 64) / 128)));
+    const commands = kochGenerate(n);
+    const seg = (w * 0.8) / Math.pow(3, n);
+    const turn = Math.PI / 3;
+    let x = w * 0.1;
+    let y = h * 0.65;
+    let a = 0.0;
+    ctxCible.moveTo(x, y);
+    for (const c of commands) {
+      if (c === "F") {
+        x += seg * Math.cos(a);
+        y += seg * Math.sin(a);
+        ctxCible.lineTo(x, y);
+      } else if (c === "+") {
+        a += turn;
+      } else if (c === "-") {
+        a -= turn;
+      }
+    }
+  } else if (renduParams.fractal === "dragon_heighway") {
+    const n = Math.max(8, Math.min(15, Math.floor(renduParams.maxIter / 64) + 7));
+    const commands = genererDragonHeighway(n);
+    const seg = Math.min(w, h) * 0.6 / Math.pow(Math.SQRT2, n);
+    const turn = Math.PI / 2;
+    let x = w * 0.48;
+    let y = h * 0.55;
+    let a = 0.0;
+    ctxCible.moveTo(x, y);
+    for (const c of commands) {
+      if (c === "F") {
+        x += seg * Math.cos(a);
+        y += seg * Math.sin(a);
+        ctxCible.lineTo(x, y);
+      } else if (c === "+") {
+        a += turn;
+      } else if (c === "-") {
+        a -= turn;
+      }
+    }
+  } else if (renduParams.fractal === "arbre_pythagore") {
+    const profondeur = Math.max(5, Math.min(11, Math.floor(renduParams.maxIter / 96) + 4));
+    function dessinerBranche(x, y, angle, taille, niveau) {
+      if (niveau <= 0) return;
+      const x1 = x + taille * Math.cos(angle);
+      const y1 = y - taille * Math.sin(angle);
+      ctxCible.moveTo(x, y);
+      ctxCible.lineTo(x1, y1);
+      dessinerBranche(x1, y1, angle - Math.PI / 5, taille * 0.72, niveau - 1);
+      dessinerBranche(x1, y1, angle + Math.PI / 4, taille * 0.68, niveau - 1);
+    }
+    dessinerBranche(w * 0.5, h * 0.92, Math.PI / 2, h * 0.16, profondeur);
+  }
+
+  ctxCible.stroke();
+}
+
+async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) {
+  const estBarnsley = renduParams.fractal === "barnsley";
+  const estSierpinski = renduParams.fractal === "sierpinski";
+  const estTapis = renduParams.fractal === "tapis_sierpinski";
+  const estClifford = renduParams.fractal === "attracteur_de_clifford";
+  const estPeterDeJong = renduParams.fractal === "attracteur_de_peter_de_jong";
+  const estIkeda = renduParams.fractal === "attracteur_ikeda";
+  const estHenon = renduParams.fractal === "attracteur_de_henon";
+  const estBuddhabrot = renduParams.fractal === "buddhabrot";
+  const rng = makeRng(0x9e3779b9 ^ (renduParams.maxIter << 7) ^ renduParams.fractal.length);
+  const pointsTarget = estBuddhabrot
+    ? Math.max(8000, renduParams.maxIter * 70)
+    : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? Math.max(140000, renduParams.maxIter * 1800) : Math.max(30000, renduParams.maxIter * 900));
+  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? 120 : 40));
+  let x = estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.1 : 0.0)));
+  let y = estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0));
+  let emitted = 0;
+  let iter = 0;
+  const densites = new Uint32Array(w * h);
+  let maxDensite = 0;
+
+  const ajouterDensite = (px, py, poids = 1) => {
+    if (px < 0 || py < 0 || px >= w || py >= h) return;
+    const index = py * w + px;
+    densites[index] += poids;
+    if (densites[index] > maxDensite) maxDensite = densites[index];
+  };
+
+  const pointsParBloc = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon) ? 30000 : 25000);
+  while (emitted < pointsTarget) {
+    const blocFin = Math.min(emitted + pointsParBloc, pointsTarget);
+    while (emitted < blocFin) {
+      if (estBuddhabrot) {
+        const cre = -2.1 + rng() * 3.0;
+        const cim = -1.6 + rng() * 3.2;
+        let zx = 0.0;
+        let zy = 0.0;
+        const trajectoire = [];
+        let echappe = false;
+        const limite = Math.max(24, Math.min(160, renduParams.maxIter));
+        for (let i = 0; i < limite; i++) {
+          const nx = zx * zx - zy * zy + cre;
+          const ny = 2.0 * zx * zy + cim;
+          zx = nx;
+          zy = ny;
+          trajectoire.push([zx, zy]);
+          if (zx * zx + zy * zy > 16.0) {
+            echappe = true;
+            break;
+          }
+        }
+        if (echappe && trajectoire.length >= 12) {
+          for (const [ox, oy] of trajectoire) {
+            const px = ((ox - cx0) / ps) | 0;
+            const py = ((oy - cy0) / ps) | 0;
+            ajouterDensite(px, py, 1);
+          }
+        }
+        emitted += 1;
+        continue;
+      }
+
+      const r = rng();
+      if (estBarnsley) {
+        [x, y] = barnsleyStep(x, y, r);
+      } else if (estClifford) {
+        [x, y] = etapeAttracteurClifford(x, y);
+      } else if (estPeterDeJong) {
+        [x, y] = etapeAttracteurPeterDeJong(x, y);
+      } else if (estIkeda) {
+        [x, y] = etapeAttracteurIkeda(x, y);
+      } else if (estHenon) {
+        [x, y] = etapeAttracteurHenon(x, y);
+      } else if (estTapis) {
+        [x, y] = etapeTapisSierpinski(x, y, r);
+      } else if (estSierpinski) {
+        [x, y] = sierpinskiStep(x, y, r);
+      }
+      iter += 1;
+      if (iter <= burnIn) continue;
+      const px = ((x - cx0) / ps) | 0;
+      const py = ((y - cy0) / ps) | 0;
+      ajouterDensite(px, py, 1);
+      if (estIkeda) {
+        ajouterDensite(px + 1, py, 1);
+        ajouterDensite(px, py + 1, 1);
+        ajouterDensite(px + 1, py + 1, 1);
+      }
+      emitted += 1;
+    }
+    await attendre(0);
+  }
+
+  coloriserDensite(data, densites, maxDensite, renduParams.palette);
+}
+
+async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
+  const fn = wasmFunctions[renduParams.fractal];
+  if (!fn) {
+    const fond = getPaletteBackground(renduParams.palette);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = fond[0];
+      data[i + 1] = fond[1];
+      data[i + 2] = fond[2];
+      data[i + 3] = 255;
+    }
+    return;
+  }
+  const estFractaleBassin = renduParams.fractal === "newton" || renduParams.fractal === "bassin_newton_generalise" || renduParams.fractal === "orbitale_de_nova";
+  const estFractaleLyapunov = renduParams.fractal === "lyapunov" || renduParams.fractal === "lyapunov_multisequence";
+  const estFractaleMagnetique = ["magnet1", "magnet2", "magnet3", "lambda_fractale", "lambda_cubique", "magnet_cosinus", "magnet_sinus", "nova_magnetique"].includes(renduParams.fractal);
+
+  for (let py = 0; py < h; py++) {
+    const cy = cy0 + py * ps;
+    const base = py * w * 4;
+    for (let px = 0; px < w; px++) {
+      const cx = cx0 + px * ps;
+      let iterValue;
+      if (renduParams.fractal === "julia") {
+        iterValue = fn(cx, cy, renduParams.juliaCre, renduParams.juliaCim, renduParams.maxIter);
+      } else if (renduParams.fractal === "multibrot") {
+        iterValue = fn(cx, cy, renduParams.maxIter, renduParams.multibrotPower);
+      } else {
+        iterValue = fn(cx, cy, renduParams.maxIter);
+      }
+      let iterColor = iterValue;
+      if (renduParams.fractal === "multibrot" && iterValue < renduParams.maxIter) {
+        iterColor = Math.min(renduParams.maxIter - 1, 12 + iterValue * 14);
+      } else if (renduParams.fractal === "orbitale_de_nova" && iterValue < renduParams.maxIter) {
+        iterColor = Math.min(renduParams.maxIter - 1, 18 + iterValue * 10);
+      } else if (estFractaleLyapunov && iterValue < renduParams.maxIter) {
+        iterColor = Math.min(renduParams.maxIter - 1, 10 + iterValue * 1.8);
+      } else if (estFractaleMagnetique && iterValue < renduParams.maxIter) {
+        iterColor = Math.min(renduParams.maxIter - 1, 14 + iterValue * 4.2);
+      }
+      let couleur;
+      if (estFractaleBassin) couleur = getBasinColor(iterValue, renduParams.maxIter, renduParams.palette);
+      else if (estFractaleLyapunov) couleur = getColorFromRatio(0.12 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.85) * 0.82, renduParams.palette);
+      else if (estFractaleMagnetique) couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.68) * 0.88, renduParams.palette);
+      else couleur = getColor(iterColor, renduParams.maxIter, renduParams.palette);
+      const i = base + px * 4;
+      data[i] = couleur[0];
+      data[i + 1] = couleur[1];
+      data[i + 2] = couleur[2];
+      data[i + 3] = 255;
+    }
+    if (py % 12 === 0) await attendre(0);
+  }
+}
+
+async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
+  const ctxCible = canvasCible.getContext("2d", { willReadFrequently: false });
+  const w = canvasCible.width;
+  const h = canvasCible.height;
+  if (POINT_FRACTALS.has(renduParams.fractal)) {
+    const image = ctxCible.createImageData(w, h);
+    const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
+    const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
+    await remplirFractalePonctuelle(w, h, image.data, cx0, cy0, vueCible.pixelSize, renduParams);
+    ctxCible.putImageData(image, 0, 0);
+    return;
+  }
+  if (LINE_FRACTALS.has(renduParams.fractal)) {
+    dessinerFractaleLineaire(ctxCible, w, h, renduParams);
+    return;
+  }
+  const image = ctxCible.createImageData(w, h);
+  const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
+  const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
+  await remplirFractaleScalaire(w, h, image.data, cx0, cy0, vueCible.pixelSize, renduParams);
+  ctxCible.putImageData(image, 0, 0);
+}
+
 function getActiveFractalFn() {
   const wasmFn = wasmFunctions[params.fractal];
   return wasmFn ? { fn: wasmFn, backend: "WASM" } : { fn: null, backend: "WASM requis" };
@@ -746,6 +1081,11 @@ async function loadWasm() {
       magnet_sinus: typeof exports.magnet_sinus === "function" ? exports.magnet_sinus : null,
       nova_magnetique: typeof exports.nova_magnetique === "function" ? exports.nova_magnetique : null,
     };
+    wasmExportFunctions = {
+      interpoler_lineaire: typeof exports.interpoler_lineaire === "function" ? exports.interpoler_lineaire : null,
+      interpoler_logarithmique: typeof exports.interpoler_logarithmique === "function" ? exports.interpoler_logarithmique : null,
+      ajuster_iterations_export: typeof exports.ajuster_iterations_export === "function" ? exports.ajuster_iterations_export : null,
+    };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
     updateStatusBar("WASM prêt");
@@ -753,6 +1093,7 @@ async function loadWasm() {
   } catch (err) {
     console.warn("[WASM] Chargement échoué :", err.message);
     wasmFunctions = {};
+    wasmExportFunctions = {};
     wasmAvailable = false;
     updateStatusBar("WASM indisponible");
     return false;
@@ -1067,6 +1408,155 @@ btnTogglePan.addEventListener("click", () => {
   btnTogglePan.setAttribute("aria-label", masque ? "Afficher les contrôles de déplacement" : "Masquer les contrôles de déplacement");
 });
 
+function lireEntier(input, fallback) {
+  const valeur = parseInt(input.value, 10);
+  return Number.isFinite(valeur) ? valeur : fallback;
+}
+
+function blobDepuisCanvas(canvasSource, type = "image/png", quality = 0.92) {
+  return new Promise((resolve, reject) => {
+    canvasSource.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Export image indisponible"));
+    }, type, quality);
+  });
+}
+
+async function exporterImageCourante() {
+  updateStatusBar("Export PNG courant…");
+  const blob = await blobDepuisCanvas(canvas, "image/png");
+  telechargerBlob(blob, formaterNomExport("vue", "png"));
+  updateStatusBar("PNG courant exporté", true);
+}
+
+async function exporterImageHauteResolution() {
+  const largeur = lireEntier(exportImageWidth, 1920);
+  const hauteur = lireEntier(exportImageHeight, 1080);
+  const canvasExport = document.createElement("canvas");
+  canvasExport.width = largeur;
+  canvasExport.height = hauteur;
+  const renduParams = clonerParamsExport();
+  renduParams.maxIter = ajusterIterationsExport(largeur, hauteur, renduParams.maxIter);
+  const vueCible = {
+    centerX: view.centerX,
+    centerY: view.centerY,
+    pixelSize: view.pixelSize,
+  };
+  updateStatusBar("Rendu PNG haute résolution…");
+  await rendreDansCanvas(canvasExport, vueCible, renduParams);
+  const blob = await blobDepuisCanvas(canvasExport, "image/png");
+  telechargerBlob(blob, formaterNomExport(`${largeur}x${hauteur}`, "png"));
+  updateStatusBar("PNG haute résolution exporté", true);
+}
+
+async function exporterVideoZoom() {
+  if (!vueExportDepart || !vueExportArrivee) {
+    updateStatusBar("Définissez la vue de départ et la vue d'arrivée", true);
+    return;
+  }
+  if (vueExportDepart.fractal !== vueExportArrivee.fractal) {
+    updateStatusBar("La vidéo de zoom nécessite la même fractale au départ et à l'arrivée", true);
+    return;
+  }
+  const largeur = lireEntier(exportVideoWidth, 1280);
+  const hauteur = lireEntier(exportVideoHeight, 720);
+  const duree = lireEntier(exportVideoDuration, 8);
+  const fps = lireEntier(exportVideoFps, 24);
+  const nbImages = Math.max(2, duree * fps);
+  const canvasVideo = document.createElement("canvas");
+  canvasVideo.width = largeur;
+  canvasVideo.height = hauteur;
+  if (typeof canvasVideo.captureStream !== "function" || typeof MediaRecorder === "undefined") {
+    updateStatusBar("Export vidéo non supporté dans ce navigateur", true);
+    return;
+  }
+
+  const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+    ? "video/webm;codecs=vp9"
+    : "video/webm";
+  const morceaux = [];
+  const recorder = new MediaRecorder(canvasVideo.captureStream(fps), { mimeType });
+  recorder.ondataavailable = (event) => {
+    if (event.data && event.data.size > 0) morceaux.push(event.data);
+  };
+  const finEnregistrement = new Promise((resolve) => {
+    recorder.onstop = () => resolve(new Blob(morceaux, { type: mimeType }));
+  });
+
+  updateStatusBar("Création de la vidéo…");
+  recorder.start();
+
+  for (let index = 0; index < nbImages; index++) {
+    const t = nbImages <= 1 ? 1.0 : index / (nbImages - 1);
+    const vueAnimation = {
+      centerX: interpolerLineaire(vueExportDepart.centerX, vueExportArrivee.centerX, t),
+      centerY: interpolerLineaire(vueExportDepart.centerY, vueExportArrivee.centerY, t),
+      pixelSize: interpolerLogarithmique(vueExportDepart.pixelSize, vueExportArrivee.pixelSize, t),
+    };
+    const renduParams = clonerParamsExport(vueExportDepart);
+    renduParams.maxIter = Math.round(interpolerLineaire(vueExportDepart.maxIter, vueExportArrivee.maxIter, t));
+    renduParams.palette = vueExportDepart.palette;
+    renduParams.multibrotPower = vueExportDepart.multibrotPower;
+    renduParams.juliaCre = vueExportDepart.juliaCre;
+    renduParams.juliaCim = vueExportDepart.juliaCim;
+    await rendreDansCanvas(canvasVideo, vueAnimation, renduParams);
+    updateStatusBar(`Création de la vidéo… ${index + 1}/${nbImages}`);
+    await attendre(1000 / fps);
+  }
+
+  recorder.stop();
+  const blob = await finEnregistrement;
+  telechargerBlob(blob, formaterNomExport("zoom", "webm"));
+  updateStatusBar("Vidéo exportée", true);
+}
+
+btnOpenExport.addEventListener("click", () => {
+  exportPanel.classList.remove("hidden");
+});
+
+btnCloseExport.addEventListener("click", () => {
+  exportPanel.classList.add("hidden");
+});
+
+btnExportCurrent.addEventListener("click", async () => {
+  try {
+    await exporterImageCourante();
+  } catch (error) {
+    updateStatusBar("Échec de l'export PNG courant", true);
+    console.error(error);
+  }
+});
+
+btnExportImage.addEventListener("click", async () => {
+  try {
+    await exporterImageHauteResolution();
+  } catch (error) {
+    updateStatusBar("Échec de l'export PNG haute résolution", true);
+    console.error(error);
+  }
+});
+
+btnCaptureStart.addEventListener("click", () => {
+  vueExportDepart = capturerVueCourante();
+  mettreAJourEtatVideo();
+  updateStatusBar("Vue de départ enregistrée", true);
+});
+
+btnCaptureEnd.addEventListener("click", () => {
+  vueExportArrivee = capturerVueCourante();
+  mettreAJourEtatVideo();
+  updateStatusBar("Vue d'arrivée enregistrée", true);
+});
+
+btnExportVideo.addEventListener("click", async () => {
+  try {
+    await exporterVideoZoom();
+  } catch (error) {
+    updateStatusBar("Échec de l'export vidéo", true);
+    console.error(error);
+  }
+});
+
 btnToggle.addEventListener("click", () => {
   if (window.innerWidth <= 820) {
     // Mobile : overlay plein-écran, le canvas ne change pas de taille
@@ -1376,6 +1866,7 @@ function showZoomHint() {
 async function init() {
   resizeCanvas();
   syncSelectors(params.fractal);
+  mettreAJourEtatVideo();
 
   // Vue initiale : preset de la fractale sélectionnée
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

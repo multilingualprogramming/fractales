@@ -202,7 +202,7 @@ index.html
         ├── Rendu progressif par tranches (requestAnimationFrame)
         ├── FRACTAL_SOURCE_MAP  → module .ml contenant la fractale active
         ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py") (contextuel)
-        ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule
+        ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / mode personnalisé (fond + avant-plan)
         ├── Zoom/pan : clic, molette, pincement tactile
         ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom
         └── fetch("benchmark.json") → badge de performance

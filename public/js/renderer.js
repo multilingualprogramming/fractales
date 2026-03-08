@@ -31,6 +31,8 @@ const params = {
   juliaCre: -0.8,
   juliaCim: 0.156,
   palette: "aurora",   // "feu" | "ocean" | "aurora"
+  paletteBackground: "#020008",
+  paletteForeground: "#fff5b4",
 };
 
 const VIEW_PRESETS = {
@@ -138,6 +140,9 @@ const familySelect  = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
+const customPaletteControls = document.getElementById("custom-palette-controls");
+const paletteBackgroundInput = document.getElementById("palette-background");
+const paletteForegroundInput = document.getElementById("palette-foreground");
 const btnReset      = document.getElementById("btn-reset");
 const btnPanUp      = document.getElementById("btn-pan-up");
 const btnPanLeft    = document.getElementById("btn-pan-left");
@@ -396,24 +401,103 @@ function getColorFromRatio(t, paletteOrName) {
   ];
 }
 
-function getPaletteConfig(name) {
-  return PALETTES[name] ?? PALETTES.feu;
+function clampByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-function getPaletteStops(name) {
-  return getPaletteConfig(name).stops;
+function normaliserHexCouleur(hex, fallback = "#000000") {
+  if (typeof hex !== "string") return fallback;
+  const value = hex.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(value)) {
+    const r = value[1];
+    const g = value[2];
+    const b = value[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return fallback;
 }
 
-function getPaletteBackground(name) {
-  return getPaletteConfig(name).fond;
+function hexVersRgb(hex, fallback = [0, 0, 0]) {
+  const normalise = normaliserHexCouleur(hex, "");
+  if (!normalise) return fallback;
+  return [
+    parseInt(normalise.slice(1, 3), 16),
+    parseInt(normalise.slice(3, 5), 16),
+    parseInt(normalise.slice(5, 7), 16),
+  ];
 }
 
-function getPaletteInterior(name) {
-  return getPaletteConfig(name).interieur;
+function rgbVersHex(rgb) {
+  return `#${rgb.map((value) => clampByte(value).toString(16).padStart(2, "0")).join("")}`;
 }
 
-function getPaletteComplete(name) {
-  return getPaletteConfig(name);
+function melangerCouleurs(a, b, ratio) {
+  const t = Math.max(0, Math.min(1, ratio));
+  return [
+    clampByte(a[0] + (b[0] - a[0]) * t),
+    clampByte(a[1] + (b[1] - a[1]) * t),
+    clampByte(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+function creerPalettePersonnalisee(backgroundHex, foregroundHex) {
+  const fond = hexVersRgb(backgroundHex, PALETTES.aurora.fond);
+  const avantPlan = hexVersRgb(foregroundHex, PALETTES.aurora.stops[PALETTES.aurora.stops.length - 1]);
+  return {
+    fond,
+    interieur: avantPlan,
+    stops: [
+      melangerCouleurs(fond, avantPlan, 0.16),
+      melangerCouleurs(fond, avantPlan, 0.28),
+      melangerCouleurs(fond, avantPlan, 0.42),
+      melangerCouleurs(fond, avantPlan, 0.58),
+      melangerCouleurs(fond, avantPlan, 0.76),
+      avantPlan,
+      melangerCouleurs(avantPlan, [255, 255, 255], 0.24),
+      melangerCouleurs(avantPlan, [255, 255, 255], 0.5),
+    ],
+  };
+}
+
+function getPaletteConfig(source) {
+  if (source && typeof source === "object") {
+    if (Array.isArray(source.stops)) return source;
+    if (typeof source.palette === "string") {
+      if (source.palette === "personnalisee") {
+        return creerPalettePersonnalisee(source.paletteBackground, source.paletteForeground);
+      }
+      return PALETTES[source.palette] ?? PALETTES.feu;
+    }
+  }
+  if (source === "personnalisee") {
+    return creerPalettePersonnalisee(params.paletteBackground, params.paletteForeground);
+  }
+  return PALETTES[source] ?? PALETTES.feu;
+}
+
+function getPaletteStops(source) {
+  return getPaletteConfig(source).stops;
+}
+
+function getPaletteBackground(source) {
+  return getPaletteConfig(source).fond;
+}
+
+function getPaletteInterior(source) {
+  return getPaletteConfig(source).interieur;
+}
+
+function getPaletteComplete(source) {
+  return getPaletteConfig(source);
+}
+
+function synchroniserControlePalette() {
+  paletteSelect.value = params.palette;
+  paletteBackgroundInput.value = normaliserHexCouleur(params.paletteBackground, "#020008");
+  paletteForegroundInput.value = normaliserHexCouleur(params.paletteForeground, "#fff5b4");
+  const afficher = params.palette === "personnalisee";
+  customPaletteControls.classList.toggle("hidden", !afficher);
 }
 
 function fractaleActiveEst3D() {
@@ -545,6 +629,8 @@ function capturerVueCourante() {
       fractal: params.fractal,
       maxIter: params.maxIter,
       palette: params.palette,
+      paletteBackground: params.paletteBackground,
+      paletteForeground: params.paletteForeground,
       multibrotPower: params.multibrotPower,
       juliaCre: params.juliaCre,
       juliaCim: params.juliaCim,
@@ -558,6 +644,8 @@ function capturerVueCourante() {
     fractal: params.fractal,
     maxIter: params.maxIter,
     palette: params.palette,
+    paletteBackground: params.paletteBackground,
+    paletteForeground: params.paletteForeground,
     multibrotPower: params.multibrotPower,
     juliaCre: params.juliaCre,
     juliaCim: params.juliaCim,
@@ -569,6 +657,8 @@ function clonerParamsExport(source = params) {
     fractal: source.fractal,
     maxIter: source.maxIter,
     palette: source.palette,
+    paletteBackground: source.paletteBackground,
+    paletteForeground: source.paletteForeground,
     multibrotPower: source.multibrotPower,
     juliaCre: source.juliaCre,
     juliaCim: source.juliaCim,
@@ -940,6 +1030,7 @@ function syncSelectors(selectedFractal = params.fractal) {
   familySelect.value = familyId;
   const activeFractal = populateFractalSelect(familyId, selectedFractal);
   params.fractal = activeFractal;
+  synchroniserControlePalette();
 }
 
 function setActiveFractal(fractalName) {
@@ -1289,7 +1380,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
         emitted += 1;
       }
     }
-    coloriserDensite(data, tampon.densites, tampon.maxDensite, params.palette, tampon.lumieres);
+    coloriserDensite(data, tampon.densites, tampon.maxDensite, params, tampon.lumieres);
     if (token !== renderToken) return;
     ctx.putImageData(imageDataBuffer, 0, 0);
     if (emitted < pointsTarget) {
@@ -1315,11 +1406,11 @@ function renderLineFractal(w, h) {
 }
 
 function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
-  const fond = getPaletteBackground(renduParams.palette);
+  const fond = getPaletteBackground(renduParams);
   ctxCible.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
   ctxCible.fillRect(0, 0, w, h);
 
-  const stroke = getColor(Math.min(renduParams.maxIter * 0.6, renduParams.maxIter - 1), renduParams.maxIter, renduParams.palette);
+  const stroke = getColor(Math.min(renduParams.maxIter * 0.6, renduParams.maxIter - 1), renduParams.maxIter, renduParams);
   ctxCible.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
   ctxCible.lineWidth = Math.max(1, Math.min(2, w / 800));
   ctxCible.beginPath();
@@ -1513,13 +1604,13 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
     await attendre(0);
   }
 
-  coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams.palette, tampon.lumieres);
+  coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams, tampon.lumieres);
 }
 
 async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
   const fn = wasmFunctions[renduParams.fractal];
   if (!fn) {
-    const fond = getPaletteBackground(renduParams.palette);
+    const fond = getPaletteBackground(renduParams);
     for (let i = 0; i < data.length; i += 4) {
       data[i] = fond[0];
       data[i + 1] = fond[1];
@@ -1556,10 +1647,10 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
         iterColor = Math.min(renduParams.maxIter - 1, 14 + iterValue * 4.2);
       }
       let couleur;
-      if (estFractaleBassin) couleur = getBasinColor(iterValue, renduParams.maxIter, renduParams.palette);
-      else if (estFractaleLyapunov) couleur = getColorFromRatio(0.12 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.85) * 0.82, renduParams.palette);
-      else if (estFractaleMagnetique) couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.68) * 0.88, renduParams.palette);
-      else couleur = getColor(iterColor, renduParams.maxIter, renduParams.palette);
+      if (estFractaleBassin) couleur = getBasinColor(iterValue, renduParams.maxIter, renduParams);
+      else if (estFractaleLyapunov) couleur = getColorFromRatio(0.12 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.85) * 0.82, renduParams);
+      else if (estFractaleMagnetique) couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.68) * 0.88, renduParams);
+      else couleur = getColor(iterColor, renduParams.maxIter, renduParams);
       const i = base + px * 4;
       data[i] = couleur[0];
       data[i + 1] = couleur[1];
@@ -1572,7 +1663,7 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
 
 async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
   if (estFractale3D(renduParams.fractal)) {
-    rendre3DSurCanvas(canvasCible, renduParams.fractal, renduParams.maxIter, getPaletteComplete(renduParams.palette), vueCible?.vue3d ?? obtenirVue3DActive());
+    rendre3DSurCanvas(canvasCible, renduParams.fractal, renduParams.maxIter, getPaletteComplete(renduParams), vueCible?.vue3d ?? obtenirVue3DActive());
     return;
   }
   const ctxCible = canvasCible.getContext("2d", { willReadFrequently: false });
@@ -1770,7 +1861,7 @@ function render() {
   const cy0 = view.centerY - (h / 2) * view.pixelSize;
   const ps  = view.pixelSize;
   const max = params.maxIter;
-  const pal = params.palette;
+  const pal = params;
 
   rendering = true;
   renderStart = performance.now();
@@ -1778,7 +1869,7 @@ function render() {
   updateStatusBar("Rendu en cours…");
 
   if (fractaleActiveEst3D()) {
-    render3D(params.fractal, params.maxIter, getPaletteComplete(params.palette));
+    render3D(params.fractal, params.maxIter, getPaletteComplete(params));
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
     return;
@@ -1796,7 +1887,7 @@ function render() {
 
   const { fn, backend } = getActiveFractalFn();
   if (!fn) {
-    const fond = getPaletteBackground(params.palette);
+    const fond = getPaletteBackground(params);
     ctx.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
     ctx.fillRect(0, 0, w, h);
     rendering = false;
@@ -2067,7 +2158,28 @@ multibrotPower.addEventListener("change", () => {
 });
 
 paletteSelect.addEventListener("change", () => {
+  const anciennePalette = params.palette;
   params.palette = paletteSelect.value;
+  if (params.palette === "personnalisee" && anciennePalette !== "personnalisee") {
+    const paletteBase = getPaletteConfig(anciennePalette);
+    params.paletteBackground = rgbVersHex(paletteBase.fond);
+    params.paletteForeground = rgbVersHex(paletteBase.stops[paletteBase.stops.length - 1] ?? paletteBase.interieur);
+  }
+  synchroniserControlePalette();
+  render();
+});
+
+paletteBackgroundInput.addEventListener("input", () => {
+  params.palette = "personnalisee";
+  params.paletteBackground = normaliserHexCouleur(paletteBackgroundInput.value, params.paletteBackground);
+  synchroniserControlePalette();
+  render();
+});
+
+paletteForegroundInput.addEventListener("input", () => {
+  params.palette = "personnalisee";
+  params.paletteForeground = normaliserHexCouleur(paletteForegroundInput.value, params.paletteForeground);
+  synchroniserControlePalette();
   render();
 });
 
@@ -2239,6 +2351,8 @@ async function exporterVideoZoom() {
     const renduParams = clonerParamsExport(vueExportDepart);
     renduParams.maxIter = Math.round(interpolerLineaire(vueExportDepart.maxIter, vueExportArrivee.maxIter, t));
     renduParams.palette = vueExportDepart.palette;
+    renduParams.paletteBackground = vueExportDepart.paletteBackground;
+    renduParams.paletteForeground = vueExportDepart.paletteForeground;
     renduParams.multibrotPower = vueExportDepart.multibrotPower;
     renduParams.juliaCre = vueExportDepart.juliaCre;
     renduParams.juliaCim = vueExportDepart.juliaCim;
@@ -2642,10 +2756,11 @@ async function init() {
     hud: nav3dHud,
     coords: coordsDisplay,
     statut: updateStatusBar,
-    obtenirPalette: () => getPaletteComplete(params.palette),
+    obtenirPalette: () => getPaletteComplete(params),
     obtenirMaxIter: () => params.maxIter,
   });
   syncSelectors(params.fractal);
+  synchroniserControlePalette();
   mettreAJourEtatVideo();
 
   // Vue initiale : preset de la fractale sélectionnée

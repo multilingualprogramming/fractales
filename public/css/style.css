@@ -623,6 +623,10 @@ pre {
   gap: 8px;
 }
 
+#custom-palette-controls.hidden {
+  display: none;
+}
+
 .control-label {
   font-size: 12px;
   font-weight: 500;
@@ -636,6 +640,36 @@ pre {
   color: var(--cyan);
   min-width: 36px;
   text-align: right;
+}
+
+.color-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-control input[type="color"] {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(8, 14, 28, 0.9);
+  cursor: pointer;
+}
+
+.color-control input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-control input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 999px;
+}
+
+.color-control input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 999px;
 }
 
 /* Curseur (slider) */

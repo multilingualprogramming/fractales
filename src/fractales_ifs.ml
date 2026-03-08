@@ -365,7 +365,8 @@ déf tetraedre_sierpinski(cx, cy, max_iter):
 
 # Julia quaternionique : ensemble de Julia de z² + c dans ℝ⁴,
 # restriction à l'hyperplan w=0 (coupe 3D projetée isométriquement).
-# c = (−0.06, 0.06, 0.0) produit une structure spiralée distincte.
+# c = (−0.06, 0.06, 0.2) — c_z ≠ 0 est essentiel : avec c_z=0 et z₀=0,
+# nz = 2·x·z + 0 = 0 partout, dégénérescence en Julia complexe 2D classique.
 
 déf julia_quaternion(cx, cy, max_iter):
     soit x = cx
@@ -373,7 +374,7 @@ déf julia_quaternion(cx, cy, max_iter):
     soit z = 0.0
     soit c_x = -0.06
     soit c_y = 0.06
-    soit c_z = 0.0
+    soit c_z = 0.2
     soit iter = 0.0
 
     tantque iter < max_iter:

@@ -68,7 +68,7 @@ const VIEW_PRESETS = {
   mandelbulb: { centerX: 0.0, centerY: 0.0, span: 3.6 },
   tetraedre_sierpinski: { centerX: 0.0, centerY: 0.0, span: 1.6 },
   julia_quaternion: { centerX: 0.0, centerY: 0.0, span: 2.6 },
-  mandelbox: { centerX: -0.5, centerY: 0.0, span: 6.0 },
+  mandelbox: { centerX: 0.0, centerY: 0.3, span: 7.0 },
   vicsek_fractal: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   lichtenberg_figures: { centerX: 0.0, centerY: 0.0, span: 3.8 },
   koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
@@ -99,7 +99,7 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "mandelbox", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
 const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "dragon_curve", "cantor_set", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
@@ -626,16 +626,37 @@ function etapeTetraedre(x, y, z, r) {
                return [x * 0.5 + 0.25,    y * 0.5 + 0.144338, z * 0.5 + 0.408248];
 }
 
-// Projection isométrique centrée sur le barycentre du tétraèdre
+// Projection centrée sur le barycentre du tétraèdre, angle élevé pour
+// exposer les 4 faces et éviter la confusion avec le triangle de Sierpiński 2D.
 function projeterTetraedre(x, y, z) {
   const cx = x - 0.5, cy = y - 0.289, cz = z - 0.204;
-  return [(cx - cz) * 0.86, cy + (cx + cz) * 0.28];
+  return [(cx - cz) * 0.82, cy - cz * 0.55 + (cx + cz) * 0.38];
+}
+
+// Boîte de Mandel — orbite 3D avec c lentement variable (même approche que Mandelbulb).
+// Avec scale=2 et |c| ≈ 0.2 l'orbite reste bornée et révèle la structure 3D du fractal.
+function etapeMandelbox(x, y, z, cx, cy) {
+  // pli de boîte
+  if (x > 1.0) x = 2.0 - x; else if (x < -1.0) x = -2.0 - x;
+  if (y > 1.0) y = 2.0 - y; else if (y < -1.0) y = -2.0 - y;
+  if (z > 1.0) z = 2.0 - z; else if (z < -1.0) z = -2.0 - z;
+  // pli de sphère
+  const r2 = x * x + y * y + z * z;
+  if (r2 < 0.25) { x *= 4.0; y *= 4.0; z *= 4.0; }
+  else if (r2 < 1.0) { x /= r2; y /= r2; z /= r2; }
+  return [2.0 * x + cx, 2.0 * y + cy, 2.0 * z + 0.1];
+}
+
+function projeterMandelbox(x, y, z) {
+  return [(x - z) * 0.68, y + (x + z) * 0.22];
 }
 
 // Julia quaternionique en JS pur (coupe w=0 de z²+c dans ℝ⁴)
+// C_Z ≠ 0 est indispensable : avec C_Z=0 et z₀=0, nz=2xz+0=0 partout
+// → dégénérescence en Julia complexe classique 2D.
 function juliaQuaternionJS(cx, cy, max) {
   let x = cx, y = cy, z = 0.0;
-  const C_X = -0.06, C_Y = 0.06, C_Z = 0.0;
+  const C_X = -0.06, C_Y = 0.06, C_Z = 0.2;
   for (let i = 0; i < max; i++) {
     const nx = x * x - y * y - z * z + C_X;
     const ny = 2.0 * x * y + C_Y;
@@ -974,6 +995,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const estMenger = params.fractal === "menger_sponge";
   const estMandelbulb = params.fractal === "mandelbulb";
   const estTetraedre = params.fractal === "tetraedre_sierpinski";
+  const estMandelbox = params.fractal === "mandelbox";
   const estVicsek = params.fractal === "vicsek_fractal";
   const estLichtenberg = params.fractal === "lichtenberg_figures";
   const estClifford = params.fractal === "attracteur_de_clifford";
@@ -986,12 +1008,12 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, params.maxIter * 70)
-    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900)));
-  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre) ? 60 : 40)));
-  const pointsPerFrame = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre) ? 26000 : 25000));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0)))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0)))));
-  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : 0.0;
+    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900)));
+  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
+  const pointsPerFrame = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0))))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : 0.0);
   let emitted = 0;
   let iter = 0;
   const densites = new Uint32Array(w * h);
@@ -1060,6 +1082,9 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
           [x, y, z] = etapeMandelbulb(x, y, z, 0.25 * Math.cos(iter * 0.011), 0.25 * Math.sin(iter * 0.013));
         } else if (estTetraedre) {
           [x, y, z] = etapeTetraedre(x, y, z, r);
+        } else if (estMandelbox) {
+          [x, y, z] = etapeMandelbox(x, y, z, 0.20 * Math.cos(iter * 0.007), 0.20 * Math.sin(iter * 0.011));
+          if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 16) { x = 0.2; y = 0.0; z = 0.3; }
         } else if (estLichtenberg) {
           [x, y, z] = etapeLichtenberg(x, y, z, r);
         } else if (estClifford) {
@@ -1085,7 +1110,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
         if (iter <= burnIn) continue;
         const [rx, ry] = estMenger
           ? projeterMengerSponge(x, y, z)
-          : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y]))));
+          : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estMandelbox ? projeterMandelbox(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y])))));
         const px = ((rx - cx0) / ps) | 0;
         const py = ((ry - cy0) / ps) | 0;
         putPoint(px, py);
@@ -1176,6 +1201,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const estMenger = renduParams.fractal === "menger_sponge";
   const estMandelbulb = renduParams.fractal === "mandelbulb";
   const estTetraedre = renduParams.fractal === "tetraedre_sierpinski";
+  const estMandelbox = renduParams.fractal === "mandelbox";
   const estVicsek = renduParams.fractal === "vicsek_fractal";
   const estLichtenberg = renduParams.fractal === "lichtenberg_figures";
   const estClifford = renduParams.fractal === "attracteur_de_clifford";
@@ -1188,11 +1214,11 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const rng = makeRng(0x9e3779b9 ^ (renduParams.maxIter << 7) ^ renduParams.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, renduParams.maxIter * 70)
-    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900)));
-  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre) ? 60 : 40)));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0)))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0))));
-  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : 0.0;
+    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900)));
+  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0)))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : 0.0);
   let emitted = 0;
   let iter = 0;
   const densites = new Uint32Array(w * h);
@@ -1205,7 +1231,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
     if (densites[index] > maxDensite) maxDensite = densites[index];
   };
 
-  const pointsParBloc = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre) ? 26000 : 25000));
+  const pointsParBloc = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000));
   while (emitted < pointsTarget) {
     const blocFin = Math.min(emitted + pointsParBloc, pointsTarget);
     while (emitted < blocFin) {
@@ -1250,6 +1276,9 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
         [x, y, z] = etapeMandelbulb(x, y, z, 0.25 * Math.cos(iter * 0.011), 0.25 * Math.sin(iter * 0.013));
       } else if (estTetraedre) {
         [x, y, z] = etapeTetraedre(x, y, z, r);
+      } else if (estMandelbox) {
+        [x, y, z] = etapeMandelbox(x, y, z, 0.20 * Math.cos(iter * 0.007), 0.20 * Math.sin(iter * 0.011));
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 16) { x = 0.2; y = 0.0; z = 0.3; }
       } else if (estLichtenberg) {
         [x, y, z] = etapeLichtenberg(x, y, z, r);
       } else if (estClifford) {
@@ -1275,7 +1304,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
       if (iter <= burnIn) continue;
       const [rx, ry] = estMenger
         ? projeterMengerSponge(x, y, z)
-        : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y]))));
+        : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estMandelbox ? projeterMandelbox(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y])))));
       const px = ((rx - cx0) / ps) | 0;
       const py = ((ry - cy0) / ps) | 0;
       ajouterDensite(px, py, 1);

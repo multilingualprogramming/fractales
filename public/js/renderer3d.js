@@ -215,24 +215,34 @@ function genererJuliaQuaternion(maxIter) {
   const intensites = new Float32Array(cible);
   let index = 0;
   const limite = Math.max(18, Math.min(48, (maxIter / 8) | 0));
-  while (index < cible) {
-    let x = (rng() * 2.0 - 1.0) * 1.45;
-    let y = (rng() * 2.0 - 1.0) * 1.45;
-    let z = (rng() * 2.0 - 1.0) * 1.45;
+  const rayonGraine = 1.55;
+  const essaisMax = cible * 12;
+  let essais = 0;
+  while (index < cible && essais < essaisMax) {
+    const sx = (rng() * 2.0 - 1.0) * rayonGraine;
+    const sy = (rng() * 2.0 - 1.0) * rayonGraine;
+    const sz = (rng() * 2.0 - 1.0) * rayonGraine;
+    let x = sx;
+    let y = sy;
+    let z = sz;
     let vivant = true;
+    let iterationsVecues = 0;
     for (let i = 0; i < limite; i++) {
       [x, y, z] = etapeJuliaQuaternion(x, y, z);
+      iterationsVecues += 1;
       if (x * x + y * y + z * z > 16.0) {
         vivant = false;
         break;
       }
     }
+    essais += 1;
     if (!vivant) continue;
     const base = index * 3;
-    positions[base] = x * 0.62;
-    positions[base + 1] = y * 0.62;
-    positions[base + 2] = z * 0.62;
-    intensites[index] = normaliser((x * x + y * y + z * z) / 8.0, 0.18, 1.0);
+    // Conserver la graine survivante reproduit le volume visible du rendu ponctuel 2D.
+    positions[base] = sx * 0.5;
+    positions[base + 1] = sy * 0.5;
+    positions[base + 2] = sz * 0.5;
+    intensites[index] = normaliser(0.22 + iterationsVecues / Math.max(1, limite) * 0.78, 0.22, 1.0);
     index += 1;
   }
   return { positions, intensites, count: index, taillePoint: INFOS_FRACTALES_3D.julia_quaternion.taillePoint };

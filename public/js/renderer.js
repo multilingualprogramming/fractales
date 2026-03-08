@@ -169,34 +169,76 @@ const exportVideoState = document.getElementById("export-video-state");
 
 const PALETTES = {
   feu: {
-    fond: [8, 2, 0],
-    interieur: [26, 8, 2],
-    stops: [[30, 4, 0], [90, 0, 0], [170, 20, 0], [235, 70, 10], [255, 145, 20], [255, 200, 40], [255, 236, 120], [255, 255, 235]],
+    // Volcanic plasma: char-black → electric crimson → hot orange → acid yellow → white-hot
+    fond: [0, 0, 0],
+    interieur: [8, 0, 0],
+    stops: [
+      [20, 0, 0], [110, 0, 0], [210, 10, 0], [255, 60, 0],
+      [255, 140, 0], [255, 230, 0], [255, 255, 120], [255, 255, 255],
+    ],
   },
   ocean: {
-    fond: [2, 8, 18],
-    interieur: [6, 18, 34],
-    stops: [[5, 20, 34], [0, 52, 92], [0, 96, 150], [0, 142, 192], [26, 182, 220], [88, 220, 236], [176, 242, 248], [245, 255, 255]],
+    // Electric deep ocean: void-black → midnight → electric blue → neon cyan → white
+    fond: [0, 0, 5],
+    interieur: [0, 2, 16],
+    stops: [
+      [0, 5, 30], [0, 20, 110], [0, 60, 210], [0, 140, 255],
+      [0, 220, 245], [60, 255, 240], [180, 255, 255], [255, 255, 255],
+    ],
   },
   aurora: {
-    fond: [4, 10, 14],
-    interieur: [10, 20, 24],
-    stops: [[12, 26, 34], [0, 82, 70], [0, 156, 108], [44, 132, 206], [108, 96, 224], [176, 82, 216], [232, 126, 196], [255, 224, 236]],
+    // Synthwave aurora: deep void → electric violet → neon teal → acid lime → gold
+    fond: [2, 0, 8],
+    interieur: [6, 0, 20],
+    stops: [
+      [10, 0, 40], [70, 0, 170], [0, 40, 230], [0, 170, 210],
+      [0, 230, 110], [160, 255, 0], [255, 200, 0], [255, 245, 180],
+    ],
   },
   braise: {
-    fond: [14, 5, 2],
-    interieur: [30, 10, 4],
-    stops: [[44, 8, 2], [110, 16, 0], [176, 40, 4], [220, 84, 10], [248, 138, 22], [255, 190, 74], [255, 230, 150], [255, 248, 228]],
+    // Neon ember: charcoal → deep crimson → electric amber → electric yellow → white
+    fond: [0, 0, 0],
+    interieur: [10, 2, 0],
+    stops: [
+      [30, 0, 0], [130, 10, 0], [230, 40, 0], [255, 100, 0],
+      [255, 185, 0], [255, 245, 50], [255, 255, 190], [255, 255, 255],
+    ],
   },
   lagon: {
-    fond: [2, 12, 16],
-    interieur: [4, 22, 28],
-    stops: [[8, 34, 46], [0, 74, 86], [0, 118, 126], [0, 156, 156], [24, 194, 178], [96, 226, 208], [182, 244, 230], [244, 255, 250]],
+    // Acid lagoon: abyss-black → deep teal → electric emerald → neon mint → white
+    fond: [0, 4, 2],
+    interieur: [0, 10, 8],
+    stops: [
+      [0, 20, 15], [0, 85, 60], [0, 170, 100], [0, 225, 140],
+      [0, 255, 185], [100, 255, 225], [200, 255, 240], [255, 255, 255],
+    ],
   },
   crepuscule: {
-    fond: [10, 8, 18],
-    interieur: [20, 18, 34],
-    stops: [[28, 22, 48], [60, 34, 92], [104, 46, 142], [156, 62, 172], [214, 96, 158], [246, 146, 122], [255, 204, 162], [255, 242, 224]],
+    // Cosmic nebula: deep space → electric indigo → vivid magenta → hot pink → molten gold
+    fond: [2, 0, 6],
+    interieur: [8, 0, 22],
+    stops: [
+      [15, 0, 40], [65, 0, 130], [145, 0, 185], [225, 0, 185],
+      [255, 60, 120], [255, 145, 55], [255, 225, 95], [255, 255, 220],
+    ],
+  },
+  neon: {
+    // Pure cyberpunk neon: void → electric blue → cyan → acid green → electric yellow → white
+    fond: [0, 0, 0],
+    interieur: [0, 0, 6],
+    stops: [
+      [0, 0, 18], [15, 0, 90], [0, 60, 210], [0, 210, 255],
+      [0, 255, 185], [185, 255, 0], [255, 255, 0], [255, 255, 255],
+    ],
+  },
+  infrared: {
+    // Scientific heat map: void → deep violet → indigo → cyan → lime → orange → white
+    fond: [0, 0, 0],
+    interieur: [5, 0, 12],
+    stops: [
+      [10, 0, 30], [55, 0, 160], [0, 80, 210], [0, 210, 230],
+      [0, 230, 80], [210, 230, 0], [255, 120, 0], [255, 255, 200],
+    ],
   },
 };
 

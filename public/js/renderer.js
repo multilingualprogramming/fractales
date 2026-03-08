@@ -66,6 +66,9 @@ const VIEW_PRESETS = {
   tapis_sierpinski: { centerX: 0.0, centerY: 0.0, span: 2.2 },
   menger_sponge: { centerX: 0.0, centerY: 0.0, span: 3.2 },
   mandelbulb: { centerX: 0.0, centerY: 0.0, span: 3.6 },
+  tetraedre_sierpinski: { centerX: 0.0, centerY: 0.0, span: 1.6 },
+  julia_quaternion: { centerX: 0.0, centerY: 0.0, span: 2.6 },
+  mandelbox: { centerX: -0.5, centerY: 0.0, span: 6.0 },
   vicsek_fractal: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   lichtenberg_figures: { centerX: 0.0, centerY: 0.0, span: 3.8 },
   koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
@@ -96,11 +99,15 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
 const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "dragon_curve", "cantor_set", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
-let wasmFunctions = {};
+// Les fractales 3D en JS pur (julia_quaternion, mandelbox) sont toujours disponibles.
+let wasmFunctions = {
+  julia_quaternion: juliaQuaternionJS,
+  mandelbox: mandelboxJS,
+};
 let wasmExportFunctions = {};
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
@@ -290,6 +297,9 @@ const FRACTAL_FAMILIES = [
       ["tapis_sierpinski", "Tapis de Sierpinski"],
       ["menger_sponge", "Éponge de Menger"],
       ["mandelbulb", "Bulbe de Mandel"],
+      ["tetraedre_sierpinski", "Tétraèdre de Sierpiński"],
+      ["julia_quaternion", "Julia quaternionique"],
+      ["mandelbox", "Boîte de Mandel"],
       ["vicsek_fractal", "Fractale de Vicsek"],
       ["lichtenberg_figures", "Figures de Lichtenberg"],
     ],
@@ -607,6 +617,56 @@ function projeterMandelbulb(x, y, z) {
   ];
 }
 
+// Tétraèdre de Sierpiński — SFI à 4 contractions (3D)
+function etapeTetraedre(x, y, z, r) {
+  const k = Math.min(3, (r * 4) | 0);
+  if (k === 0) return [x * 0.5,           y * 0.5,           z * 0.5];
+  if (k === 1) return [x * 0.5 + 0.5,     y * 0.5,           z * 0.5];
+  if (k === 2) return [x * 0.5 + 0.25,    y * 0.5 + 0.433013, z * 0.5];
+               return [x * 0.5 + 0.25,    y * 0.5 + 0.144338, z * 0.5 + 0.408248];
+}
+
+// Projection isométrique centrée sur le barycentre du tétraèdre
+function projeterTetraedre(x, y, z) {
+  const cx = x - 0.5, cy = y - 0.289, cz = z - 0.204;
+  return [(cx - cz) * 0.86, cy + (cx + cz) * 0.28];
+}
+
+// Julia quaternionique en JS pur (coupe w=0 de z²+c dans ℝ⁴)
+function juliaQuaternionJS(cx, cy, max) {
+  let x = cx, y = cy, z = 0.0;
+  const C_X = -0.06, C_Y = 0.06, C_Z = 0.0;
+  for (let i = 0; i < max; i++) {
+    const nx = x * x - y * y - z * z + C_X;
+    const ny = 2.0 * x * y + C_Y;
+    const nz = 2.0 * x * z + C_Z;
+    x = nx; y = ny; z = nz;
+    if (x * x + y * y + z * z > 16.0) return i;
+  }
+  return max;
+}
+
+// Boîte de Mandel en JS pur (coupe z=0, échelle 2)
+function mandelboxJS(cx, cy, max) {
+  let x = 0.0, y = 0.0, z = 0.0;
+  for (let i = 0; i < max; i++) {
+    // pli de boîte
+    if (x > 1.0) x = 2.0 - x; else if (x < -1.0) x = -2.0 - x;
+    if (y > 1.0) y = 2.0 - y; else if (y < -1.0) y = -2.0 - y;
+    if (z > 1.0) z = 2.0 - z; else if (z < -1.0) z = -2.0 - z;
+    // pli de sphère
+    const r2 = x * x + y * y + z * z;
+    if (r2 < 0.25) { x *= 4.0; y *= 4.0; z *= 4.0; }
+    else if (r2 < 1.0) { x /= r2; y /= r2; z /= r2; }
+    // échelle 2 + translation par c
+    x = 2.0 * x + cx;
+    y = 2.0 * y + cy;
+    z = 2.0 * z;
+    if (x * x + y * y + z * z > 64.0) return i;
+  }
+  return max;
+}
+
 function etapeAttracteurClifford(x, y) {
   const a = -1.4;
   const b = 1.7;
@@ -913,6 +973,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const estTapis = params.fractal === "tapis_sierpinski";
   const estMenger = params.fractal === "menger_sponge";
   const estMandelbulb = params.fractal === "mandelbulb";
+  const estTetraedre = params.fractal === "tetraedre_sierpinski";
   const estVicsek = params.fractal === "vicsek_fractal";
   const estLichtenberg = params.fractal === "lichtenberg_figures";
   const estClifford = params.fractal === "attracteur_de_clifford";
@@ -925,12 +986,12 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, params.maxIter * 70)
-    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900)));
-  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : (estMenger ? 60 : 40)));
-  const pointsPerFrame = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb) ? 26000 : 25000));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0))));
-  let z = (estMenger || estMandelbulb) ? 0.23 : 0.0;
+    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900)));
+  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre) ? 60 : 40)));
+  const pointsPerFrame = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre) ? 26000 : 25000));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0)))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0)))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : 0.0;
   let emitted = 0;
   let iter = 0;
   const densites = new Uint32Array(w * h);
@@ -997,6 +1058,8 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
           [x, y, z] = etapeMengerSponge(x, y, z, r);
         } else if (estMandelbulb) {
           [x, y, z] = etapeMandelbulb(x, y, z, 0.25 * Math.cos(iter * 0.011), 0.25 * Math.sin(iter * 0.013));
+        } else if (estTetraedre) {
+          [x, y, z] = etapeTetraedre(x, y, z, r);
         } else if (estLichtenberg) {
           [x, y, z] = etapeLichtenberg(x, y, z, r);
         } else if (estClifford) {
@@ -1022,7 +1085,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
         if (iter <= burnIn) continue;
         const [rx, ry] = estMenger
           ? projeterMengerSponge(x, y, z)
-          : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y])));
+          : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y]))));
         const px = ((rx - cx0) / ps) | 0;
         const py = ((ry - cy0) / ps) | 0;
         putPoint(px, py);
@@ -1112,6 +1175,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const estTapis = renduParams.fractal === "tapis_sierpinski";
   const estMenger = renduParams.fractal === "menger_sponge";
   const estMandelbulb = renduParams.fractal === "mandelbulb";
+  const estTetraedre = renduParams.fractal === "tetraedre_sierpinski";
   const estVicsek = renduParams.fractal === "vicsek_fractal";
   const estLichtenberg = renduParams.fractal === "lichtenberg_figures";
   const estClifford = renduParams.fractal === "attracteur_de_clifford";
@@ -1124,11 +1188,11 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const rng = makeRng(0x9e3779b9 ^ (renduParams.maxIter << 7) ^ renduParams.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, renduParams.maxIter * 70)
-    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900)));
-  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : (estMenger ? 60 : 40)));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0)));
-  let z = (estMenger || estMandelbulb) ? 0.23 : 0.0;
+    : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900)));
+  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre) ? 60 : 40)));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0)))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : 0.0;
   let emitted = 0;
   let iter = 0;
   const densites = new Uint32Array(w * h);
@@ -1141,7 +1205,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
     if (densites[index] > maxDensite) maxDensite = densites[index];
   };
 
-  const pointsParBloc = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb) ? 26000 : 25000));
+  const pointsParBloc = estBuddhabrot ? 400 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre) ? 26000 : 25000));
   while (emitted < pointsTarget) {
     const blocFin = Math.min(emitted + pointsParBloc, pointsTarget);
     while (emitted < blocFin) {
@@ -1184,6 +1248,8 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
         [x, y, z] = etapeMengerSponge(x, y, z, r);
       } else if (estMandelbulb) {
         [x, y, z] = etapeMandelbulb(x, y, z, 0.25 * Math.cos(iter * 0.011), 0.25 * Math.sin(iter * 0.013));
+      } else if (estTetraedre) {
+        [x, y, z] = etapeTetraedre(x, y, z, r);
       } else if (estLichtenberg) {
         [x, y, z] = etapeLichtenberg(x, y, z, r);
       } else if (estClifford) {
@@ -1209,7 +1275,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
       if (iter <= burnIn) continue;
       const [rx, ry] = estMenger
         ? projeterMengerSponge(x, y, z)
-        : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y])));
+        : (estMandelbulb ? projeterMandelbulb(x, y, z) : (estTetraedre ? projeterTetraedre(x, y, z) : (estLorenz ? projeterLorenzAttractor(x, y, z) : (estFeigenbaum ? [((2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5) - 3.25) * 1.333, y] : [x, y]))));
       const px = ((rx - cx0) / ps) | 0;
       const py = ((ry - cy0) / ps) | 0;
       ajouterDensite(px, py, 1);
@@ -1388,6 +1454,9 @@ async function loadWasm() {
       mandelbulb: typeof exports.mandelbulb === "function" ? exports.mandelbulb : null,
       vicsek_fractal: typeof exports.vicsek_fractal === "function" ? exports.vicsek_fractal : null,
       lichtenberg_figures: typeof exports.lichtenberg_figures === "function" ? exports.lichtenberg_figures : null,
+      tetraedre_sierpinski: typeof exports.tetraedre_sierpinski === "function" ? exports.tetraedre_sierpinski : null,
+      julia_quaternion: typeof exports.julia_quaternion === "function" ? exports.julia_quaternion : juliaQuaternionJS,
+      mandelbox: typeof exports.mandelbox === "function" ? exports.mandelbox : mandelboxJS,
       koch: typeof exports.koch === "function" ? exports.koch : null,
       dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
       dragon_curve: typeof exports.dragon_curve === "function" ? exports.dragon_curve : null,
@@ -2007,6 +2076,9 @@ const FRACTAL_SOURCE_MAP = {
   tapis_sierpinski:            "fractales_ifs",
   menger_sponge:               "fractales_ifs",
   mandelbulb:                  "fractales_ifs",
+  tetraedre_sierpinski:        "fractales_ifs",
+  julia_quaternion:            "fractales_ifs",
+  mandelbox:                   "fractales_ifs",
   vicsek_fractal:              "fractales_ifs",
   lichtenberg_figures:         "fractales_ifs",
   koch:                        "fractales_lsystem",

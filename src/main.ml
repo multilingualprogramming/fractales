@@ -17,13 +17,13 @@ importer fractales_classes
 
 soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot"]
 soit MODES_DYNAMIQUE = ["newton", "phoenix", "lyapunov", "lyapunov_multisequence", "bassin_newton_generalise", "orbitale_de_nova", "collatz_complexe", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]
-soit MODES_IFS = ["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "vicsek_fractal", "lichtenberg_figures"]
+soit MODES_IFS = ["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "vicsek_fractal", "lichtenberg_figures", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]
 soit MODES_LSYSTEM = ["koch", "dragon_heighway", "dragon_curve", "cantor_set", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]
 soit MODES_MAGNETIQUE = ["magnet1", "magnet2", "magnet3", "lambda_fractale", "lambda_cubique", "magnet_cosinus", "magnet_sinus", "nova_magnetique"]
 soit MODES_CLASSES_COMPAT = ["mandelbrot_classe"]
 affirmer longueur(MODES_EVASION) == 13
 affirmer longueur(MODES_DYNAMIQUE) == 13
-affirmer longueur(MODES_IFS) == 7
+affirmer longueur(MODES_IFS) == 10
 affirmer longueur(MODES_LSYSTEM) == 10
 affirmer longueur(MODES_MAGNETIQUE) == 8
 affirmer longueur(MODES_CLASSES_COMPAT) == 1

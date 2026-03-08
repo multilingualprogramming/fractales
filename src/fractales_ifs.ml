@@ -312,6 +312,122 @@ déf vicsek_fractal(cx, cy, max_iter):
         retour max_iter
     retour score
 
+# ============================================================
+# FRACTALES 3D — projection isométrique partagée
+# ============================================================
+
+# Tétraèdre de Sierpiński : SFI à 4 contractions vers les sommets
+# d'un tétraèdre régulier inscrit dans le cube [0,1]³.
+# Sommets : V0=(0,0,0)  V1=(1,0,0)  V2=(0.5,√3/2,0)  V3=(0.5,1/(2√3),√(2/3))
+
+déf tetraedre_etape(x, y, z, choix):
+    si choix < 0.25:
+        retour (x * 0.5, y * 0.5, z * 0.5)
+    sinonsi choix < 0.5:
+        retour (x * 0.5 + 0.5, y * 0.5, z * 0.5)
+    sinonsi choix < 0.75:
+        retour (x * 0.5 + 0.25, y * 0.5 + 0.433013, z * 0.5)
+    sinon:
+        retour (x * 0.5 + 0.25, y * 0.5 + 0.144338, z * 0.5 + 0.408248)
+
+déf tetraedre_sierpinski(cx, cy, max_iter):
+    soit x = 0.25
+    soit y = 0.20
+    soit z = 0.10
+    soit meilleur = 1.0e9
+    soit choix = abs_ifs(cx * 71.133 + cy * 53.771)
+    soit iter_lim = max_iter
+    si iter_lim > 200.0:
+        iter_lim = 200.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        choix = (choix * 2.618033989 + 0.707106781) % 1.0
+        soit pt = tetraedre_etape(x, y, z, choix)
+        x = pt[0]
+        y = pt[1]
+        z = pt[2]
+        si iter > 15.0:
+            # centrer le tétraèdre avant projection isométrique
+            soit px = projeter_menger_x(x - 0.5, y - 0.289, z - 0.204)
+            soit py = projeter_menger_y(x - 0.5, y - 0.289, z - 0.204)
+            soit d = (px - cx) * (px - cx) + (py - cy) * (py - cy)
+            si d < meilleur:
+                meilleur = d
+        iter = iter + 1.0
+
+    soit score = max_iter - racine_approx(meilleur) * 280.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score
+
+# Julia quaternionique : ensemble de Julia de z² + c dans ℝ⁴,
+# restriction à l'hyperplan w=0 (coupe 3D projetée isométriquement).
+# c = (−0.06, 0.06, 0.0) produit une structure spiralée distincte.
+
+déf julia_quaternion(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit z = 0.0
+    soit c_x = -0.06
+    soit c_y = 0.06
+    soit c_z = 0.0
+    soit iter = 0.0
+
+    tantque iter < max_iter:
+        soit nx = x * x - y * y - z * z + c_x
+        soit ny = 2.0 * x * y + c_y
+        soit nz = 2.0 * x * z + c_z
+        x = nx
+        y = ny
+        z = nz
+        si x * x + y * y + z * z > 16.0:
+            retour iter
+        iter = iter + 1.0
+
+    retour iter
+
+# Boîte de Mandel : z_{n+1} = échelle · plier_sphère(plier_boîte(z_n)) + c
+# avec échelle = 2 et rayon minimal = 0.5, rayon de sphère = 1.
+# Coupe z=0 du fractal 3D projeté sur le plan complexe.
+
+déf plier_boite(v):
+    si v > 1.0:
+        retour 2.0 - v
+    sinonsi v < -1.0:
+        retour -2.0 - v
+    retour v
+
+déf mandelbox(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit z = 0.0
+    soit iter = 0.0
+
+    tantque iter < max_iter:
+        x = plier_boite(x)
+        y = plier_boite(y)
+        z = plier_boite(z)
+        soit r2 = x * x + y * y + z * z
+        si r2 < 0.25:
+            x = x * 4.0
+            y = y * 4.0
+            z = z * 4.0
+        sinonsi r2 < 1.0:
+            x = x / r2
+            y = y / r2
+            z = z / r2
+        x = 2.0 * x + cx
+        y = 2.0 * y + cy
+        z = 2.0 * z
+        si x * x + y * y + z * z > 64.0:
+            retour iter
+        iter = iter + 1.0
+
+    retour iter
+
 déf lichtenberg_figures(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0

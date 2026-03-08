@@ -252,12 +252,19 @@ index.html
 pip install "multilingualprogramming[wasm]"
 ```
 
+Outils recommandés pour le développement local :
+
+- Python 3.12+
+- Node.js 20+ pour `node --check public/js/renderer.js`
+- Un serveur statique capable de servir `.wasm` avec le MIME `application/wasm`
+
 ### Build
 
 ```bash
 python scripts/compile_wasm.py
 python scripts/integration_checks.py
 python scripts/ui_smoke_checks.py
+node --check public/js/renderer.js
 ```
 
 ### Serveur local
@@ -269,6 +276,19 @@ python -m http.server 8080 --directory public
 
 > Les fichiers `.wasm` doivent être servis avec le MIME `application/wasm`.
 > Le serveur intégré Python gère cela automatiquement depuis Python 3.7+.
+
+---
+
+## Contribuer
+
+Le flux de contribution est documenté dans [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+Résumé des règles les plus importantes :
+
+- Les implémentations canoniques des fractales vivent dans `src/*.ml`.
+- `public/main_wasm_bundle.ml` et `public/main.ml` sont régénérés ; ne les éditez pas à la main.
+- Toute fractale ajoutée dans `src/main.ml` doit aussi être enregistrée dans `scripts/compile_wasm.ml`, `scripts/integration_checks.py` et `public/js/renderer.js`.
+- Après une modification significative, exécutez les vérifications locales avant d'ouvrir une PR.
 
 ---
 
@@ -298,6 +318,18 @@ exécute `python scripts/compile_wasm.py`, les tests d'intégration, et déploie
 `public/` sur GitHub Pages.
 
 Configurez Pages via : **Settings → Pages → Source : GitHub Actions**.
+
+---
+
+## Documentation du dépôt
+
+La documentation principale de ce projet est répartie ainsi :
+
+- `README.md` : vue d'ensemble, architecture, build local et déploiement.
+- `CONTRIBUTING.md` : workflow de contribution et checklist de validation.
+- `AGENTS.md` : règles d'édition spécifiques au dépôt pour les agents/outils automatisés.
+
+Si vous modifiez le comportement visible, ajoutez ou retirez une fractale, ou changez le pipeline de build, mettez à jour la documentation correspondante dans le même commit.
 
 ---
 

@@ -60,11 +60,16 @@
         <canvas id="fractal-canvas">
           Votre navigateur ne supporte pas l'élément canvas.
         </canvas>
+        <canvas id="fractal-canvas-3d" class="canvas-masque" aria-label="Vue 3D WebGL">
+          Votre navigateur ne supporte pas WebGL.
+        </canvas>
 
         <!-- Indicateur de statut du rendu -->
         <div id="render-overlay">
           <div id="render-status" class="loading-pulse">Initialisation…</div>
         </div>
+
+        <div id="nav-3d-hud" class="hidden">Navigation 3D</div>
 
         <!-- Coordonnées du curseur -->
         <div id="coords-display">Re 0.000000 Im 0.000000</div>

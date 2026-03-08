@@ -13,6 +13,12 @@ vidéo WebM de zoom**. La planification d'export reste décrite en **français
 multilingual** dans `fractales_export.ml`, tandis que le navigateur gère le
 rendu hors écran, l'encodage et le téléchargement.
 
+Les fractales 3D `tetraedre_sierpinski`, `julia_quaternion` et `mandelbox`
+utilisent un **backend WebGL dédié** pour la navigation 3D (orbite, translation,
+zoom, profondeur), tandis que leur identité, leur classement et leurs
+implémentations canoniques restent définis côté **sources multilingual
+françaises** dans `src/*.ml`.
+
 ---
 
 ## Fractales disponibles

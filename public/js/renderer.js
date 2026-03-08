@@ -127,9 +127,11 @@ let vueExportArrivee = null;
 // ============================================================
 
 const canvas        = document.getElementById("fractal-canvas");
+const canvas3d      = document.getElementById("fractal-canvas-3d");
 const ctx           = canvas.getContext("2d", { willReadFrequently: false });
 const renderStatus  = document.getElementById("render-status");
 const coordsDisplay = document.getElementById("coords-display");
+const nav3dHud      = document.getElementById("nav-3d-hud");
 const iterSlider    = document.getElementById("iter-slider");
 const iterValue     = document.getElementById("iter-value");
 const familySelect  = document.getElementById("family-select");
@@ -347,6 +349,22 @@ const FRACTAL_FAMILY_BY_NAME = Object.fromEntries(
   FRACTAL_FAMILIES.flatMap((famille) => famille.fractales.map(([nom]) => [nom, famille.id]))
 );
 
+import {
+  activerMode3D,
+  definirVue3DActive,
+  estFractale3D,
+  initialiserMoteur3D,
+  interpolerVue3D,
+  obtenirVue3DActive,
+  orbiterVue3D,
+  redimensionnerMoteur3D,
+  render3D,
+  rendre3DSurCanvas,
+  reinitialiserVue3DActive,
+  zoomerVue3D,
+  deplacerVue3D,
+} from "./renderer3d.js";
+
 /**
  * Retourne la couleur [r, g, b] pour une valeur d'itération.
  * @param {number} iter  — valeur retournée par mandelbrot() (float)
@@ -392,6 +410,18 @@ function getPaletteBackground(name) {
 
 function getPaletteInterior(name) {
   return getPaletteConfig(name).interieur;
+}
+
+function getPaletteComplete(name) {
+  return getPaletteConfig(name);
+}
+
+function fractaleActiveEst3D() {
+  return estFractale3D(params.fractal);
+}
+
+function obtenirCanvasActif() {
+  return fractaleActiveEst3D() ? canvas3d : canvas;
 }
 
 function getBasinColor(iter, max, name) {
@@ -510,6 +540,17 @@ function interpolerLogarithmique(a, b, t) {
 }
 
 function capturerVueCourante() {
+  if (fractaleActiveEst3D()) {
+    return {
+      fractal: params.fractal,
+      maxIter: params.maxIter,
+      palette: params.palette,
+      multibrotPower: params.multibrotPower,
+      juliaCre: params.juliaCre,
+      juliaCim: params.juliaCim,
+      vue3d: obtenirVue3DActive(),
+    };
+  }
   return {
     centerX: view.centerX,
     centerY: view.centerY,
@@ -904,6 +945,7 @@ function syncSelectors(selectedFractal = params.fractal) {
 function setActiveFractal(fractalName) {
   params.fractal = fractalName;
   syncSelectors(fractalName);
+  mettreAJourAideInteraction();
   resetView();
   loadSources(params.fractal);
 }
@@ -1529,6 +1571,10 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
 }
 
 async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
+  if (estFractale3D(renduParams.fractal)) {
+    rendre3DSurCanvas(canvasCible, renduParams.fractal, renduParams.maxIter, getPaletteComplete(renduParams.palette), vueCible?.vue3d ?? obtenirVue3DActive());
+    return;
+  }
   const ctxCible = canvasCible.getContext("2d", { willReadFrequently: false });
   const w = canvasCible.width;
   const h = canvasCible.height;
@@ -1691,6 +1737,11 @@ function resizeCanvas() {
     canvas.height = h;
     imageDataBuffer = null;  // invalider le buffer
   }
+  if (canvas3d.width !== w || canvas3d.height !== h) {
+    canvas3d.width = w;
+    canvas3d.height = h;
+  }
+  redimensionnerMoteur3D();
 }
 
 /**
@@ -1701,9 +1752,14 @@ function render() {
   const token = ++renderToken;
 
   resizeCanvas();
-  const w = canvas.width;
-  const h = canvas.height;
+  const canvasActif = obtenirCanvasActif();
+  const w = canvasActif.width;
+  const h = canvasActif.height;
   if (w === 0 || h === 0) return;
+
+  activerMode3D(fractaleActiveEst3D(), params.fractal);
+  canvas.classList.toggle("canvas-visible", !fractaleActiveEst3D());
+  canvas.classList.toggle("canvas-masque", fractaleActiveEst3D());
 
   if (!imageDataBuffer || imageDataBuffer.width !== w || imageDataBuffer.height !== h) {
     imageDataBuffer = ctx.createImageData(w, h);
@@ -1720,6 +1776,13 @@ function render() {
   renderStart = performance.now();
   canvas.parentElement.classList.add("rendering");
   updateStatusBar("Rendu en cours…");
+
+  if (fractaleActiveEst3D()) {
+    render3D(params.fractal, params.maxIter, getPaletteComplete(params.palette));
+    rendering = false;
+    canvas.parentElement.classList.remove("rendering");
+    return;
+  }
 
   if (POINT_FRACTALS.has(params.fractal)) {
     renderPointFractal(w, h, data, cx0, cy0, ps, token);
@@ -1831,8 +1894,24 @@ function canvasToComplex(px, py) {
   };
 }
 
+/*
+function deplacerVue(deltaX, deltaY) {
+  view.centerX += deltaX;
+  view.centerY += deltaY;
+  render();
+}
+
+function zoomerCentre(factor) {
+  zoomAt(canvas.width / 2, canvas.height / 2, factor);
+}
+*/
+
 /** Zoom centré sur (px, py) canvas par le facteur donné. */
 function zoomAt(px, py, factor) {
+  if (fractaleActiveEst3D()) {
+    zoomerVue3D(factor < 1 ? 1 / Math.max(factor, 0.001) : 1 / factor);
+    return;
+  }
   const { re, im } = canvasToComplex(px, py);
   view.centerX  = re + (view.centerX - re) / factor;
   view.centerY  = im + (view.centerY - im) / factor;
@@ -1841,12 +1920,20 @@ function zoomAt(px, py, factor) {
 }
 
 function deplacerVue(deltaX, deltaY) {
+  if (fractaleActiveEst3D()) {
+    deplacerVue3D(deltaX * 0.12, deltaY * 0.12);
+    return;
+  }
   view.centerX += deltaX;
   view.centerY += deltaY;
   render();
 }
 
 function zoomerCentre(factor) {
+  if (fractaleActiveEst3D()) {
+    zoomerVue3D(1 / factor);
+    return;
+  }
   zoomAt(canvas.width / 2, canvas.height / 2, factor);
 }
 
@@ -1863,6 +1950,11 @@ function attacherActionControle(bouton, action) {
 }
 
 function resetView() {
+  if (fractaleActiveEst3D()) {
+    reinitialiserVue3DActive(params.fractal);
+    render();
+    return;
+  }
   const preset = params.fractal === "multibrot"
     ? getMultibrotPreset(params.multibrotPower)
     : (VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot);
@@ -2020,22 +2112,38 @@ window.addEventListener("keydown", (event) => {
 
   if (event.key === "ArrowUp") {
     event.preventDefault();
-    deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
+    if (fractaleActiveEst3D()) orbiterVue3D(0.0, -0.12);
+    else deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
   } else if (event.key === "ArrowDown") {
     event.preventDefault();
-    deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
+    if (fractaleActiveEst3D()) orbiterVue3D(0.0, 0.12);
+    else deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
   } else if (event.key === "ArrowLeft") {
     event.preventDefault();
-    deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
+    if (fractaleActiveEst3D()) orbiterVue3D(-0.12, 0.0);
+    else deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
   } else if (event.key === "ArrowRight") {
     event.preventDefault();
-    deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
+    if (fractaleActiveEst3D()) orbiterVue3D(0.12, 0.0);
+    else deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
   } else if (event.key === "+" || event.key === "=" || event.code === "NumpadAdd") {
     event.preventDefault();
     zoomerCentre(1.5);
   } else if (event.key === "-" || event.key === "_" || event.code === "NumpadSubtract") {
     event.preventDefault();
     zoomerCentre(1 / 1.5);
+  } else if (fractaleActiveEst3D() && (event.key === "a" || event.key === "A")) {
+    event.preventDefault();
+    deplacerVue3D(18, 0);
+  } else if (fractaleActiveEst3D() && (event.key === "d" || event.key === "D")) {
+    event.preventDefault();
+    deplacerVue3D(-18, 0);
+  } else if (fractaleActiveEst3D() && (event.key === "w" || event.key === "W")) {
+    event.preventDefault();
+    deplacerVue3D(0, 18);
+  } else if (fractaleActiveEst3D() && (event.key === "s" || event.key === "S")) {
+    event.preventDefault();
+    deplacerVue3D(0, -18);
   }
 });
 
@@ -2055,7 +2163,7 @@ function blobDepuisCanvas(canvasSource, type = "image/png", quality = 0.92) {
 
 async function exporterImageCourante() {
   updateStatusBar("Export PNG courant…");
-  const blob = await blobDepuisCanvas(canvas, "image/png");
+  const blob = await blobDepuisCanvas(obtenirCanvasActif(), "image/png");
   telechargerBlob(blob, formaterNomExport("vue", "png"));
   updateStatusBar("PNG courant exporté", true);
 }
@@ -2068,11 +2176,13 @@ async function exporterImageHauteResolution() {
   canvasExport.height = hauteur;
   const renduParams = clonerParamsExport();
   renduParams.maxIter = ajusterIterationsExport(largeur, hauteur, renduParams.maxIter);
-  const vueCible = {
-    centerX: view.centerX,
-    centerY: view.centerY,
-    pixelSize: view.pixelSize,
-  };
+  const vueCible = fractaleActiveEst3D()
+    ? { vue3d: obtenirVue3DActive() }
+    : {
+      centerX: view.centerX,
+      centerY: view.centerY,
+      pixelSize: view.pixelSize,
+    };
   updateStatusBar("Rendu PNG haute résolution…");
   await rendreDansCanvas(canvasExport, vueCible, renduParams);
   const blob = await blobDepuisCanvas(canvasExport, "image/png");
@@ -2119,11 +2229,13 @@ async function exporterVideoZoom() {
 
   for (let index = 0; index < nbImages; index++) {
     const t = nbImages <= 1 ? 1.0 : index / (nbImages - 1);
-    const vueAnimation = {
-      centerX: interpolerLineaire(vueExportDepart.centerX, vueExportArrivee.centerX, t),
-      centerY: interpolerLineaire(vueExportDepart.centerY, vueExportArrivee.centerY, t),
-      pixelSize: interpolerLogarithmique(vueExportDepart.pixelSize, vueExportArrivee.pixelSize, t),
-    };
+    const vueAnimation = vueExportDepart.vue3d
+      ? { vue3d: interpolerVue3D(vueExportDepart.vue3d, vueExportArrivee.vue3d, t) }
+      : {
+        centerX: interpolerLineaire(vueExportDepart.centerX, vueExportArrivee.centerX, t),
+        centerY: interpolerLineaire(vueExportDepart.centerY, vueExportArrivee.centerY, t),
+        pixelSize: interpolerLogarithmique(vueExportDepart.pixelSize, vueExportArrivee.pixelSize, t),
+      };
     const renduParams = clonerParamsExport(vueExportDepart);
     renduParams.maxIter = Math.round(interpolerLineaire(vueExportDepart.maxIter, vueExportArrivee.maxIter, t));
     renduParams.palette = vueExportDepart.palette;
@@ -2197,7 +2309,9 @@ btnToggle.addEventListener("click", () => {
     // Recalculer le pixelSize après changement de taille
     setTimeout(() => {
       const newW = canvas.parentElement.clientWidth;
-      view.pixelSize = view.pixelSize * (canvas.width / Math.max(newW, 1));
+      if (!fractaleActiveEst3D()) {
+        view.pixelSize = view.pixelSize * (canvas.width / Math.max(newW, 1));
+      }
       render();
     }, 280);
   }
@@ -2506,12 +2620,31 @@ function showZoomHint() {
   }, 4000);
 }
 
+function mettreAJourAideInteraction() {
+  if (!zoomHint) return;
+  if (fractaleActiveEst3D()) {
+    zoomHint.textContent = "Glisser : orbite · Maj+glisser ou clic droit : translation · Molette : zoom · Double-clic : réinitialiser";
+  } else if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    zoomHint.textContent = "Glisser : déplacement · Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
+  } else {
+    zoomHint.textContent = "Glisser : déplacement · Clic : zoom ×2 · Double-clic : dézoom · Molette : zoom libre";
+  }
+}
+
 // ============================================================
 // INITIALISATION
 // ============================================================
 
 async function init() {
   resizeCanvas();
+  initialiserMoteur3D({
+    canvas: canvas3d,
+    hud: nav3dHud,
+    coords: coordsDisplay,
+    statut: updateStatusBar,
+    obtenirPalette: () => getPaletteComplete(params.palette),
+    obtenirMaxIter: () => params.maxIter,
+  });
   syncSelectors(params.fractal);
   mettreAJourEtatVideo();
 
@@ -2534,10 +2667,7 @@ async function init() {
   // Charger sources et benchmark en parallèle
   await Promise.all([loadSources(params.fractal), loadBenchmark()]);
 
-  // Adapter le texte de l'astuce selon le dispositif
-  if (zoomHint && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
-    zoomHint.textContent = "Glisser : déplacement · Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
-  }
+  mettreAJourAideInteraction();
 
   showZoomHint();
 }

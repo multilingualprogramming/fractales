@@ -268,16 +268,24 @@
           </select>
         </div>
 
-        <div id="custom-palette-controls" class="control-group hidden" role="group" aria-label="Couleurs de palette personnalisée">
-          <label class="color-control" for="palette-background">
-            <span class="control-label">Fond</span>
-            <input id="palette-background" type="color" value="#020008" aria-label="Choisir la couleur de fond" />
-          </label>
-          <label class="color-control" for="palette-foreground">
-            <span class="control-label">Avant-plan</span>
-            <input id="palette-foreground" type="color" value="#fff5b4" aria-label="Choisir la couleur d'avant-plan" />
-          </label>
-        </div>
+        <section id="custom-palette-controls" class="custom-palette-panel hidden" aria-label="Éditeur de palette personnalisée">
+          <div class="custom-palette-header">
+            <span class="custom-palette-title">Palette personnalisée</span>
+            <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
+          </div>
+          <div id="custom-palette-preview" class="custom-palette-preview" aria-hidden="true"></div>
+          <div class="custom-palette-basics">
+            <label class="color-control" for="palette-background">
+              <span class="control-label">Fond</span>
+              <input id="palette-background" type="color" value="#020008" aria-label="Choisir la couleur de fond" />
+            </label>
+            <label class="color-control" for="palette-interior">
+              <span class="control-label">Intérieur</span>
+              <input id="palette-interior" type="color" value="#fff5b4" aria-label="Choisir la couleur intérieure" />
+            </label>
+          </div>
+          <div id="custom-palette-stops" class="custom-palette-stops" role="list" aria-label="Stops de gradient"></div>
+        </section>
 
         <div class="ctrl-sep" aria-hidden="true"></div>
 

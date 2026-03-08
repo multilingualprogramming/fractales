@@ -32,7 +32,8 @@ const params = {
   juliaCim: 0.156,
   palette: "aurora",   // "feu" | "ocean" | "aurora"
   paletteBackground: "#020008",
-  paletteForeground: "#fff5b4",
+  paletteInterior: "#fff5b4",
+  paletteStops: ["#0a0028", "#4600aa", "#0028e6", "#00aad2", "#00e66e", "#a0ff00", "#ffc800", "#fff5b4"],
 };
 
 const VIEW_PRESETS = {
@@ -141,8 +142,11 @@ const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
 const customPaletteControls = document.getElementById("custom-palette-controls");
+const customPalettePreview = document.getElementById("custom-palette-preview");
+const customPaletteStops = document.getElementById("custom-palette-stops");
+const addPaletteStopButton = document.getElementById("btn-add-palette-stop");
 const paletteBackgroundInput = document.getElementById("palette-background");
-const paletteForegroundInput = document.getElementById("palette-foreground");
+const paletteInteriorInput = document.getElementById("palette-interior");
 const btnReset      = document.getElementById("btn-reset");
 const btnPanUp      = document.getElementById("btn-pan-up");
 const btnPanLeft    = document.getElementById("btn-pan-left");
@@ -441,22 +445,27 @@ function melangerCouleurs(a, b, ratio) {
   ];
 }
 
-function creerPalettePersonnalisee(backgroundHex, foregroundHex) {
+function normaliserStopsPalette(stopsHex, fallbackStops) {
+  const source = Array.isArray(stopsHex) && stopsHex.length > 0 ? stopsHex : fallbackStops;
+  return source.map((stop, index) => normaliserHexCouleur(stop, fallbackStops[Math.min(index, fallbackStops.length - 1)] ?? "#ffffff"));
+}
+
+function paletteVersEtatEditable(palette) {
+  return {
+    background: rgbVersHex(palette.fond ?? PALETTES.aurora.fond),
+    interior: rgbVersHex(palette.interieur ?? palette.stops?.[palette.stops.length - 1] ?? PALETTES.aurora.interieur),
+    stops: (palette.stops ?? PALETTES.aurora.stops).map((stop) => rgbVersHex(stop)),
+  };
+}
+
+function creerPalettePersonnalisee(backgroundHex, interiorHex, stopsHex) {
   const fond = hexVersRgb(backgroundHex, PALETTES.aurora.fond);
-  const avantPlan = hexVersRgb(foregroundHex, PALETTES.aurora.stops[PALETTES.aurora.stops.length - 1]);
+  const interieur = hexVersRgb(interiorHex, PALETTES.aurora.interieur);
+  const stopsNormalises = normaliserStopsPalette(stopsHex, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
   return {
     fond,
-    interieur: avantPlan,
-    stops: [
-      melangerCouleurs(fond, avantPlan, 0.16),
-      melangerCouleurs(fond, avantPlan, 0.28),
-      melangerCouleurs(fond, avantPlan, 0.42),
-      melangerCouleurs(fond, avantPlan, 0.58),
-      melangerCouleurs(fond, avantPlan, 0.76),
-      avantPlan,
-      melangerCouleurs(avantPlan, [255, 255, 255], 0.24),
-      melangerCouleurs(avantPlan, [255, 255, 255], 0.5),
-    ],
+    interieur,
+    stops: stopsNormalises.map((stop) => hexVersRgb(stop)),
   };
 }
 
@@ -465,13 +474,13 @@ function getPaletteConfig(source) {
     if (Array.isArray(source.stops)) return source;
     if (typeof source.palette === "string") {
       if (source.palette === "personnalisee") {
-        return creerPalettePersonnalisee(source.paletteBackground, source.paletteForeground);
+        return creerPalettePersonnalisee(source.paletteBackground, source.paletteInterior, source.paletteStops);
       }
       return PALETTES[source.palette] ?? PALETTES.feu;
     }
   }
   if (source === "personnalisee") {
-    return creerPalettePersonnalisee(params.paletteBackground, params.paletteForeground);
+    return creerPalettePersonnalisee(params.paletteBackground, params.paletteInterior, params.paletteStops);
   }
   return PALETTES[source] ?? PALETTES.feu;
 }
@@ -492,12 +501,37 @@ function getPaletteComplete(source) {
   return getPaletteConfig(source);
 }
 
+function construireApercuPaletteCss() {
+  const palette = getPaletteComplete(params);
+  const stops = palette.stops ?? [];
+  if (stops.length === 0) return params.paletteBackground;
+  return `linear-gradient(90deg, ${stops.map((stop, index) => {
+    const pos = stops.length === 1 ? 100 : Math.round((index / (stops.length - 1)) * 100);
+    return `${rgbVersHex(stop)} ${pos}%`;
+  }).join(", ")})`;
+}
+
+function rendreEditeurPalette() {
+  const palette = getPaletteComplete(params);
+  const stopsHex = (params.paletteStops ?? []).map((stop, index) => normaliserHexCouleur(stop, rgbVersHex(palette.stops[index] ?? [255, 255, 255])));
+  customPalettePreview.style.background = construireApercuPaletteCss();
+  customPaletteStops.innerHTML = stopsHex.map((stop, index) => `
+    <div class="palette-stop" role="listitem">
+      <span class="palette-stop-index">${index + 1}</span>
+      <input type="color" value="${stop}" data-stop-index="${index}" aria-label="Couleur du stop ${index + 1}" />
+      <button class="btn palette-stop-remove" type="button" data-remove-stop="${index}" aria-label="Supprimer le stop ${index + 1}">×</button>
+    </div>
+  `).join("");
+}
+
 function synchroniserControlePalette() {
   paletteSelect.value = params.palette;
   paletteBackgroundInput.value = normaliserHexCouleur(params.paletteBackground, "#020008");
-  paletteForegroundInput.value = normaliserHexCouleur(params.paletteForeground, "#fff5b4");
+  paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
+  params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
   const afficher = params.palette === "personnalisee";
   customPaletteControls.classList.toggle("hidden", !afficher);
+  if (afficher) rendreEditeurPalette();
 }
 
 function fractaleActiveEst3D() {
@@ -630,7 +664,8 @@ function capturerVueCourante() {
       maxIter: params.maxIter,
       palette: params.palette,
       paletteBackground: params.paletteBackground,
-      paletteForeground: params.paletteForeground,
+      paletteInterior: params.paletteInterior,
+      paletteStops: [...params.paletteStops],
       multibrotPower: params.multibrotPower,
       juliaCre: params.juliaCre,
       juliaCim: params.juliaCim,
@@ -645,7 +680,8 @@ function capturerVueCourante() {
     maxIter: params.maxIter,
     palette: params.palette,
     paletteBackground: params.paletteBackground,
-    paletteForeground: params.paletteForeground,
+    paletteInterior: params.paletteInterior,
+    paletteStops: [...params.paletteStops],
     multibrotPower: params.multibrotPower,
     juliaCre: params.juliaCre,
     juliaCim: params.juliaCim,
@@ -658,7 +694,8 @@ function clonerParamsExport(source = params) {
     maxIter: source.maxIter,
     palette: source.palette,
     paletteBackground: source.paletteBackground,
-    paletteForeground: source.paletteForeground,
+    paletteInterior: source.paletteInterior,
+    paletteStops: [...(source.paletteStops ?? params.paletteStops)],
     multibrotPower: source.multibrotPower,
     juliaCre: source.juliaCre,
     juliaCim: source.juliaCim,
@@ -2161,9 +2198,10 @@ paletteSelect.addEventListener("change", () => {
   const anciennePalette = params.palette;
   params.palette = paletteSelect.value;
   if (params.palette === "personnalisee" && anciennePalette !== "personnalisee") {
-    const paletteBase = getPaletteConfig(anciennePalette);
-    params.paletteBackground = rgbVersHex(paletteBase.fond);
-    params.paletteForeground = rgbVersHex(paletteBase.stops[paletteBase.stops.length - 1] ?? paletteBase.interieur);
+    const paletteBase = paletteVersEtatEditable(getPaletteConfig(anciennePalette));
+    params.paletteBackground = paletteBase.background;
+    params.paletteInterior = paletteBase.interior;
+    params.paletteStops = [...paletteBase.stops];
   }
   synchroniserControlePalette();
   render();
@@ -2176,9 +2214,40 @@ paletteBackgroundInput.addEventListener("input", () => {
   render();
 });
 
-paletteForegroundInput.addEventListener("input", () => {
+paletteInteriorInput.addEventListener("input", () => {
   params.palette = "personnalisee";
-  params.paletteForeground = normaliserHexCouleur(paletteForegroundInput.value, params.paletteForeground);
+  params.paletteInterior = normaliserHexCouleur(paletteInteriorInput.value, params.paletteInterior);
+  synchroniserControlePalette();
+  render();
+});
+
+addPaletteStopButton.addEventListener("click", () => {
+  params.palette = "personnalisee";
+  const palette = getPaletteComplete(params);
+  const derniere = rgbVersHex(palette.stops[palette.stops.length - 1] ?? palette.interieur ?? [255, 255, 255]);
+  params.paletteStops = [...params.paletteStops, derniere];
+  synchroniserControlePalette();
+  render();
+});
+
+customPaletteStops.addEventListener("input", (event) => {
+  const cible = event.target;
+  if (!(cible instanceof HTMLInputElement)) return;
+  const index = Number.parseInt(cible.dataset.stopIndex ?? "", 10);
+  if (!Number.isInteger(index) || index < 0 || index >= params.paletteStops.length) return;
+  params.palette = "personnalisee";
+  params.paletteStops[index] = normaliserHexCouleur(cible.value, params.paletteStops[index]);
+  synchroniserControlePalette();
+  render();
+});
+
+customPaletteStops.addEventListener("click", (event) => {
+  const cible = event.target;
+  if (!(cible instanceof HTMLElement)) return;
+  const index = Number.parseInt(cible.dataset.removeStop ?? "", 10);
+  if (!Number.isInteger(index) || params.paletteStops.length <= 2) return;
+  params.palette = "personnalisee";
+  params.paletteStops = params.paletteStops.filter((_, stopIndex) => stopIndex !== index);
   synchroniserControlePalette();
   render();
 });
@@ -2352,7 +2421,8 @@ async function exporterVideoZoom() {
     renduParams.maxIter = Math.round(interpolerLineaire(vueExportDepart.maxIter, vueExportArrivee.maxIter, t));
     renduParams.palette = vueExportDepart.palette;
     renduParams.paletteBackground = vueExportDepart.paletteBackground;
-    renduParams.paletteForeground = vueExportDepart.paletteForeground;
+    renduParams.paletteInterior = vueExportDepart.paletteInterior;
+    renduParams.paletteStops = [...vueExportDepart.paletteStops];
     renduParams.multibrotPower = vueExportDepart.multibrotPower;
     renduParams.juliaCre = vueExportDepart.juliaCre;
     renduParams.juliaCim = vueExportDepart.juliaCim;

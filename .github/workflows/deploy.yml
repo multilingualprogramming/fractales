@@ -93,6 +93,7 @@ jobs:
               print_bool() {},
               print_sep() {},
               print_newline() {},
+              pow_f64(base, exponent) { return Math.pow(base, exponent); },
             },
           }).then(({ instance }) => {
             const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch','magnet1','magnet2','lambda_fractale'];

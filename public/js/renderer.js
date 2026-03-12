@@ -1750,6 +1750,7 @@ async function loadWasm() {
         print_bool: (_b) => {},
         print_sep: () => {},
         print_newline: () => {},
+        pow_f64: Math.pow,
       },
     };
 

@@ -53,6 +53,7 @@ REQUIRED_EXPORTS = {
     "dragon_heighway",
     "dragon_curve",
     "cantor_set",
+    "triangle_de_cercles_recursifs",
     "apollonian_gasket",
     "t_square_fractal",
     "h_fractal",

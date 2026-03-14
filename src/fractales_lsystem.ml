@@ -149,7 +149,7 @@ déf arbre_pythagore(cx, cy, max_iter):
         retour 6.0
     retour score
 
-déf apollonian_gasket(cx, cy, max_iter):
+déf triangle_de_cercles_recursifs(cx, cy, max_iter):
     soit x = cx
     soit y = cy
     soit dist = 1.0e9
@@ -183,6 +183,123 @@ déf apollonian_gasket(cx, cy, max_iter):
     si dist < seuil:
         retour max_iter * 0.92
     soit score = max_iter * 0.9 - (dist / (seuil * 12.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
+déf distance_cercle_apollonien(px, py, cx, cy, courbure):
+    soit rayon = 1.0 / abs_koch(courbure)
+    soit dx = px - cx
+    soit dy = py - cy
+    retour abs_koch(dx * dx + dy * dy - rayon * rayon)
+
+déf reflet_apollonien_k(ka, kb, kc, kd, indice):
+    si indice == 0.0:
+        retour 2.0 * (kb + kc + kd) - ka
+    sinonsi indice == 1.0:
+        retour 2.0 * (ka + kc + kd) - kb
+    sinonsi indice == 2.0:
+        retour 2.0 * (ka + kb + kd) - kc
+    retour 2.0 * (ka + kb + kc) - kd
+
+déf reflet_apollonien_x(ka, xa, kb, xb, kc, xc, kd, xd, indice):
+    soit kn = reflet_apollonien_k(ka, kb, kc, kd, indice)
+    si indice == 0.0:
+        soit wx = 2.0 * (kb * xb + kc * xc + kd * xd) - ka * xa
+        retour wx / kn
+    sinonsi indice == 1.0:
+        soit wx = 2.0 * (ka * xa + kc * xc + kd * xd) - kb * xb
+        retour wx / kn
+    sinonsi indice == 2.0:
+        soit wx = 2.0 * (ka * xa + kb * xb + kd * xd) - kc * xc
+        retour wx / kn
+    soit wx = 2.0 * (ka * xa + kb * xb + kc * xc) - kd * xd
+    retour wx / kn
+
+déf reflet_apollonien_y(ka, ya, kb, yb, kc, yc, kd, yd, indice):
+    soit kn = reflet_apollonien_k(ka, kb, kc, kd, indice)
+    si indice == 0.0:
+        soit wy = 2.0 * (kb * yb + kc * yc + kd * yd) - ka * ya
+        retour wy / kn
+    sinonsi indice == 1.0:
+        soit wy = 2.0 * (ka * ya + kc * yc + kd * yd) - kb * yb
+        retour wy / kn
+    sinonsi indice == 2.0:
+        soit wy = 2.0 * (ka * ya + kb * yb + kd * yd) - kc * yc
+        retour wy / kn
+    soit wy = 2.0 * (ka * ya + kb * yb + kc * yc) - kd * yd
+    retour wy / kn
+
+déf distance_apollonien_recursif(px, py, ka, xa, ya, kb, xb, yb, kc, xc, yc, kd, xd, yd, profondeur, precedent):
+    soit dist = distance_cercle_apollonien(px, py, xa, ya, ka)
+    soit d1 = distance_cercle_apollonien(px, py, xb, yb, kb)
+    si d1 < dist:
+        dist = d1
+    soit d2 = distance_cercle_apollonien(px, py, xc, yc, kc)
+    si d2 < dist:
+        dist = d2
+    soit d3 = distance_cercle_apollonien(px, py, xd, yd, kd)
+    si d3 < dist:
+        dist = d3
+
+    si profondeur <= 0.0:
+        retour dist
+
+    soit meilleur = dist
+
+    si precedent != 0.0:
+        soit k0 = reflet_apollonien_k(ka, kb, kc, kd, 0.0)
+        soit x0 = reflet_apollonien_x(ka, xa, kb, xb, kc, xc, kd, xd, 0.0)
+        soit y0 = reflet_apollonien_y(ka, ya, kb, yb, kc, yc, kd, yd, 0.0)
+        soit d0 = distance_apollonien_recursif(px, py, k0, x0, y0, kb, xb, yb, kc, xc, yc, kd, xd, yd, profondeur - 1.0, 0.0)
+        si d0 < meilleur:
+            meilleur = d0
+    si precedent != 1.0:
+        soit k1 = reflet_apollonien_k(ka, kb, kc, kd, 1.0)
+        soit x1 = reflet_apollonien_x(ka, xa, kb, xb, kc, xc, kd, xd, 1.0)
+        soit y1 = reflet_apollonien_y(ka, ya, kb, yb, kc, yc, kd, yd, 1.0)
+        soit d1r = distance_apollonien_recursif(px, py, ka, xa, ya, k1, x1, y1, kc, xc, yc, kd, xd, yd, profondeur - 1.0, 1.0)
+        si d1r < meilleur:
+            meilleur = d1r
+    si precedent != 2.0:
+        soit k2 = reflet_apollonien_k(ka, kb, kc, kd, 2.0)
+        soit x2 = reflet_apollonien_x(ka, xa, kb, xb, kc, xc, kd, xd, 2.0)
+        soit y2 = reflet_apollonien_y(ka, ya, kb, yb, kc, yc, kd, yd, 2.0)
+        soit d2r = distance_apollonien_recursif(px, py, ka, xa, ya, kb, xb, yb, k2, x2, y2, kd, xd, yd, profondeur - 1.0, 2.0)
+        si d2r < meilleur:
+            meilleur = d2r
+    si precedent != 3.0:
+        soit k3 = reflet_apollonien_k(ka, kb, kc, kd, 3.0)
+        soit x3 = reflet_apollonien_x(ka, xa, kb, xb, kc, xc, kd, xd, 3.0)
+        soit y3 = reflet_apollonien_y(ka, ya, kb, yb, kc, yc, kd, yd, 3.0)
+        soit d3r = distance_apollonien_recursif(px, py, ka, xa, ya, kb, xb, yb, kc, xc, yc, k3, x3, y3, profondeur - 1.0, 3.0)
+        si d3r < meilleur:
+            meilleur = d3r
+
+    retour meilleur
+
+déf apollonian_gasket(cx, cy, max_iter):
+    si cx * cx + cy * cy > 1.08:
+        retour 0.0
+
+    soit k0 = -1.0
+    soit k1 = 2.1547005383792515
+    soit k2 = 2.1547005383792515
+    soit k3 = 2.1547005383792515
+    soit x0 = 0.0
+    soit y0 = 0.0
+    soit x1 = 0.0
+    soit y1 = 0.5358983848622454
+    soit x2 = -0.46410161513775466
+    soit y2 = -0.26794919243112253
+    soit x3 = 0.46410161513775444
+    soit y3 = -0.2679491924311229
+    soit profondeur = min_koch(5.0, 2.0 + max_iter / 96.0)
+    soit dist = distance_apollonien_recursif(cx, cy, k0, x0, y0, k1, x1, y1, k2, x2, y2, k3, x3, y3, profondeur, -1.0)
+    soit seuil = 0.0015
+    si dist < seuil:
+        retour max_iter * 0.95
+    soit score = max_iter * 0.94 - (dist / (seuil * 18.0)) * (max_iter * 0.9)
     si score < 6.0:
         retour 6.0
     retour score

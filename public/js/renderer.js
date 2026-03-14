@@ -78,7 +78,8 @@ const VIEW_PRESETS = {
   dragon_heighway: { centerX: 0.2, centerY: 0.0, span: 2.8 },
   dragon_curve: { centerX: 0.2, centerY: 0.0, span: 2.8 },
   cantor_set:   { centerX: 0.0, centerY: 0.0, span: 2.6 },
-  apollonian_gasket: { centerX: 0.0, centerY: 0.05, span: 2.4 },
+  triangle_de_cercles_recursifs: { centerX: 0.0, centerY: 0.05, span: 2.4 },
+  apollonian_gasket: { centerX: 0.0, centerY: 0.0, span: 2.2 },
   t_square_fractal: { centerX: 0.0, centerY: 0.0, span: 2.8 },
   h_fractal: { centerX: 0.0, centerY: 0.0, span: 2.8 },
   hilbert_curve: { centerX: 0.0, centerY: 0.0, span: 2.3 },
@@ -103,7 +104,7 @@ function getMultibrotPreset(power) {
 }
 
 const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
-const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "dragon_curve", "cantor_set", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
+const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "dragon_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
 // Les fractales 3D en JS pur (julia_quaternion, mandelbox) sont toujours disponibles.
@@ -323,7 +324,8 @@ const FRACTAL_FAMILIES = [
       ["dragon_heighway", "Dragon de Heighway"],
       ["dragon_curve", "Courbe du dragon"],
       ["cantor_set", "Ensemble de Cantor"],
-      ["apollonian_gasket", "Joint d'Apollonius"],
+      ["triangle_de_cercles_recursifs", "Triangle de cercles récursifs"],
+      ["apollonian_gasket", "Joint apollonien"],
       ["t_square_fractal", "Fractale en T"],
       ["h_fractal", "Fractale en H"],
       ["hilbert_curve", "Courbe de Hilbert"],
@@ -1162,13 +1164,47 @@ function dessinerCercle(ctxCible, x, y, rayon) {
   ctxCible.arc(x, y, rayon, 0, Math.PI * 2);
 }
 
-function dessinerApollonien(ctxCible, x, y, rayon, niveau) {
+function dessinerTriangleCerclesRecursifs(ctxCible, x, y, rayon, niveau) {
   if (niveau <= 0 || rayon < 3) return;
   dessinerCercle(ctxCible, x, y, rayon);
   const r = rayon / 2;
-  dessinerApollonien(ctxCible, x - r, y, r, niveau - 1);
-  dessinerApollonien(ctxCible, x + r, y, r, niveau - 1);
-  dessinerApollonien(ctxCible, x, y - r * 0.866, r, niveau - 1);
+  dessinerTriangleCerclesRecursifs(ctxCible, x - r, y, r, niveau - 1);
+  dessinerTriangleCerclesRecursifs(ctxCible, x + r, y, r, niveau - 1);
+  dessinerTriangleCerclesRecursifs(ctxCible, x, y - r * 0.866, r, niveau - 1);
+}
+
+function creerConfigurationApollonienne() {
+  const rayonExterieur = 1.0;
+  const rayonInterieur = rayonExterieur / (1.0 + 2.0 / Math.sqrt(3));
+  const distanceCentre = rayonExterieur - rayonInterieur;
+  const angles = [Math.PI / 2, Math.PI / 2 + (2 * Math.PI) / 3, Math.PI / 2 + (4 * Math.PI) / 3];
+  const internes = angles.map((angle) => ({
+    x: Math.cos(angle) * distanceCentre,
+    y: Math.sin(angle) * distanceCentre,
+    k: 1 / rayonInterieur,
+  }));
+  return [{ x: 0, y: 0, k: -1 / rayonExterieur }, ...internes];
+}
+
+function refleterCercleApollonien(configuration, index) {
+  const autres = [];
+  for (let i = 0; i < configuration.length; i++) {
+    if (i !== index) autres.push(configuration[i]);
+  }
+  const cercle = configuration[index];
+  const kn = 2 * (autres[0].k + autres[1].k + autres[2].k) - cercle.k;
+  const wx = 2 * (autres[0].k * autres[0].x + autres[1].k * autres[1].x + autres[2].k * autres[2].x) - cercle.k * cercle.x;
+  const wy = 2 * (autres[0].k * autres[0].y + autres[1].k * autres[1].y + autres[2].k * autres[2].y) - cercle.k * cercle.y;
+  return { x: wx / kn, y: wy / kn, k: kn };
+}
+
+function cleCercleApollonien(cercle) {
+  const rayon = 1 / Math.abs(cercle.k);
+  return [
+    Math.round(cercle.x * 1e6),
+    Math.round(cercle.y * 1e6),
+    Math.round(rayon * 1e6),
+  ].join(":");
 }
 
 function creerTraceurMonde(ctxCible, w, h, vueCible) {
@@ -1242,13 +1278,46 @@ function dessinerCercleMonde(traceur, x, y, rayon, segments = 40) {
   }
 }
 
-function dessinerApollonienMonde(traceur, x, y, rayon, niveau) {
+function dessinerTriangleCerclesRecursifsMonde(traceur, x, y, rayon, niveau) {
   if (niveau <= 0 || rayon < 0.01) return;
   dessinerCercleMonde(traceur, x, y, rayon);
   const r = rayon / 2;
-  dessinerApollonienMonde(traceur, x - r, y, r, niveau - 1);
-  dessinerApollonienMonde(traceur, x + r, y, r, niveau - 1);
-  dessinerApollonienMonde(traceur, x, y - r * 0.866, r, niveau - 1);
+  dessinerTriangleCerclesRecursifsMonde(traceur, x - r, y, r, niveau - 1);
+  dessinerTriangleCerclesRecursifsMonde(traceur, x + r, y, r, niveau - 1);
+  dessinerTriangleCerclesRecursifsMonde(traceur, x, y - r * 0.866, r, niveau - 1);
+}
+
+function dessinerJointApolloniusMonde(traceur, niveauMax) {
+  const configurationInitiale = creerConfigurationApollonienne();
+  const dejaDessines = new Set();
+
+  function tracerCercle(cercle) {
+    const rayon = 1 / Math.abs(cercle.k);
+    if (!isFinite(rayon) || rayon < 0.008) return false;
+    const cle = cleCercleApollonien(cercle);
+    if (dejaDessines.has(cle)) return false;
+    dejaDessines.add(cle);
+    dessinerCercleMonde(traceur, cercle.x, cercle.y, rayon, Math.max(28, Math.min(88, Math.floor(30 + rayon * 32))));
+    return true;
+  }
+
+  function explorer(configuration, niveau, precedent) {
+    if (niveau <= 0) return;
+    for (let i = 0; i < 4; i++) {
+      if (i === precedent) continue;
+      const cercle = refleterCercleApollonien(configuration, i);
+      if (!isFinite(cercle.x) || !isFinite(cercle.y) || !isFinite(cercle.k) || Math.abs(cercle.k) < 1e-9) continue;
+      tracerCercle(cercle);
+      const suivante = configuration.slice();
+      suivante[i] = cercle;
+      explorer(suivante, niveau - 1, i);
+    }
+  }
+
+  for (const cercle of configurationInitiale) {
+    tracerCercle(cercle);
+  }
+  explorer(configurationInitiale, niveauMax, -1);
 }
 
 function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, rotation) {
@@ -1463,8 +1532,10 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
     dessinerCommandeLineaireMonde(traceur, commands, -0.6, 0.0, 0.0, 1.7 / Math.pow(Math.SQRT2, n), Math.PI / 2);
   } else if (renduParams.fractal === "cantor_set") {
     dessinerCantorMonde(traceur, renduParams.maxIter);
+  } else if (renduParams.fractal === "triangle_de_cercles_recursifs") {
+    dessinerTriangleCerclesRecursifsMonde(traceur, 0.0, 0.55, 0.58, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
   } else if (renduParams.fractal === "apollonian_gasket") {
-    dessinerApollonienMonde(traceur, 0.0, 0.55, 0.58, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
+    dessinerJointApolloniusMonde(traceur, Math.max(3, Math.min(7, Math.floor(renduParams.maxIter / 72) + 2)));
   } else if (renduParams.fractal === "t_square_fractal") {
     dessinerTSquareMonde(traceur, 0.0, 0.0, 1.2, Math.max(3, Math.min(6, Math.floor(renduParams.maxIter / 80) + 2)));
   } else if (renduParams.fractal === "h_fractal") {
@@ -1818,6 +1889,7 @@ async function loadWasm() {
       dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
       dragon_curve: typeof exports.dragon_curve === "function" ? exports.dragon_curve : null,
       cantor_set: typeof exports.cantor_set === "function" ? exports.cantor_set : null,
+      triangle_de_cercles_recursifs: typeof exports.triangle_de_cercles_recursifs === "function" ? exports.triangle_de_cercles_recursifs : null,
       apollonian_gasket: typeof exports.apollonian_gasket === "function" ? exports.apollonian_gasket : null,
       t_square_fractal: typeof exports.t_square_fractal === "function" ? exports.t_square_fractal : null,
       h_fractal: typeof exports.h_fractal === "function" ? exports.h_fractal : null,
@@ -2566,6 +2638,7 @@ const FRACTAL_SOURCE_MAP = {
   dragon_heighway:             "fractales_lsystem",
   dragon_curve:                "fractales_lsystem",
   cantor_set:                  "fractales_lsystem",
+  triangle_de_cercles_recursifs: "fractales_lsystem",
   apollonian_gasket:           "fractales_lsystem",
   t_square_fractal:            "fractales_lsystem",
   h_fractal:                   "fractales_lsystem",
@@ -2684,7 +2757,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
@@ -2707,7 +2780,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }

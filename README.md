@@ -1,6 +1,6 @@
-# Explorateur de Fractales
+﻿# Explorateur de Fractales
 
-Application GitHub Pages qui rend 51 fractales en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend 52 fractales en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -28,7 +28,7 @@ françaises** dans `src/*.ml`.
 | Évasion | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot |
 | Dynamique | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon |
 | IFS | Barnsley (fougère), Sierpinski, Tapis de Sierpinski |
-| L-système | Koch (flocon de neige), Dragon de Heighway, Arbre de Pythagore |
+| L-système | Koch (flocon de neige), Dragon de Heighway, Joint apollonien, Arbre de Pythagore |
 | Magnétiques | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
 
 ---
@@ -336,3 +336,4 @@ Si vous modifiez le comportement visible, ajoutez ou retirez une fractale, ou ch
 ## Licence
 
 MIT — voir `LICENSE`.
+

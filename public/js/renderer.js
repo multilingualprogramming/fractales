@@ -219,48 +219,48 @@ const PALETTES = {
     ],
   },
   braise: {
-    // Neon ember: charcoal → deep crimson → electric amber → electric yellow → white
-    fond: [0, 0, 0],
-    interieur: [10, 2, 0],
+    // Oxidized copper: umber → rust → copper → brass → champagne
+    fond: [8, 4, 2],
+    interieur: [24, 10, 4],
     stops: [
-      [30, 0, 0], [130, 10, 0], [230, 40, 0], [255, 100, 0],
-      [255, 185, 0], [255, 245, 50], [255, 255, 190], [255, 255, 255],
+      [28, 12, 6], [82, 36, 18], [148, 74, 34], [203, 118, 52],
+      [224, 164, 78], [238, 203, 120], [247, 228, 178], [255, 248, 232],
     ],
   },
   lagon: {
-    // Acid lagoon: abyss-black → deep teal → electric emerald → neon mint → white
-    fond: [0, 4, 2],
-    interieur: [0, 10, 8],
+    // Glacier glass: polar night → slate blue → ice cyan → frozen white
+    fond: [1, 6, 10],
+    interieur: [6, 16, 24],
     stops: [
-      [0, 20, 15], [0, 85, 60], [0, 170, 100], [0, 225, 140],
-      [0, 255, 185], [100, 255, 225], [200, 255, 240], [255, 255, 255],
+      [8, 22, 34], [22, 56, 88], [44, 104, 146], [82, 164, 196],
+      [138, 216, 232], [192, 241, 244], [229, 250, 252], [255, 255, 255],
     ],
   },
   crepuscule: {
-    // Cosmic nebula: deep space → electric indigo → vivid magenta → hot pink → molten gold
-    fond: [2, 0, 6],
-    interieur: [8, 0, 22],
+    // Velvet dusk: aubergine → orchid → rose → apricot → moonlight
+    fond: [10, 2, 12],
+    interieur: [26, 8, 30],
     stops: [
-      [15, 0, 40], [65, 0, 130], [145, 0, 185], [225, 0, 185],
-      [255, 60, 120], [255, 145, 55], [255, 225, 95], [255, 255, 220],
+      [30, 6, 42], [76, 18, 92], [136, 38, 138], [198, 70, 156],
+      [238, 122, 150], [250, 176, 134], [255, 220, 188], [255, 246, 236],
     ],
   },
   neon: {
-    // Pure cyberpunk neon: void → electric blue → cyan → acid green → electric yellow → white
-    fond: [0, 0, 0],
-    interieur: [0, 0, 6],
+    // Ultraviolet arcade: blacklight → violet → hot pink → laser blue → mint
+    fond: [2, 0, 6],
+    interieur: [10, 0, 18],
     stops: [
-      [0, 0, 18], [15, 0, 90], [0, 60, 210], [0, 210, 255],
-      [0, 255, 185], [185, 255, 0], [255, 255, 0], [255, 255, 255],
+      [18, 0, 40], [70, 0, 168], [182, 18, 210], [255, 70, 186],
+      [72, 134, 255], [0, 220, 255], [88, 255, 198], [238, 255, 250],
     ],
   },
   infrared: {
-    // Scientific heat map: void → deep violet → indigo → cyan → lime → orange → white
-    fond: [0, 0, 0],
-    interieur: [5, 0, 12],
+    // Mineral survey: basalt → indigo → cobalt → jade → sand → ivory
+    fond: [4, 4, 6],
+    interieur: [14, 12, 18],
     stops: [
-      [10, 0, 30], [55, 0, 160], [0, 80, 210], [0, 210, 230],
-      [0, 230, 80], [210, 230, 0], [255, 120, 0], [255, 255, 200],
+      [18, 16, 28], [42, 54, 112], [40, 110, 168], [34, 164, 146],
+      [112, 196, 120], [205, 202, 122], [236, 224, 182], [255, 247, 232],
     ],
   },
 };

@@ -51,7 +51,7 @@ REQUIRED_EXPORTS = {
     "lichtenberg_figures",
     "koch",
     "dragon_heighway",
-    "dragon_curve",
+    "gosper_curve",
     "cantor_set",
     "triangle_de_cercles_recursifs",
     "apollonian_gasket",

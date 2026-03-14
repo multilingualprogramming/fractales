@@ -28,7 +28,7 @@ françaises** dans `src/*.ml`.
 | Évasion | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot |
 | Dynamique | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon |
 | IFS | Barnsley (fougère), Sierpinski, Tapis de Sierpinski |
-| L-système | Koch (flocon de neige), Dragon de Heighway, Joint apollonien, Arbre de Pythagore |
+| L-système | Koch (flocon de neige), Dragon de Heighway, Courbe de Gosper, Joint apollonien, Arbre de Pythagore |
 | Magnétiques | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
 
 ---

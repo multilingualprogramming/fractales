@@ -76,7 +76,7 @@ const VIEW_PRESETS = {
   lichtenberg_figures: { centerX: 0.0, centerY: 0.0, span: 3.8 },
   koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
   dragon_heighway: { centerX: 0.2, centerY: 0.0, span: 2.8 },
-  dragon_curve: { centerX: 0.2, centerY: 0.0, span: 2.8 },
+  gosper_curve: { centerX: 0.15, centerY: 0.05, span: 3.2 },
   cantor_set:   { centerX: 0.0, centerY: 0.0, span: 2.6 },
   triangle_de_cercles_recursifs: { centerX: 0.0, centerY: 0.05, span: 2.4 },
   apollonian_gasket: { centerX: 0.0, centerY: 0.0, span: 2.2 },
@@ -104,7 +104,7 @@ function getMultibrotPreset(power) {
 }
 
 const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
-const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "dragon_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
+const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "gosper_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
 // Les fractales 3D en JS pur (julia_quaternion, mandelbox) sont toujours disponibles.
@@ -322,7 +322,7 @@ const FRACTAL_FAMILIES = [
     fractales: [
       ["koch", "Koch"],
       ["dragon_heighway", "Dragon de Heighway"],
-      ["dragon_curve", "Courbe du dragon"],
+      ["gosper_curve", "Courbe de Gosper"],
       ["cantor_set", "Ensemble de Cantor"],
       ["triangle_de_cercles_recursifs", "Triangle de cercles récursifs"],
       ["apollonian_gasket", "Joint apollonien"],
@@ -1104,6 +1104,20 @@ function genererDragonHeighway(iterations) {
   return s;
 }
 
+function genererGosper(iterations) {
+  let s = "A";
+  for (let i = 0; i < iterations; i++) {
+    let next = "";
+    for (const ch of s) {
+      if (ch === "A") next += "A-B--B+A++AA+B-";
+      else if (ch === "B") next += "+A-BB--B-A++A+B";
+      else next += ch;
+    }
+    s = next;
+  }
+  return s.replace(/[AB]/g, "F");
+}
+
 function genererHilbert(iterations) {
   let s = "A";
   for (let i = 0; i < iterations; i++) {
@@ -1526,10 +1540,14 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
     const n = Math.max(0, Math.min(6, Math.floor((renduParams.maxIter - 64) / 128)));
     const commands = kochGenerate(n);
     dessinerCommandeLineaireMonde(traceur, commands, 0.05, -0.28, 0.0, 0.8 / Math.pow(3, n), Math.PI / 3);
-  } else if (renduParams.fractal === "dragon_heighway" || renduParams.fractal === "dragon_curve") {
+  } else if (renduParams.fractal === "dragon_heighway") {
     const n = Math.max(8, Math.min(15, Math.floor(renduParams.maxIter / 64) + 7));
     const commands = genererDragonHeighway(n);
     dessinerCommandeLineaireMonde(traceur, commands, -0.6, 0.0, 0.0, 1.7 / Math.pow(Math.SQRT2, n), Math.PI / 2);
+  } else if (renduParams.fractal === "gosper_curve") {
+    const n = Math.max(1, Math.min(4, Math.floor(renduParams.maxIter / 112) + 1));
+    const commands = genererGosper(n);
+    dessinerCommandeLineaireMonde(traceur, commands, -0.95, 0.35, 0.0, 2.2 / Math.pow(Math.sqrt(7), n), Math.PI / 3);
   } else if (renduParams.fractal === "cantor_set") {
     dessinerCantorMonde(traceur, renduParams.maxIter);
   } else if (renduParams.fractal === "triangle_de_cercles_recursifs") {
@@ -1887,7 +1905,7 @@ async function loadWasm() {
       mandelbox: typeof exports.mandelbox === "function" ? exports.mandelbox : mandelboxJS,
       koch: typeof exports.koch === "function" ? exports.koch : null,
       dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
-      dragon_curve: typeof exports.dragon_curve === "function" ? exports.dragon_curve : null,
+      gosper_curve: typeof exports.gosper_curve === "function" ? exports.gosper_curve : null,
       cantor_set: typeof exports.cantor_set === "function" ? exports.cantor_set : null,
       triangle_de_cercles_recursifs: typeof exports.triangle_de_cercles_recursifs === "function" ? exports.triangle_de_cercles_recursifs : null,
       apollonian_gasket: typeof exports.apollonian_gasket === "function" ? exports.apollonian_gasket : null,
@@ -2636,7 +2654,7 @@ const FRACTAL_SOURCE_MAP = {
   lichtenberg_figures:         "fractales_ifs",
   koch:                        "fractales_lsystem",
   dragon_heighway:             "fractales_lsystem",
-  dragon_curve:                "fractales_lsystem",
+  gosper_curve:                "fractales_lsystem",
   cantor_set:                  "fractales_lsystem",
   triangle_de_cercles_recursifs: "fractales_lsystem",
   apollonian_gasket:           "fractales_lsystem",
@@ -2757,7 +2775,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
@@ -2780,7 +2798,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|dragon_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }

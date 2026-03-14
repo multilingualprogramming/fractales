@@ -80,8 +80,49 @@ déf dragon_heighway(cx, cy, max_iter):
         retour 6.0
     retour score
 
-déf dragon_curve(cx, cy, max_iter):
-    retour dragon_heighway(cx, cy, max_iter)
+déf gosper_curve(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit nmax = min_koch(max_iter, 9.0)
+    soit racine7 = 2.64575131106
+    soit cos60 = 0.5
+    soit sin60 = 0.86602540378
+
+    tantque niveau < nmax:
+        soit u = x * cos60 + y * sin60
+        soit v = -x * sin60 + y * cos60
+        soit d_hex = abs_koch(abs_koch(v) - 0.19 / echelle) + abs_koch(u) * 0.45
+        soit d_diag = abs_koch(abs_koch(u - 0.22 / echelle) - 0.11 / echelle) + abs_koch(v) * 0.35
+        si d_hex < dist:
+            dist = d_hex
+        si d_diag < dist:
+            dist = d_diag
+
+        soit branche = niveau % 3.0
+        soit nx = x * racine7
+        soit ny = y * racine7
+        si branche == 0.0:
+            x = nx - 0.62
+            y = ny - 0.16
+        sinonsi branche == 1.0:
+            x = nx * cos60 - ny * sin60 + 0.18
+            y = nx * sin60 + ny * cos60 - 0.48
+        sinon:
+            x = nx * cos60 + ny * sin60 - 0.18
+            y = -nx * sin60 + ny * cos60 + 0.48
+        echelle = echelle * racine7
+        niveau = niveau + 1.0
+
+    soit seuil = 0.028
+    si dist < seuil:
+        retour max_iter * 0.91
+    soit score = max_iter * 0.9 - (dist / (seuil * 11.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
 
 déf cantor_set(cx, cy, max_iter):
     soit x = (cx + 1.0) * 0.5

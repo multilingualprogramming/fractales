@@ -253,6 +253,7 @@
         <div class="ctrl-sep" aria-hidden="true"></div>
 
         <!-- Sélecteur de palette -->
+        <div class="palette-control-stack">
         <div class="control-group" role="group" aria-label="Palette de couleurs">
           <label class="control-label" for="palette-select">Palette :</label>
           <select id="palette-select" aria-label="Choisir une palette de couleurs">
@@ -266,12 +267,16 @@
             <option value="infrared">🌡️ Infrarouge</option>
             <option value="personnalisee">🎨 Personnalisée</option>
           </select>
+          <button id="btn-toggle-custom-palette" class="btn btn-secondary hidden" type="button" aria-expanded="false" aria-controls="custom-palette-controls">Editer</button>
         </div>
 
         <section id="custom-palette-controls" class="custom-palette-panel hidden" aria-label="Éditeur de palette personnalisée">
           <div class="custom-palette-header">
             <span class="custom-palette-title">Palette personnalisée</span>
-            <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
+            <div class="custom-palette-actions">
+              <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
+              <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire l'editeur de palette">Reduire</button>
+            </div>
           </div>
           <div id="custom-palette-preview" class="custom-palette-preview" aria-hidden="true"></div>
           <div class="custom-palette-basics">
@@ -286,6 +291,7 @@
           </div>
           <div id="custom-palette-stops" class="custom-palette-stops" role="list" aria-label="Stops de gradient"></div>
         </section>
+        </div>
 
         <div class="ctrl-sep" aria-hidden="true"></div>
 

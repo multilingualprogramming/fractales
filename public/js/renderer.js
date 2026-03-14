@@ -143,6 +143,8 @@ const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const paletteSelect = document.getElementById("palette-select");
 const customPaletteControls = document.getElementById("custom-palette-controls");
+const toggleCustomPaletteButton = document.getElementById("btn-toggle-custom-palette");
+const closeCustomPaletteButton = document.getElementById("btn-close-custom-palette");
 const customPalettePreview = document.getElementById("custom-palette-preview");
 const customPaletteStops = document.getElementById("custom-palette-stops");
 const addPaletteStopButton = document.getElementById("btn-add-palette-stop");
@@ -178,6 +180,8 @@ const exportVideoHeight = document.getElementById("export-video-height");
 const exportVideoDuration = document.getElementById("export-video-duration");
 const exportVideoFps = document.getElementById("export-video-fps");
 const exportVideoState = document.getElementById("export-video-state");
+
+let customPaletteEditorOpen = false;
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -526,14 +530,25 @@ function rendreEditeurPalette() {
   `).join("");
 }
 
+function definirVisibiliteEditeurPalette(forceOuverture) {
+  if (typeof forceOuverture === "boolean") {
+    customPaletteEditorOpen = forceOuverture;
+  }
+  const palettePersonnalisee = params.palette === "personnalisee";
+  const afficher = palettePersonnalisee && customPaletteEditorOpen;
+  customPaletteControls.classList.toggle("hidden", !afficher);
+  toggleCustomPaletteButton.classList.toggle("hidden", !palettePersonnalisee);
+  toggleCustomPaletteButton.setAttribute("aria-expanded", afficher ? "true" : "false");
+  toggleCustomPaletteButton.textContent = afficher ? "Reduire" : "Editer";
+  if (afficher) rendreEditeurPalette();
+}
+
 function synchroniserControlePalette() {
   paletteSelect.value = params.palette;
   paletteBackgroundInput.value = normaliserHexCouleur(params.paletteBackground, "#020008");
   paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
   params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
-  const afficher = params.palette === "personnalisee";
-  customPaletteControls.classList.toggle("hidden", !afficher);
-  if (afficher) rendreEditeurPalette();
+  definirVisibiliteEditeurPalette();
 }
 
 function fractaleActiveEst3D() {
@@ -2293,13 +2308,26 @@ paletteSelect.addEventListener("change", () => {
     params.paletteBackground = paletteBase.background;
     params.paletteInterior = paletteBase.interior;
     params.paletteStops = [...paletteBase.stops];
+    customPaletteEditorOpen = true;
+  } else if (params.palette !== "personnalisee") {
+    customPaletteEditorOpen = false;
   }
   synchroniserControlePalette();
   render();
 });
 
+toggleCustomPaletteButton.addEventListener("click", () => {
+  if (params.palette !== "personnalisee") return;
+  definirVisibiliteEditeurPalette(!customPaletteEditorOpen);
+});
+
+closeCustomPaletteButton.addEventListener("click", () => {
+  definirVisibiliteEditeurPalette(false);
+});
+
 paletteBackgroundInput.addEventListener("input", () => {
   params.palette = "personnalisee";
+  customPaletteEditorOpen = true;
   params.paletteBackground = normaliserHexCouleur(paletteBackgroundInput.value, params.paletteBackground);
   synchroniserControlePalette();
   render();
@@ -2307,6 +2335,7 @@ paletteBackgroundInput.addEventListener("input", () => {
 
 paletteInteriorInput.addEventListener("input", () => {
   params.palette = "personnalisee";
+  customPaletteEditorOpen = true;
   params.paletteInterior = normaliserHexCouleur(paletteInteriorInput.value, params.paletteInterior);
   synchroniserControlePalette();
   render();
@@ -2314,6 +2343,7 @@ paletteInteriorInput.addEventListener("input", () => {
 
 addPaletteStopButton.addEventListener("click", () => {
   params.palette = "personnalisee";
+  customPaletteEditorOpen = true;
   const palette = getPaletteComplete(params);
   const derniere = rgbVersHex(palette.stops[palette.stops.length - 1] ?? palette.interieur ?? [255, 255, 255]);
   params.paletteStops = [...params.paletteStops, derniere];
@@ -2327,6 +2357,7 @@ customPaletteStops.addEventListener("input", (event) => {
   const index = Number.parseInt(cible.dataset.stopIndex ?? "", 10);
   if (!Number.isInteger(index) || index < 0 || index >= params.paletteStops.length) return;
   params.palette = "personnalisee";
+  customPaletteEditorOpen = true;
   params.paletteStops[index] = normaliserHexCouleur(cible.value, params.paletteStops[index]);
   synchroniserControlePalette();
   render();
@@ -2338,6 +2369,7 @@ customPaletteStops.addEventListener("click", (event) => {
   const index = Number.parseInt(cible.dataset.removeStop ?? "", 10);
   if (!Number.isInteger(index) || params.paletteStops.length <= 2) return;
   params.palette = "personnalisee";
+  customPaletteEditorOpen = true;
   params.paletteStops = params.paletteStops.filter((_, stopIndex) => stopIndex !== index);
   synchroniserControlePalette();
   render();
@@ -2529,6 +2561,7 @@ async function exporterVideoZoom() {
 }
 
 btnOpenExport.addEventListener("click", () => {
+  definirVisibiliteEditeurPalette(false);
   exportPanel.classList.remove("hidden");
 });
 

@@ -15,7 +15,16 @@ These instructions apply to the entire repository.
 
 When adding or changing a fractal, update all relevant places together:
 
-1. Add or update the function in the appropriate French multilingual source module in `src/`.
+1. Add or update the function in the appropriate French multilingual source module in `src/`:
+   - `fractales_escape.ml` — escape-time (Mandelbrot family, Julia family, Burning Julia, Biomorphe)
+   - `fractales_variantes.ml` — Celtic, Buffalo, Perpendicular variants, Heart, Duck
+   - `fractales_dynamique.ml` — Newton, Phoenix, Lyapunov, attractors, Duffing
+   - `fractales_ifs.ml` — IFS / Barnsley, Sierpinski, Mandelbulb, Vicsek, …
+   - `fractales_lsystem.ml` — L-system geometric curves
+   - `fractales_magnetiques.ml` — Magnet family, Lambda, Nova magnétique
+   - `fractales_lisse.ml` — smooth coloring variants (escape-time with μ formula)
+   - `fractales_orbitrap.ml` — orbit trap variants (min-distance encoding)
+   - `fractales_export.ml` — interpolation / export helpers only (no fractal definitions)
 2. Register the fractal in `src/main.ml`.
 3. Update WASM export expectations in `scripts/compile_wasm.ml`.
 4. Update integration expectations in `scripts/integration_checks.py`.
@@ -58,6 +67,64 @@ Any new 3D orbit fractal should:
 - Choose a projection angle that clearly separates front from back faces.
 - Avoid degenerate orbits: if an update rule is `nz = f(x, z) + c_z`, verify at least one of `z₀ ≠ 0` or `c_z ≠ 0`; otherwise z stays zero and the 3D formula collapses to 2D.
 - Guard against orbit escape in iterative maps with growth: add a reset if `|orbit| > threshold` before projecting.
+
+### Smooth coloring — `fractales_lisse.ml`
+
+Smooth coloring applies the formula `μ = iter + 2 − (ln ln |z|² − ln ln 2) / ln 2` at escape
+to eliminate iteration banding. Key constraints for new smooth variants:
+
+- The log function is implemented as `log_lisse(x)` using iterative halving/doubling to [1, 2)
+  followed by a 4-term atanh series. Do not call any external `math` module inside WAT-compiled code.
+- Check `ln_r2 > 0` before the second log call to avoid `log(0)` at the escape boundary.
+- Clamp `mu` to `[0, max_iter]` before returning.
+- 4-parameter variants (e.g. `julia_lisse(zx, zy, c_re, c_im, max_iter)`) follow the same
+  dispatch convention as `julia` — they read `params.juliaCre` / `params.juliaCim` in the renderer.
+
+### Orbit trap coloring — `fractales_orbitrap.ml`
+
+Orbit trap fractals record the minimum distance from the orbit to a geometric shape and return
+`max_iter / (1 + dist_min × scale)`. This encodes coloring as a single float in `[0, max_iter]`
+compatible with the existing palette pipeline — no special renderer branch is needed.
+
+Guidelines:
+- Choose `scale` so that the transition from bright to dark spans a visually useful range
+  (typically `scale` ≈ 10–50 for unit-radius shapes).
+- 4-parameter orbit trap variants follow the julia dispatch convention (same as smooth variants).
+- Orbit trap functions are **escape-time** fractals, not `POINT_FRACTALS`; classify them in
+  `wasmFunctions` only (not in `POINT_FRACTALS` or `LINE_FRACTALS`).
+
+### SVG export — L-system fractals
+
+`exporterSVG()` in `renderer.js` uses a mock canvas context to capture path commands from
+`dessinerFractaleLineaire`, then emits an SVG `<path>` element. When adding a new L-system
+fractal:
+
+- Add it to `LINE_FRACTALS` so the SVG export button becomes visible.
+- Ensure `dessinerFractaleLineaire` dispatches on its name.
+- The mock context captures `moveTo` / `lineTo`; make sure your drawing function does not rely
+  on `arc`, `fillRect`, or other non-path primitives (those are silently ignored in the mock).
+
+### Julia coupling canvas
+
+The `#julia-coupling-canvas` (200×200) shows a live Julia preview when the active fractal is
+Mandelbrot. It uses the cursor's complex coordinates as the `c` parameter.
+
+- Only activate the mousemove listener when `params.fractal === "mandelbrot"`.
+- The coupling canvas renders at reduced iteration count for performance.
+- New Mandelbrot-family fractals (e.g. `mandelbrot_lisse`) should be added to the activation
+  condition if a live Julia preview is meaningful for them.
+
+### Julia c sliders
+
+`mettreAJourControlsJulia(fractalName)` shows `#julia-c-controls` whenever the active fractal
+belongs to the Julia-type family: `julia`, `burning_julia`, `julia_lisse`, `julia_piege_cercle`.
+Add any new 4-parameter fractal (zx, zy, c_re, c_im, max_iter) to this list.
+
+### Bookmark system
+
+`chargerSignets()` / `sauvegarderSignets()` persist view state arrays in `localStorage`
+under the key `"fractalesSignets"`. Each entry contains `{ fractal, centerX, centerY, zoom, label }`.
+No backend required — entirely browser-side.
 
 ### Palette system
 

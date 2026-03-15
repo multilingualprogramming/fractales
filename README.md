@@ -1,6 +1,6 @@
 ﻿# Explorateur de Fractales
 
-Application GitHub Pages qui rend un large catalogue de fractales en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend **70 fractales** en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -8,10 +8,10 @@ La barre latérale affiche le **code source `.ml` du module contenant la fractal
 sélectionnée** et son équivalent **Python transpilé** — les deux onglets se mettent
 à jour dynamiquement à chaque changement de fractale.
 
-L'application peut aussi **exporter la zone courante en PNG** et **générer une
-vidéo WebM de zoom**. La planification d'export reste décrite en **français
-multilingual** dans `fractales_export.ml`, tandis que le navigateur gère le
-rendu hors écran, l'encodage et le téléchargement.
+L'application peut aussi **exporter la zone courante en PNG**, **générer une
+vidéo WebM de zoom**, et **exporter les fractales L-système en SVG**. La planification
+d'export reste décrite en **français multilingual** dans `fractales_export.ml`, tandis
+que le navigateur gère le rendu hors écran, l'encodage et le téléchargement.
 
 Les fractales 3D `tetraedre_sierpinski`, `julia_quaternion` et `mandelbox`
 utilisent un **backend WebGL dédié** pour la navigation 3D (orbite, translation,
@@ -25,11 +25,13 @@ françaises** dans `src/*.ml`.
 
 | Groupe | Fractales |
 |---|---|
-| Évasion | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot |
-| Dynamique | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon, Attracteur de Lorenz, Attracteur de Rössler, Attracteur d'Aizawa, Attracteur de Sprott |
-| IFS | Barnsley (fougère), Sierpinski, Tapis de Sierpinski |
-| L-système | Koch (flocon de neige), Dragon de Heighway, Courbe de Lévy C, Courbe de Gosper, Joint apollonien, Arbre de Pythagore |
-| Magnétiques | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
+| Évasion (15) | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot, Burning Julia, Biomorphe |
+| Dynamique (17) | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon, Attracteur de Lorenz, Attracteur de Rössler, Attracteur d'Aizawa, Attracteur de Sprott, Feigenbaum, Duffing |
+| IFS (10) | Barnsley (fougère), Sierpinski, Tapis de Sierpinski, Éponge de Menger, Mandelbulb, Vicsek, Figures de Lichtenberg, Tétraèdre de Sierpinski, Julia quaternion, Mandelbox |
+| L-système (12) | Koch (flocon de neige), Dragon de Heighway, Courbe de Lévy C, Courbe de Gosper, Ensemble de Cantor, Triangle de cercles récursifs, Joint apollonien, T-Square, H-Fractal, Courbe de Hilbert, Courbe de Peano, Arbre de Pythagore |
+| Magnétiques (8) | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
+| Lisse / Smooth (4) | Mandelbrot lisse, Julia lisse, Burning Ship lisse, Tricorn lisse |
+| Pièges orbitaux (4) | Piège cercle, Piège croix, Piège ligne, Julia piège cercle |
 
 ---
 
@@ -38,12 +40,15 @@ françaises** dans `src/*.ml`.
 ```
 src/
   fractales_escape.ml          ┐
-  fractales_variantes.ml       │  sources multilingual français
-  fractales_dynamique.ml       │  → compilés vers WebAssembly (WASM)
-  fractales_ifs.ml             │
+  fractales_variantes.ml       │
+  fractales_dynamique.ml       │  sources multilingual français
+  fractales_ifs.ml             │  → compilés vers WebAssembly (WASM)
   fractales_lsystem.ml         │
-  fractales_export.ml          │  aides d'interpolation/export en français
-  fractales_magnetiques.ml     ┘
+  fractales_magnetiques.ml     │
+  fractales_lisse.ml           │  ★ coloration lisse (log_lisse sans math natif)
+  fractales_orbitrap.ml        │  ★ pièges orbitaux (cercle, croix, ligne)
+  fractales_export.ml          ┘  aides d'interpolation/export en français
+  fractales_classes_compat.ml  ← pont WASM pour mandelbrot_classe
   fractales_classes.ml         ← OOP (classe/soi/super) → Python uniquement
   main.ml                      ← point d'entrée humain (imports + assertions)
         │
@@ -198,13 +203,22 @@ multilingualprogramming        (bibliothèque Python)
 index.html
   └── renderer.js (module ES)
         ├── WebAssembly.instantiateStreaming("mandelbrot.wasm")
-        │     └── exports: mandelbrot / julia / … / magnet1 / magnet2 / magnet3 / lambda_fractale / lambda_cubique / magnet_cosinus / magnet_sinus / nova_magnetique / interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export
+        │     └── exports: mandelbrot / julia / burning_julia / biomorphe /
+        │                  mandelbrot_lisse / julia_lisse / burning_ship_lisse / tricorn_lisse /
+        │                  mandelbrot_piege_cercle / mandelbrot_piege_croix /
+        │                  mandelbrot_piege_ligne / julia_piege_cercle /
+        │                  duffing_attractor / … / nova_magnetique /
+        │                  interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export
         ├── Rendu progressif par tranches (requestAnimationFrame)
         ├── FRACTAL_SOURCE_MAP  → module .ml contenant la fractale active
         ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py") (contextuel)
         ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / éditeur personnalisé complet (fond, intérieur, stops)
         ├── Zoom/pan : clic, molette, pincement tactile
-        ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom
+        ├── Couplage Julia/Mandelbrot : aperçu Julia 200×200 en temps réel au survol
+        ├── Curseurs Julia c (réel/imaginaire) : contrôle interactif du paramètre c
+        ├── Signets (localStorage) : sauvegarde/restauration des vues
+        ├── Raccourcis clavier : r (réinitialiser), e (export), b (signet), Échap
+        ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom / SVG (L-système)
         └── fetch("benchmark.json") → badge de performance
 ```
 
@@ -217,14 +231,17 @@ index.html
 ├── .github/workflows/deploy.yml   # CI/CD → GitHub Pages
 ├── src/
 │   ├── main.ml                    # Point d'entrée humain (imports + assertions)
-│   ├── fractales_escape.ml        # Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot
-│   ├── fractales_variantes.ml     # Celtic, Buffalo, Perpendicular Burning Ship
-│   ├── fractales_dynamique.ml     # Newton, Phoenix
-│   ├── fractales_ifs.ml           # Barnsley (fougère), Sierpinski
-│   ├── fractales_lsystem.ml       # Koch (flocon de neige)
-│   ├── fractales_export.ml        # ★ Interpolation et réglages d'export en français
-│   ├── fractales_magnetiques.ml   # ★ Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
-│   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super)
+│   ├── fractales_escape.ml        # Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot, Burning Julia, Biomorphe
+│   ├── fractales_variantes.ml     # Celtic, Buffalo, Perpendicular Burning Ship, Heart, Duck, …
+│   ├── fractales_dynamique.ml     # Newton, Phoenix, Lyapunov, attracteurs de Clifford/Hénon/Lorenz/…, Duffing
+│   ├── fractales_ifs.ml           # Barnsley, Sierpinski, Mandelbulb, Mandelbox, Vicsek, …
+│   ├── fractales_lsystem.ml       # Koch, Dragon, Lévy C, Gosper, Hilbert, Peano, Arbre de Pythagore, …
+│   ├── fractales_magnetiques.ml   # Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
+│   ├── fractales_lisse.ml         # ★ Coloration lisse (mandelbrot_lisse, julia_lisse, …) — log_lisse sans math natif
+│   ├── fractales_orbitrap.ml      # ★ Pièges orbitaux (piege_cercle, piege_croix, piege_ligne, julia_piege_cercle)
+│   ├── fractales_export.ml        # Interpolation et réglages d'export en français
+│   ├── fractales_classes_compat.ml # Pont WASM pour mandelbrot_classe
+│   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super) — Python uniquement
 ├── scripts/
 │   ├── compile_wasm.ml            # Pipeline de build (source multilingual)
 │   ├── compile_wasm.py            # Lanceur Python du pipeline
@@ -292,13 +309,90 @@ Résumé des règles les plus importantes :
 
 ---
 
+## Nouveaux modules — `fractales_lisse.ml`
+
+Implémente la **coloration lisse** (smooth coloring) pour les ensembles d'évasion.
+La formule `μ = iter + 2 − (ln ln |z|² − ln ln 2) / ln 2` élimine les bandes de couleur.
+
+La fonction `log_lisse(x)` est calculée entièrement en multilingual français, sans import
+de bibliothèque mathématique, grâce à une réduction de portée itérative puis une série d'Atanh :
+
+```text
+déf log_lisse(x):
+    soit ln2 = 0.693147180559945
+    soit resultat = 0.0
+    tantque x >= 2.0:
+        x = x * 0.5
+        resultat = resultat + ln2
+    ...
+    soit t = (x - 1.0) / (x + 1.0)
+    retour resultat + 2.0 * (t + t³/3 + t⁵/5 + t⁷/7)
+```
+
+Fractales exposées : `mandelbrot_lisse`, `julia_lisse`, `burning_ship_lisse`, `tricorn_lisse`.
+
+---
+
+## Nouveaux modules — `fractales_orbitrap.ml`
+
+Implémente les **pièges orbitaux** (orbit traps). À chaque itération, la distance minimale
+de l'orbite à une forme géométrique (cercle `|z|=1`, axes, diagonale) est enregistrée.
+La valeur de retour `max_iter / (1 + dist_min × échelle)` est compatible avec le pipeline
+de palette existant : proche du piège → valeur élevée (brillant), loin → valeur faible (sombre).
+
+```text
+déf mandelbrot_piege_cercle(cx, cy, max_iter):
+    # distance au cercle unité : | |z|² - 1 |
+    ...
+déf mandelbrot_piege_croix(cx, cy, max_iter):
+    # distance aux axes : min(|Re(z)|, |Im(z)|)
+    ...
+déf mandelbrot_piege_ligne(cx, cy, max_iter):
+    # distance à la diagonale : |x - y| / √2
+    ...
+```
+
+---
+
+## Fonctionnalités interactives
+
+### Couplage Julia/Mandelbrot
+
+Lorsque la fractale active est Mandelbrot (ou une variante d'évasion), un canvas
+de 200×200 pixels affiché en surimpression montre en temps réel l'ensemble de Julia
+correspondant à la position du curseur (c = coordonnées complexes du pointeur).
+
+### Curseurs Julia c
+
+Pour toutes les fractales de type Julia (`julia`, `burning_julia`, `julia_lisse`,
+`julia_piege_cercle`), deux curseurs permettent d'ajuster le paramètre c (partie
+réelle et imaginaire) et de relancer le rendu en direct.
+
+### Signets
+
+Un système de signets persisté dans `localStorage` permet de sauvegarder et de
+restaurer n'importe quelle vue (fractale, centre, zoom). Le panneau s'ouvre avec
+le bouton `Signet ★` ou le raccourci `b`.
+
+### Raccourcis clavier
+
+| Touche | Action |
+|---|---|
+| `r` | Réinitialiser la vue au preset par défaut |
+| `e` | Ouvrir le panneau d'export |
+| `b` | Ajouter un signet pour la vue actuelle |
+| `Échap` | Fermer les panneaux ouverts |
+
+---
+
 ## Export
 
-Le bouton `Exporter` ouvre un panneau avec trois fonctions :
+Le bouton `Exporter` ouvre un panneau avec quatre fonctions :
 
 - `PNG courant` : enregistre le canevas visible tel quel.
 - `PNG haute résolution` : relance le rendu hors écran avec une largeur et une hauteur choisies.
 - `Créer la vidéo` : interpole entre une vue de départ et une vue d'arrivée pour produire un zoom `WebM`.
+- `Exporter SVG` : disponible uniquement pour les fractales L-système ; capture les commandes de tracé via un contexte mock et génère un fichier `.svg` vectoriel.
 
 La séparation des rôles reste volontaire :
 

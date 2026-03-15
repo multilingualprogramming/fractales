@@ -695,6 +695,7 @@ pre {
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 
 .controls-compact select {
@@ -736,8 +737,17 @@ pre {
   flex: 0 0 auto;
 }
 
+#controls.collapsed .controls-toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+}
+
 #controls.collapsed .controls-summary {
   display: flex;
+  position: relative;
+  padding-right: 56px;
 }
 
 #controls.collapsed .controls-minimize-btn {
@@ -750,6 +760,26 @@ pre {
 
 #controls.collapsed .controls-compact {
   display: flex;
+  flex: 1 1 auto;
+}
+
+@media (min-width: 821px) {
+  #controls.collapsed .controls-summary {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  #controls.collapsed .controls-compact {
+    flex-wrap: nowrap;
+    width: auto;
+    overflow: hidden;
+  }
+
+  #controls.collapsed .controls-compact select,
+  #controls.collapsed .compact-iter-group {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 #controls:not(.collapsed) .controls-summary {

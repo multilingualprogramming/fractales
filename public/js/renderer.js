@@ -9,6 +9,16 @@
 
 "use strict";
 
+import {
+  initialiserExports,
+} from "./renderer-export.js";
+import {
+  initialiserSignets,
+} from "./renderer-bookmarks.js";
+import {
+  initialiserPanneauSource,
+} from "./renderer-source-panel.js";
+
 const WASM_URL = "mandelbrot.wasm?v=20260228r10";
 
 // ============================================================
@@ -138,8 +148,6 @@ let rendering = false;
 let renderToken = 0;
 /** ImageData réutilisable */
 let imageDataBuffer = null;
-let vueExportDepart = null;
-let vueExportArrivee = null;
 
 // ============================================================
 // ÉLÉMENTS DOM
@@ -192,6 +200,7 @@ const btnExportImage = document.getElementById("btn-export-image");
 const btnCaptureStart = document.getElementById("btn-capture-start");
 const btnCaptureEnd = document.getElementById("btn-capture-end");
 const btnExportVideo = document.getElementById("btn-export-video");
+const btnExportSvg = document.getElementById("btn-export-svg");
 const sidebar = document.getElementById("sidebar");
 const panControls = document.getElementById("pan-controls");
 const zoomHint = document.getElementById("zoom-hint");
@@ -205,6 +214,12 @@ const exportVideoHeight = document.getElementById("export-video-height");
 const exportVideoDuration = document.getElementById("export-video-duration");
 const exportVideoFps = document.getElementById("export-video-fps");
 const exportVideoState = document.getElementById("export-video-state");
+const tabFrench = document.getElementById("tab-french");
+const tabPython = document.getElementById("tab-python");
+const codeFrench = document.getElementById("code-french");
+const codePython = document.getElementById("code-python");
+const panelFrench = document.getElementById("panel-french");
+const panelPython = document.getElementById("panel-python");
 
 const juliaCReSlider = document.getElementById("julia-c-re");
 const juliaCImSlider = document.getElementById("julia-c-im");
@@ -215,7 +230,6 @@ const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
 const bookmarkList = document.getElementById("bookmark-list");
-const btnExportSvg = document.getElementById("btn-export-svg");
 
 let customPaletteEditorOpen = false;
 let controlsCollapsed = false;
@@ -851,12 +865,6 @@ function telechargerBlob(blob, nomFichier) {
   lien.click();
   lien.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function mettreAJourEtatVideo() {
-  const depart = vueExportDepart ? "défini" : "non défini";
-  const arrivee = vueExportArrivee ? "définie" : "non définie";
-  exportVideoState.textContent = `Départ : ${depart} · Arrivée : ${arrivee}`;
 }
 
 function attendre(ms) {
@@ -2762,163 +2770,6 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-function lireEntier(input, fallback) {
-  const valeur = parseInt(input.value, 10);
-  return Number.isFinite(valeur) ? valeur : fallback;
-}
-
-function blobDepuisCanvas(canvasSource, type = "image/png", quality = 0.92) {
-  return new Promise((resolve, reject) => {
-    canvasSource.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error("Export image indisponible"));
-    }, type, quality);
-  });
-}
-
-async function exporterImageCourante() {
-  updateStatusBar("Export PNG courant…");
-  const blob = await blobDepuisCanvas(obtenirCanvasActif(), "image/png");
-  telechargerBlob(blob, formaterNomExport("vue", "png"));
-  updateStatusBar("PNG courant exporté", true);
-}
-
-async function exporterImageHauteResolution() {
-  const largeur = lireEntier(exportImageWidth, 1920);
-  const hauteur = lireEntier(exportImageHeight, 1080);
-  const canvasExport = document.createElement("canvas");
-  canvasExport.width = largeur;
-  canvasExport.height = hauteur;
-  const renduParams = clonerParamsExport();
-  renduParams.maxIter = ajusterIterationsExport(largeur, hauteur, renduParams.maxIter);
-  const vueCible = fractaleActiveEst3D()
-    ? { vue3d: obtenirVue3DActive() }
-    : {
-      centerX: view.centerX,
-      centerY: view.centerY,
-      pixelSize: view.pixelSize,
-    };
-  updateStatusBar("Rendu PNG haute résolution…");
-  await rendreDansCanvas(canvasExport, vueCible, renduParams);
-  const blob = await blobDepuisCanvas(canvasExport, "image/png");
-  telechargerBlob(blob, formaterNomExport(`${largeur}x${hauteur}`, "png"));
-  updateStatusBar("PNG haute résolution exporté", true);
-}
-
-async function exporterVideoZoom() {
-  if (!vueExportDepart || !vueExportArrivee) {
-    updateStatusBar("Définissez la vue de départ et la vue d'arrivée", true);
-    return;
-  }
-  if (vueExportDepart.fractal !== vueExportArrivee.fractal) {
-    updateStatusBar("La vidéo de zoom nécessite la même fractale au départ et à l'arrivée", true);
-    return;
-  }
-  const largeur = lireEntier(exportVideoWidth, 1280);
-  const hauteur = lireEntier(exportVideoHeight, 720);
-  const duree = lireEntier(exportVideoDuration, 8);
-  const fps = lireEntier(exportVideoFps, 24);
-  const nbImages = Math.max(2, duree * fps);
-  const canvasVideo = document.createElement("canvas");
-  canvasVideo.width = largeur;
-  canvasVideo.height = hauteur;
-  if (typeof canvasVideo.captureStream !== "function" || typeof MediaRecorder === "undefined") {
-    updateStatusBar("Export vidéo non supporté dans ce navigateur", true);
-    return;
-  }
-
-  const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-    ? "video/webm;codecs=vp9"
-    : "video/webm";
-  const morceaux = [];
-  const recorder = new MediaRecorder(canvasVideo.captureStream(fps), { mimeType });
-  recorder.ondataavailable = (event) => {
-    if (event.data && event.data.size > 0) morceaux.push(event.data);
-  };
-  const finEnregistrement = new Promise((resolve) => {
-    recorder.onstop = () => resolve(new Blob(morceaux, { type: mimeType }));
-  });
-
-  updateStatusBar("Création de la vidéo…");
-  recorder.start();
-
-  for (let index = 0; index < nbImages; index++) {
-    const t = nbImages <= 1 ? 1.0 : index / (nbImages - 1);
-    const vueAnimation = vueExportDepart.vue3d
-      ? { vue3d: interpolerVue3D(vueExportDepart.vue3d, vueExportArrivee.vue3d, t) }
-      : {
-        centerX: interpolerLineaire(vueExportDepart.centerX, vueExportArrivee.centerX, t),
-        centerY: interpolerLineaire(vueExportDepart.centerY, vueExportArrivee.centerY, t),
-        pixelSize: interpolerLogarithmique(vueExportDepart.pixelSize, vueExportArrivee.pixelSize, t),
-      };
-    const renduParams = clonerParamsExport(vueExportDepart);
-    renduParams.maxIter = Math.round(interpolerLineaire(vueExportDepart.maxIter, vueExportArrivee.maxIter, t));
-    renduParams.palette = vueExportDepart.palette;
-    renduParams.paletteBackground = vueExportDepart.paletteBackground;
-    renduParams.paletteInterior = vueExportDepart.paletteInterior;
-    renduParams.paletteStops = [...vueExportDepart.paletteStops];
-    renduParams.multibrotPower = vueExportDepart.multibrotPower;
-    renduParams.juliaCre = vueExportDepart.juliaCre;
-    renduParams.juliaCim = vueExportDepart.juliaCim;
-    await rendreDansCanvas(canvasVideo, vueAnimation, renduParams);
-    updateStatusBar(`Création de la vidéo… ${index + 1}/${nbImages}`);
-    await attendre(1000 / fps);
-  }
-
-  recorder.stop();
-  const blob = await finEnregistrement;
-  telechargerBlob(blob, formaterNomExport("zoom", "webm"));
-  updateStatusBar("Vidéo exportée", true);
-}
-
-btnOpenExport.addEventListener("click", () => {
-  definirVisibiliteEditeurPalette(false);
-  exportPanel.classList.remove("hidden");
-});
-
-btnCloseExport.addEventListener("click", () => {
-  exportPanel.classList.add("hidden");
-});
-
-btnExportCurrent.addEventListener("click", async () => {
-  try {
-    await exporterImageCourante();
-  } catch (error) {
-    updateStatusBar("Échec de l'export PNG courant", true);
-    console.error(error);
-  }
-});
-
-btnExportImage.addEventListener("click", async () => {
-  try {
-    await exporterImageHauteResolution();
-  } catch (error) {
-    updateStatusBar("Échec de l'export PNG haute résolution", true);
-    console.error(error);
-  }
-});
-
-btnCaptureStart.addEventListener("click", () => {
-  vueExportDepart = capturerVueCourante();
-  mettreAJourEtatVideo();
-  updateStatusBar("Vue de départ enregistrée", true);
-});
-
-btnCaptureEnd.addEventListener("click", () => {
-  vueExportArrivee = capturerVueCourante();
-  mettreAJourEtatVideo();
-  updateStatusBar("Vue d'arrivée enregistrée", true);
-});
-
-btnExportVideo.addEventListener("click", async () => {
-  try {
-    await exporterVideoZoom();
-  } catch (error) {
-    updateStatusBar("Échec de l'export vidéo", true);
-    console.error(error);
-  }
-});
-
 btnToggle.addEventListener("click", () => {
   if (window.innerWidth <= 820) {
     // Mobile : overlay plein-écran, le canvas ne change pas de taille
@@ -2944,15 +2795,6 @@ window.addEventListener("resize", () => {
   resizeCanvas();
   render();
 });
-
-// ============================================================
-// CHARGEMENT DU SOURCE & TRANSPILATION (contextuel par fractale)
-// ============================================================
-
-const tabFrench = document.getElementById("tab-french");
-const tabPython = document.getElementById("tab-python");
-const codeFrench = document.getElementById("code-french");
-const codePython = document.getElementById("code-python");
 
 /**
  * Associe chaque fractale au module source (.ml / .py) qui la contient.
@@ -3031,218 +2873,17 @@ const FRACTAL_SOURCE_MAP = {
   mandelbrot_piege_ligne: "fractales_orbitrap",
   julia_piege_cercle: "fractales_orbitrap",
 };
-
-/** Cache : { moduleName: { mlHtml, pyHtml } } */
-const sourcesCache = {};
-
-/**
- * Charge et affiche le source .ml et le Python transpilé du module
- * contenant la fractale sélectionnée.
- * @param {string} fractalName
- */
-async function loadSources(fractalName) {
-  const module = FRACTAL_SOURCE_MAP[fractalName] ?? "main";
-
-  // Mettre à jour les étiquettes des onglets
-  tabFrench.textContent = `FR ${module}.ml`;
-  tabPython.textContent = `PY ${module}.py`;
-
-  // Retourner le cache si disponible
-  if (sourcesCache[module]) {
-    codeFrench.innerHTML = sourcesCache[module].mlHtml;
-    codePython.innerHTML = sourcesCache[module].pyHtml;
-    return;
-  }
-
-  codeFrench.innerHTML = `<span class="cmt"># Chargement de ${module}.ml…</span>`;
-  codePython.innerHTML = `<span class="cmt"># Chargement de ${module}.py…</span>`;
-
-  // Source français (.ml)
-  let mlHtml;
-  try {
-    const resp = await fetch(`${module}.ml`);
-    const src = resp.ok ? await resp.text() : `# Source indisponible (${module}.ml)`;
-    mlHtml = highlightFrench(escapeHtml(src));
-  } catch {
-    mlHtml = `<span class="cmt"># Impossible de charger ${module}.ml</span>`;
-  }
-  codeFrench.innerHTML = mlHtml;
-
-  // Python transpilé (.py)
-  let pyHtml;
-  try {
-    const resp = await fetch(`${module}.py`);
-    const src = resp.ok ? await resp.text() : `# Transpilation indisponible (${module}.py)`;
-    pyHtml = highlightPython(escapeHtml(src));
-  } catch {
-    pyHtml = `<span class="cmt"># Impossible de charger ${module}.py</span>`;
-  }
-  codePython.innerHTML = pyHtml;
-
-  sourcesCache[module] = { mlHtml, pyHtml };
-}
-
-tabFrench.addEventListener("click", () => {
-  tabFrench.classList.add("active");
-  tabPython.classList.remove("active");
-  document.getElementById("panel-french").style.display = "";
-  document.getElementById("panel-python").style.display = "none";
+const { loadSources, loadBenchmark } = initialiserPanneauSource({
+  fractalSourceMap: FRACTAL_SOURCE_MAP,
+  tabFrench,
+  tabPython,
+  codeFrench,
+  codePython,
+  panelFrench,
+  panelPython,
+  badgeDiv,
+  badgeLoading,
 });
-
-tabPython.addEventListener("click", () => {
-  tabPython.classList.add("active");
-  tabFrench.classList.remove("active");
-  document.getElementById("panel-french").style.display = "none";
-  document.getElementById("panel-python").style.display = "";
-});
-
-// ============================================================
-// COLORATION SYNTAXIQUE (légère, sans dépendance externe)
-// ============================================================
-
-function escapeHtml(s) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/**
- * Coloration syntaxique minimale pour le source français multilingual.
- * Traite ligne par ligne pour éviter les chevauchements.
- */
-function highlightFrench(code) {
-  const KW = [
-    "déf", "fonction", "classe", "retour", "tantque", "soit", "si", "sinonsi", "sinon",
-    "pour", "dans", "Vrai", "Faux", "intervalle", "et", "ou", "non",
-    "constante", "affirmer", "importer", "soi", "super",
-  ];
-  const kwRe = new RegExp(`\\b(${KW.join("|")})\\b`, "g");
-
-  return code.split("\n").map(line => {
-    // Commentaires
-    const hashIdx = line.indexOf("#");
-    if (hashIdx !== -1) {
-      const before = line.slice(0, hashIdx);
-      const comment = line.slice(hashIdx);
-      return applyFrenchTokens(before, kwRe) + `<span class="cmt">${comment}</span>`;
-    }
-    return applyFrenchTokens(line, kwRe);
-  }).join("\n");
-}
-
-function applyFrenchTokens(line, kwRe) {
-  return line
-    .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|rossler_attractor|aizawa_attractor|sprott_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|courbe_levy_c|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|burning_julia|biomorphe|duffing_attractor|mandelbrot_lisse|julia_lisse|burning_ship_lisse|tricorn_lisse|mandelbrot_piege_cercle|mandelbrot_piege_croix|mandelbrot_piege_ligne|julia_piege_cercle|log_lisse|abs_lisse|abs_orbitrap|min_orbitrap|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeRosslerAttractor|etapeAizawaAttractor|etapeSprottAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterRosslerAttractor|projeterAizawaAttractor|projeterSprottAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererCourbeLevyC|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
-    .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
-}
-
-function highlightPython(code) {
-  const KW = ["def", "return", "while", "if", "else", "for", "in", "True", "False", "and", "or", "not"];
-  const kwRe = new RegExp(`\\b(${KW.join("|")})\\b`, "g");
-
-  return code.split("\n").map(line => {
-    const hashIdx = line.indexOf("#");
-    if (hashIdx !== -1) {
-      const before = line.slice(0, hashIdx);
-      const comment = line.slice(hashIdx);
-      return applyPyTokens(before, kwRe) + `<span class="cmt">${comment}</span>`;
-    }
-    return applyPyTokens(line, kwRe);
-  }).join("\n");
-}
-
-function applyPyTokens(line, kwRe) {
-  return line
-    .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|rossler_attractor|aizawa_attractor|sprott_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|courbe_levy_c|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|burning_julia|biomorphe|duffing_attractor|mandelbrot_lisse|julia_lisse|burning_ship_lisse|tricorn_lisse|mandelbrot_piege_cercle|mandelbrot_piege_croix|mandelbrot_piege_ligne|julia_piege_cercle|log_lisse|abs_lisse|abs_orbitrap|min_orbitrap|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererCourbeLevyC|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
-    .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
-    .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
-}
-
-// ============================================================
-// CHARGEMENT DES DONNÉES BENCHMARK
-// ============================================================
-
-async function loadBenchmark() {
-  try {
-    const resp = await fetch("benchmark.json");
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    renderBenchmarkBadge(data);
-  } catch (err) {
-    console.warn("[Benchmark] Données indisponibles :", err.message);
-    if (badgeLoading) {
-      badgeLoading.textContent = "Données benchmark indisponibles";
-    }
-  }
-}
-
-/** Formate un nombre avec espace fine comme séparateur de milliers (style français). */
-function frFmt(n) {
-  if (n === null || n === undefined) return "N/A";
-  return n.toLocaleString("fr-FR");
-}
-
-function renderBenchmarkBadge(data) {
-  const {
-    python_ms,
-    wasm_ms,
-    speedup,
-    wasm_available,
-    wasm_estimated,
-    wasm_pipeline,
-  } = data;
-
-  let html = "";
-
-  const benchmarkDisabled = wasm_pipeline === "multilingual_official_wat2wasm" &&
-    python_ms === null &&
-    wasm_ms === null;
-
-  if (benchmarkDisabled && wasm_available) {
-    html += `
-      <div class="badge-row">
-        <span class="badge-wasm">• WASM généré</span>
-        <span class="badge-label">pipeline officiel</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python" style="color:var(--text-dim)">Benchmark désactivé (mode strict)</span>
-      </div>`;
-    badgeDiv.innerHTML = html;
-    return;
-  }
-
-  if (wasm_available && wasm_ms !== null) {
-    const wasmLabel = wasm_estimated ? "WASM (estimé)" : "WASM";
-    const speedupLabel = speedup !== null
-      ? `${typeof speedup === "number" ? speedup.toFixed(1) : frFmt(speedup)}× plus rapide`
-      : "";
-    html += `
-      <div class="badge-row">
-        <span class="badge-wasm">? ~${frFmt(wasm_ms)} ms</span>
-        <span class="badge-label">${wasmLabel}</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python">PY ${frFmt(python_ms)} ms</span>
-        <span class="badge-label">Python</span>
-      </div>
-      ${speedupLabel ? `<div class="badge-row"><span class="badge-speedup">${speedupLabel}</span></div>` : ""}`;
-  } else {
-    html += `
-      <div class="badge-row">
-        <span class="badge-python">PY ${frFmt(python_ms)} ms</span>
-        <span class="badge-label">Python</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python" style="color:var(--text-dim)">WASM non disponible</span>
-      </div>`;
-  }
-
-  badgeDiv.innerHTML = html;
-}
 
 // ============================================================
 // INDICE DE ZOOM (disparaît après quelques secondes)
@@ -3305,166 +2946,98 @@ if (juliaCImSlider) {
 
 let couplagePendingId = null;
 
-// ============================================================
-// BOOKMARK SYSTEM
-// ============================================================
-
-function chargerSignets() {
-  try {
-    return JSON.parse(localStorage.getItem("fractales_signets") || "[]");
-  } catch { return []; }
-}
-function sauvegarderSignets(signets) {
-  localStorage.setItem("fractales_signets", JSON.stringify(signets));
-}
-function ajouterSignet() {
-  const vue = capturerVueCourante();
-  const nom = `${params.fractal} — ${new Date().toLocaleTimeString("fr-FR")}`;
-  const signets = chargerSignets();
-  signets.unshift({ nom, ...vue });
-  if (signets.length > 20) signets.pop();
-  sauvegarderSignets(signets);
-  rendreListeSignets();
-  updateStatusBar("Signet enregistré", true);
-}
-function supprimerSignet(index) {
-  const signets = chargerSignets();
-  signets.splice(index, 1);
-  sauvegarderSignets(signets);
-  rendreListeSignets();
-}
-function allerAuSignet(index) {
-  const signets = chargerSignets();
-  const s = signets[index];
-  if (!s) return;
-  params.fractal = s.fractal;
-  syncSelectors(s.fractal);
-  if (s.vue3d) {
-    definirVue3DActive(s.vue3d);
+async function appliquerSignet(signet) {
+  params.fractal = signet.fractal;
+  syncSelectors(signet.fractal);
+  if (signet.vue3d) {
+    definirVue3DActive(signet.fractal, signet.vue3d);
   } else {
-    view.centerX = s.centerX;
-    view.centerY = s.centerY;
-    view.pixelSize = s.pixelSize;
+    view.centerX = signet.centerX;
+    view.centerY = signet.centerY;
+    view.pixelSize = signet.pixelSize;
   }
-  params.maxIter = s.maxIter;
-  iterSlider.value = s.maxIter;
-  iterValue.textContent = s.maxIter;
-  if (s.juliaCre !== undefined) {
-    params.juliaCre = s.juliaCre;
-    if (juliaCReSlider) juliaCReSlider.value = s.juliaCre;
-    if (juliaCReValue) juliaCReValue.textContent = s.juliaCre.toFixed(3);
+  params.maxIter = signet.maxIter;
+  iterSlider.value = signet.maxIter;
+  iterValue.textContent = signet.maxIter;
+  if (signet.juliaCre !== undefined) {
+    params.juliaCre = signet.juliaCre;
+    if (juliaCReSlider) juliaCReSlider.value = signet.juliaCre;
+    if (juliaCReValue) juliaCReValue.textContent = signet.juliaCre.toFixed(3);
   }
-  if (s.juliaCim !== undefined) {
-    params.juliaCim = s.juliaCim;
-    if (juliaCImSlider) juliaCImSlider.value = s.juliaCim;
-    if (juliaCImValue) juliaCImValue.textContent = s.juliaCim.toFixed(3);
+  if (signet.juliaCim !== undefined) {
+    params.juliaCim = signet.juliaCim;
+    if (juliaCImSlider) juliaCImSlider.value = signet.juliaCim;
+    if (juliaCImValue) juliaCImValue.textContent = signet.juliaCim.toFixed(3);
   }
-  if (s.multibrotPower !== undefined) {
-    params.multibrotPower = s.multibrotPower;
-    if (multibrotPower) multibrotPower.value = String(s.multibrotPower);
+  if (signet.multibrotPower !== undefined) {
+    params.multibrotPower = signet.multibrotPower;
+    if (multibrotPower) multibrotPower.value = String(signet.multibrotPower);
   }
-  params.palette = s.palette;
-  params.paletteBackground = s.paletteBackground;
-  params.paletteInterior = s.paletteInterior;
-  params.paletteStops = [...(s.paletteStops || params.paletteStops)];
+  params.palette = signet.palette;
+  params.paletteBackground = signet.paletteBackground;
+  params.paletteInterior = signet.paletteInterior;
+  params.paletteStops = [...(signet.paletteStops || params.paletteStops)];
   synchroniserControlePalette();
   mettreAJourOptionsSpecifiques();
-  loadSources(params.fractal);
+  await loadSources(params.fractal);
   render();
-  if (bookmarkPanel) bookmarkPanel.classList.add("hidden");
-}
-function rendreListeSignets() {
-  if (!bookmarkList) return;
-  const signets = chargerSignets();
-  if (signets.length === 0) {
-    bookmarkList.innerHTML = '<p class="bookmark-empty">Aucun signet. Naviguez vers une vue intéressante et appuyez sur ★ Signet.</p>';
-    return;
-  }
-  bookmarkList.innerHTML = signets.map((s, i) => `
-    <div class="bookmark-item">
-      <button class="bookmark-goto btn" data-index="${i}">${s.nom}</button>
-      <button class="bookmark-delete btn btn-secondary" data-index="${i}" aria-label="Supprimer">✕</button>
-    </div>
-  `).join("");
 }
 
-if (btnBookmark) {
-  btnBookmark.addEventListener("click", () => {
-    // Always save the current view first, then show the panel
-    ajouterSignet();
-    if (bookmarkPanel) bookmarkPanel.classList.remove("hidden");
-  });
-}
-if (btnCloseBookmarks) {
-  btnCloseBookmarks.addEventListener("click", () => { if (bookmarkPanel) bookmarkPanel.classList.add("hidden"); });
-}
-if (bookmarkList) {
-  bookmarkList.addEventListener("click", (e) => {
-    const idx = parseInt(e.target.dataset.index ?? "", 10);
-    if (!Number.isFinite(idx)) return;
-    if (e.target.classList.contains("bookmark-goto")) allerAuSignet(idx);
-    else if (e.target.classList.contains("bookmark-delete")) supprimerSignet(idx);
-  });
-}
+const { ajouterSignet, rendreListeSignets } = initialiserSignets({
+  button: btnBookmark,
+  panel: bookmarkPanel,
+  closeButton: btnCloseBookmarks,
+  list: bookmarkList,
+  capturerVue: capturerVueCourante,
+  appliquerSignet,
+  updateStatusBar,
+});
 
-// ============================================================
-// SVG EXPORT
-// ============================================================
-
-async function exporterSVG() {
-  if (!LINE_FRACTALS.has(params.fractal)) return;
-  const w = 800, h = 800;
-  const vueSVG = { centerX: view.centerX, centerY: view.centerY, pixelSize: view.pixelSize };
-  const cx0 = vueSVG.centerX - (w / 2) * vueSVG.pixelSize;
-  const cy0 = vueSVG.centerY - (h / 2) * vueSVG.pixelSize;
-  const fond = getPaletteBackground(params);
-  const stroke = getColor(Math.min(params.maxIter * 0.6, params.maxIter - 1), params.maxIter, params);
-  const bgColor = `rgb(${fond[0]},${fond[1]},${fond[2]})`;
-  const strokeColor = `rgb(${stroke[0]},${stroke[1]},${stroke[2]})`;
-
-  const pathCommands = [];
-  const mockCtx = {
-    moveTo(x, y) { pathCommands.push(`M${x.toFixed(3)},${y.toFixed(3)}`); },
-    lineTo(x, y) { pathCommands.push(`L${x.toFixed(3)},${y.toFixed(3)}`); },
-    arc(cx, cy, r, a0, a1) {
-      const segs = 24;
-      for (let i = 0; i <= segs; i++) {
-        const a = a0 + (a1 - a0) * i / segs;
-        const px = cx + r * Math.cos(a);
-        const py = cy + r * Math.sin(a);
-        pathCommands.push(i === 0 ? `M${px.toFixed(3)},${py.toFixed(3)}` : `L${px.toFixed(3)},${py.toFixed(3)}`);
-      }
-    },
-    rect(x, y, rw, rh) {
-      pathCommands.push(`M${x.toFixed(3)},${y.toFixed(3)}L${(x + rw).toFixed(3)},${y.toFixed(3)}L${(x + rw).toFixed(3)},${(y + rh).toFixed(3)}L${x.toFixed(3)},${(y + rh).toFixed(3)}Z`);
-    },
-    beginPath() { pathCommands.length = 0; },
-    stroke() { },
-    fillRect() { },
-    set strokeStyle(_) { },
-    set fillStyle(_) { },
-    set lineWidth(_) { },
-  };
-
-  dessinerFractaleLineaire(mockCtx, w, h, vueSVG, params);
-
-  const d = pathCommands.join(" ");
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <rect width="${w}" height="${h}" fill="${bgColor}"/>
-  <path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-  const blob = new Blob([svg], { type: "image/svg+xml" });
-  telechargerBlob(blob, formaterNomExport("vecteur", "svg"));
-  updateStatusBar("SVG exporté", true);
-}
-
-if (btnExportSvg) {
-  btnExportSvg.addEventListener("click", async () => {
-    try { await exporterSVG(); }
-    catch (err) { updateStatusBar("Échec export SVG", true); console.error(err); }
-  });
-}
+const { mettreAJourEtatVideo } = initialiserExports({
+  buttons: {
+    btnOpenExport,
+    btnCloseExport,
+    btnExportCurrent,
+    btnExportImage,
+    btnCaptureStart,
+    btnCaptureEnd,
+    btnExportVideo,
+    btnExportSvg,
+  },
+  elements: {
+    exportPanel,
+    exportImageWidth,
+    exportImageHeight,
+    exportVideoWidth,
+    exportVideoHeight,
+    exportVideoDuration,
+    exportVideoFps,
+    exportVideoState,
+  },
+  dependencies: {
+    LINE_FRACTALS,
+    obtenirCanvasActif,
+    getViewState: () => view,
+    getParams: () => params,
+    fractaleActiveEst3D,
+    obtenirVue3DActive,
+    getPaletteBackground,
+    getColor,
+    dessinerFractaleLineaire,
+    telechargerBlob,
+    formaterNomExport,
+    updateStatusBar,
+    rendreDansCanvas,
+    clonerParamsExport,
+    ajusterIterationsExport,
+    interpolerVue3D,
+    interpolerLineaire,
+    interpolerLogarithmique,
+    attendre,
+    capturerVueCourante,
+    definirVisibiliteEditeurPalette,
+  },
+});
 
 // ============================================================
 // INITIALISATION
@@ -3483,6 +3056,7 @@ async function init() {
   syncSelectors(params.fractal);
   synchroniserControlePalette();
   mettreAJourEtatVideo();
+  rendreListeSignets();
   mettreAJourOptionsSpecifiques();
   chargerEtatControles();
 

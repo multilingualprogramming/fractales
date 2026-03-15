@@ -46,6 +46,7 @@ Quand vous ajoutez ou modifiez une fractale, mettez à jour tous les points conc
    - chargement des exports WASM
    - source map
    - listes de coloration syntaxique si nécessaire
+   - puis mettez à jour le module UI concerné dans `public/js/` si le changement touche l'export, les signets, le panneau source/benchmark ou un autre helper navigateur extrait
 6. Mettez à jour `README.md` si les capacités documentées changent.
 
 ## Règles de rendu
@@ -69,6 +70,9 @@ Exécutez ces commandes après toute modification significative :
 
 ```powershell
 node --check public\js\renderer.js
+node --check public\js\renderer-source-panel.js
+node --check public\js\renderer-bookmarks.js
+node --check public\js\renderer-export.js
 python scripts\compile_wasm.py
 python scripts\integration_checks.py
 python scripts\ui_smoke_checks.py
@@ -82,7 +86,7 @@ Ordre important : `compile_wasm.py` régénère des artefacts dans `public/`. Re
 - Décrivez le comportement modifié et les zones du dépôt touchées.
 - Indiquez les commandes de validation exécutées localement.
 - Ajoutez des captures d'écran ou une courte vidéo si l'interface ou le rendu changent visiblement.
-- Si vous ajoutez une fractale, vérifiez sa présence dans `src/main.ml`, `scripts/compile_wasm.ml`, `scripts/integration_checks.py` et `public/js/renderer.js`.
+- Si vous ajoutez une fractale, vérifiez sa présence dans `src/main.ml`, `scripts/compile_wasm.ml`, `scripts/integration_checks.py` et dans les registres conservés dans `public/js/renderer.js` (`VIEW_PRESETS`, `FRACTAL_FAMILIES`, `FRACTAL_SOURCE_MAP`, `wasmFunctions`, `POINT_FRACTALS`/`LINE_FRACTALS` selon le cas).
 
 ## Documentation
 

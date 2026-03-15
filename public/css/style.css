@@ -639,18 +639,26 @@ pre {
 /* ---- Barre de contrôles ---- */
 #controls {
   grid-area: controls;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 8px 20px;
+  gap: 12px;
+  padding: 8px 16px;
   background: rgba(8, 12, 22, 0.98);
   border-top: 1px solid var(--border);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   overflow: visible;
   z-index: 10;
+}
+
+.controls-minimize-btn {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 2;
 }
 
 .controls-summary {
@@ -697,6 +705,10 @@ pre {
   display: flex;
 }
 
+#controls.collapsed .controls-minimize-btn {
+  display: none;
+}
+
 #controls:not(.collapsed) .controls-summary {
   display: none;
 }
@@ -711,6 +723,9 @@ pre {
   align-items: flex-start;
   gap: 16px;
   min-width: 0;
+  width: 100%;
+  padding-right: 44px;
+  box-sizing: border-box;
   flex: 1 1 auto;
   flex-wrap: nowrap;
   overflow: visible;
@@ -741,7 +756,7 @@ pre {
   align-items: center;
   gap: 10px 12px;
   min-width: 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-lg);
   background:
@@ -960,6 +975,25 @@ pre {
 
 .custom-palette-close {
   padding: 4px 10px;
+}
+
+#btn-close-custom-palette {
+  display: none;
+}
+
+.icon-btn {
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.palette-control-stack .icon-btn {
+  margin-left: auto;
 }
 
 .custom-palette-preview {

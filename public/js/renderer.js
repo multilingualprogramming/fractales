@@ -166,6 +166,7 @@ const controlsSummary = document.getElementById("controls-summary");
 const controlsSummaryFractal = document.getElementById("controls-summary-fractal");
 const controlsSummaryDetails = document.getElementById("controls-summary-details");
 const btnToggleControls = document.getElementById("btn-toggle-controls");
+const btnMinimizeControls = document.getElementById("btn-minimize-controls");
 const familySelect = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
@@ -617,7 +618,9 @@ function definirVisibiliteEditeurPalette(forceOuverture) {
   customPaletteControls.classList.toggle("hidden", !afficher);
   toggleCustomPaletteButton.classList.toggle("hidden", !palettePersonnalisee);
   toggleCustomPaletteButton.setAttribute("aria-expanded", afficher ? "true" : "false");
-  toggleCustomPaletteButton.textContent = afficher ? "Reduire" : "Editer";
+  toggleCustomPaletteButton.innerHTML = `<span aria-hidden="true">${afficher ? "▴" : "▾"}</span>`;
+  toggleCustomPaletteButton.setAttribute("aria-label", afficher ? "Réduire la palette personnalisée" : "Afficher la palette personnalisée");
+  toggleCustomPaletteButton.title = afficher ? "Réduire la palette personnalisée" : "Afficher la palette personnalisée";
   if (afficher) rendreEditeurPalette();
 }
 
@@ -651,8 +654,19 @@ function mettreAJourResumeControles() {
 
 function appliquerEtatControles() {
   if (controlsFooter) controlsFooter.classList.toggle("collapsed", controlsCollapsed);
-  if (btnToggleControls) btnToggleControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
-  if (btnToggleControls) btnToggleControls.textContent = controlsCollapsed ? "Afficher" : "Réduire";
+  if (btnToggleControls) {
+    btnToggleControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
+    btnToggleControls.textContent = controlsCollapsed ? "Afficher" : "Réduire";
+    btnToggleControls.innerHTML = `<span aria-hidden="true">${controlsCollapsed ? "▴" : "▾"}</span>`;
+    btnToggleControls.setAttribute("aria-label", controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles");
+    btnToggleControls.title = controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles";
+  }
+  if (btnMinimizeControls) {
+    btnMinimizeControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
+    btnMinimizeControls.innerHTML = `<span aria-hidden="true">${controlsCollapsed ? "▴" : "▾"}</span>`;
+    btnMinimizeControls.setAttribute("aria-label", controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles");
+    btnMinimizeControls.title = controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles";
+  }
   if (controlsSummary) controlsSummary.classList.toggle("hidden", false);
   mettreAJourResumeControles();
 }
@@ -2597,6 +2611,13 @@ if (btnToggleControls) {
   btnToggleControls.addEventListener("click", () => {
     definirEtatControles(!controlsCollapsed);
   });
+  btnToggleControls.classList.add("icon-btn");
+}
+
+if (btnMinimizeControls) {
+  btnMinimizeControls.addEventListener("click", () => {
+    definirEtatControles(true);
+  });
 }
 
 multibrotPower.addEventListener("change", () => {
@@ -2623,14 +2644,18 @@ paletteSelect.addEventListener("change", () => {
   render();
 });
 
+toggleCustomPaletteButton.classList.add("icon-btn");
 toggleCustomPaletteButton.addEventListener("click", () => {
   if (params.palette !== "personnalisee") return;
   definirVisibiliteEditeurPalette(!customPaletteEditorOpen);
 });
 
-closeCustomPaletteButton.addEventListener("click", () => {
-  definirVisibiliteEditeurPalette(false);
-});
+if (closeCustomPaletteButton) {
+  closeCustomPaletteButton.classList.add("hidden");
+  closeCustomPaletteButton.addEventListener("click", () => {
+    definirVisibiliteEditeurPalette(false);
+  });
+}
 
 paletteBackgroundInput.addEventListener("input", () => {
   params.palette = "personnalisee";

@@ -232,8 +232,38 @@ const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
 const bookmarkList = document.getElementById("bookmark-list");
 
+let familySelectCompact = null;
+let fractalSelectCompact = null;
+let iterSliderCompact = null;
+let iterValueCompact = null;
+let paletteSelectCompact = null;
 let customPaletteEditorOpen = false;
 let controlsCollapsed = false;
+
+function initialiserControlesCompacts() {
+  if (!controlsSummary || !btnToggleControls || !familySelect || !paletteSelect) return;
+  const compact = document.createElement("div");
+  compact.id = "controls-compact";
+  compact.className = "controls-compact";
+  compact.setAttribute("aria-label", "Contrôles compacts");
+  compact.innerHTML = `
+    <select id="family-select-compact" aria-label="Choisir une famille de fractales">${familySelect.innerHTML}</select>
+    <select id="fractal-select-compact" aria-label="Choisir une fractale"></select>
+    <div class="compact-iter-group">
+      <input type="range" id="iter-slider-compact" min="64" max="1024" step="64" value="${params.maxIter}" aria-label="Choisir le nombre d'itérations" />
+      <span id="iter-value-compact" class="control-value">${params.maxIter}</span>
+    </div>
+    <select id="palette-select-compact" aria-label="Choisir une palette de couleurs">${paletteSelect.innerHTML}</select>
+  `;
+  controlsSummary.insertBefore(compact, btnToggleControls);
+  familySelectCompact = document.getElementById("family-select-compact");
+  fractalSelectCompact = document.getElementById("fractal-select-compact");
+  iterSliderCompact = document.getElementById("iter-slider-compact");
+  iterValueCompact = document.getElementById("iter-value-compact");
+  paletteSelectCompact = document.getElementById("palette-select-compact");
+}
+
+initialiserControlesCompacts();
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -626,6 +656,7 @@ function definirVisibiliteEditeurPalette(forceOuverture) {
 
 function synchroniserControlePalette() {
   paletteSelect.value = params.palette;
+  if (paletteSelectCompact) paletteSelectCompact.value = params.palette;
   paletteBackgroundInput.value = normaliserHexCouleur(params.paletteBackground, "#020008");
   paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
   params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
@@ -1289,19 +1320,25 @@ function populateFractalSelect(familyId, selectedFractal = null) {
   const activeFractal = selectedFractal && family.fractales.some(([nom]) => nom === selectedFractal)
     ? selectedFractal
     : family.fractales[0][0];
-  fractalSelect.innerHTML = family.fractales
+  const optionsHtml = family.fractales
     .map(([value, label]) => `<option value="${value}">${label}</option>`)
     .join("");
+  fractalSelect.innerHTML = optionsHtml;
+  if (fractalSelectCompact) fractalSelectCompact.innerHTML = optionsHtml;
   fractalSelect.value = activeFractal;
+  if (fractalSelectCompact) fractalSelectCompact.value = activeFractal;
   return activeFractal;
 }
 
 function syncSelectors(selectedFractal = params.fractal) {
   const familyId = findFractalFamily(selectedFractal);
   familySelect.value = familyId;
+  if (familySelectCompact) familySelectCompact.value = familyId;
   const activeFractal = populateFractalSelect(familyId, selectedFractal);
   params.fractal = activeFractal;
   if (multibrotPower) multibrotPower.value = String(params.multibrotPower);
+  if (iterSliderCompact) iterSliderCompact.value = String(params.maxIter);
+  if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
   synchroniserControlePalette();
 }
 
@@ -2598,18 +2635,46 @@ canvas.addEventListener("touchend", () => { lastPinchDist = null; });
 iterSlider.addEventListener("input", () => {
   params.maxIter = parseInt(iterSlider.value, 10);
   iterValue.textContent = params.maxIter;
+  if (iterSliderCompact) iterSliderCompact.value = String(params.maxIter);
+  if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
   mettreAJourResumeControles();
   render();
 });
+
+if (iterSliderCompact) {
+  iterSliderCompact.addEventListener("input", () => {
+    params.maxIter = parseInt(iterSliderCompact.value, 10);
+    iterSlider.value = String(params.maxIter);
+    iterValue.textContent = params.maxIter;
+    if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
+    mettreAJourResumeControles();
+    render();
+  });
+}
 
 familySelect.addEventListener("change", () => {
   const fractale = populateFractalSelect(familySelect.value, null);
   setActiveFractal(fractale);
 });
 
+if (familySelectCompact) {
+  familySelectCompact.addEventListener("change", () => {
+    familySelect.value = familySelectCompact.value;
+    const fractale = populateFractalSelect(familySelectCompact.value, null);
+    setActiveFractal(fractale);
+  });
+}
+
 fractalSelect.addEventListener("change", () => {
   setActiveFractal(fractalSelect.value);
 });
+
+if (fractalSelectCompact) {
+  fractalSelectCompact.addEventListener("change", () => {
+    fractalSelect.value = fractalSelectCompact.value;
+    setActiveFractal(fractalSelectCompact.value);
+  });
+}
 
 if (btnToggleControls) {
   btnToggleControls.addEventListener("click", () => {
@@ -2647,6 +2712,13 @@ paletteSelect.addEventListener("change", () => {
   synchroniserControlePalette();
   render();
 });
+
+if (paletteSelectCompact) {
+  paletteSelectCompact.addEventListener("change", () => {
+    paletteSelect.value = paletteSelectCompact.value;
+    paletteSelect.dispatchEvent(new Event("change"));
+  });
+}
 
 toggleCustomPaletteButton.classList.add("icon-btn");
 toggleCustomPaletteButton.addEventListener("click", () => {

@@ -656,18 +656,27 @@ pre {
 
 .controls-minimize-btn {
   position: absolute;
-  top: 10px;
-  right: 16px;
+  top: 8px;
+  right: 12px;
   z-index: 2;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  font-size: 20px;
+  font-weight: 700;
+  border-color: rgba(0, 212, 255, 0.28);
+  background: rgba(0, 212, 255, 0.14);
+  box-shadow: 0 0 18px rgba(0, 212, 255, 0.12);
 }
 
 .controls-summary {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 10px 52px 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
@@ -678,6 +687,32 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.controls-compact {
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.controls-compact select {
+  flex: 1 1 150px;
+  min-width: 120px;
+  max-width: 240px;
+}
+
+.compact-iter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 170px;
+  flex: 1 1 200px;
+}
+
+.compact-iter-group input[type="range"] {
+  width: min(180px, 100%);
 }
 
 .controls-summary-fractal {
@@ -707,6 +742,14 @@ pre {
 
 #controls.collapsed .controls-minimize-btn {
   display: none;
+}
+
+#controls.collapsed .controls-summary-main {
+  display: none;
+}
+
+#controls.collapsed .controls-compact {
+  display: flex;
 }
 
 #controls:not(.collapsed) .controls-summary {

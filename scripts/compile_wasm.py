@@ -2,20 +2,26 @@
 """Strict launcher: transpile scripts/compile_wasm.ml and execute main()."""
 
 import io
+import os
 import sys
 from pathlib import Path
 
 
 def ajouter_depot_multilingual_au_chemin(racine: Path) -> None:
-    candidats = [
-        racine.parent / "multilingual",
-        Path.home() / "Documents" / "Research" / "Workspace" / "multilingual",
-    ]
-    for candidat in candidats:
-        if (candidat / "multilingualprogramming" / "__init__.py").exists():
-            if str(candidat) not in sys.path:
-                sys.path.insert(0, str(candidat))
-            return
+    chemin_dev = os.environ.get("MULTILINGUAL_DEV_PATH", "").strip()
+    if not chemin_dev:
+        return
+
+    candidat = Path(chemin_dev).expanduser()
+    if not candidat.is_absolute():
+        candidat = (racine / candidat).resolve()
+    if not (candidat / "multilingualprogramming" / "__init__.py").exists():
+        raise RuntimeError(
+            "MULTILINGUAL_DEV_PATH ne pointe pas vers un depot multilingual valide: "
+            f"{candidat}"
+        )
+    if str(candidat) not in sys.path:
+        sys.path.insert(0, str(candidat))
 
 
 def main() -> None:

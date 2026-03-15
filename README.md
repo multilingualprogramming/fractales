@@ -278,7 +278,7 @@ index.html
 ### Prérequis
 
 ```bash
-pip install "multilingualprogramming[wasm]"
+pip install -r requirements-build.txt
 ```
 
 Outils recommandés pour le développement local :
@@ -297,6 +297,14 @@ node --check public/js/renderer.js
 node --check public/js/renderer-source-panel.js
 node --check public/js/renderer-bookmarks.js
 node --check public/js/renderer-export.js
+```
+
+Pour tester explicitement une copie locale du depot `multilingual` au lieu de la
+version epinglee :
+
+```powershell
+$env:MULTILINGUAL_DEV_PATH="..\\multilingual"
+python scripts/compile_wasm.py
 ```
 
 ### Serveur local
@@ -444,9 +452,14 @@ La séparation des rôles reste volontaire :
 git push origin main
 ```
 
-Le workflow Actions installe Python 3.12, `multilingualprogramming[wasm]`,
+Le workflow Actions installe Python 3.12 et la version epinglee dans
+`requirements-build.txt`,
 exécute `python scripts/compile_wasm.py`, les tests d'intégration, et déploie
 `public/` sur GitHub Pages.
+
+Un workflow planifie surveille aussi la compatibilite avec la version epinglee,
+la derniere version publiee et la branche `main` du depot amont
+`johnsamuelwrites/multilingual`.
 
 Configurez Pages via : **Settings → Pages → Source : GitHub Actions**.
 

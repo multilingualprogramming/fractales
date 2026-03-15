@@ -1,0 +1,171 @@
+name: Surveiller la compatibilite multilingual
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  compat:
+    name: Compatibilite multilingual (${{ matrix.channel.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        channel:
+          - name: pinned
+            install_command: pip install -r requirements-build.txt
+          - name: latest
+            install_command: pip install "multilingualprogramming[wasm]"
+          - name: upstream-main
+            install_command: pip install "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
+
+    steps:
+      - name: Cloner le depot
+        uses: actions/checkout@v4
+
+      - name: Configurer Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer les dependances de build
+        run: |
+          pip install --upgrade pip
+          ${{ matrix.channel.install_command }}
+
+      - name: Capturer la version multilingual
+        env:
+          CHANNEL_NAME: ${{ matrix.channel.name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          metadata = {
+              "channel": os.environ["CHANNEL_NAME"],
+              "pip_freeze": subprocess.check_output(["python", "-m", "pip", "freeze"], text=True).splitlines(),
+          }
+          try:
+              from multilingualprogramming.version import __version__
+              metadata["multilingual_version"] = __version__
+          except Exception as exc:
+              metadata["multilingual_version_error"] = str(exc)
+
+          out = pathlib.Path("build")
+          out.mkdir(exist_ok=True)
+          path = out / f"multilingual-metadata-{os.environ['CHANNEL_NAME']}.json"
+          path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+          print(path.read_text(encoding="utf-8"))
+          PY
+
+      - name: Compiler le bundle WASM
+        run: python scripts/compile_wasm.py
+
+      - name: Verifier les checks d'integration
+        run: python scripts/integration_checks.py
+
+      - name: Verifier les smoke tests UI
+        run: python scripts/ui_smoke_checks.py
+
+      - name: Verifier la syntaxe JavaScript
+        run: |
+          node --check public/js/renderer.js
+          node --check public/js/renderer-source-panel.js
+          node --check public/js/renderer-bookmarks.js
+          node --check public/js/renderer-export.js
+
+      - name: Verifier l'instanciation WASM
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const bytes = fs.readFileSync('public/mandelbrot.wasm');
+          WebAssembly.instantiate(bytes, {
+            env: {
+              memory: new WebAssembly.Memory({ initial: 16, maximum: 1024 }),
+              print_str() {},
+              print_f64() {},
+              print_bool() {},
+              print_sep() {},
+              print_newline() {},
+              pow_f64(base, exponent) { return Math.pow(base, exponent); },
+            },
+          }).then(({ instance }) => {
+            const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch','magnet1','magnet2','lambda_fractale'];
+            const exports = instance.exports;
+            const missing = required.filter((name) => typeof exports[name] !== 'function');
+            if (missing.length) {
+              console.error('Exports manquants:', missing.join(', '));
+              process.exit(1);
+            }
+            console.log('WASM smoke test OK');
+          }).catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Archiver les metadonnees
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multilingual-metadata-${{ matrix.channel.name }}
+          path: build/multilingual-metadata-${{ matrix.channel.name }}.json
+
+  notifier:
+    name: Ouvrir une alerte si la surveillance echoue
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    needs: compat
+
+    steps:
+      - name: Creer ou reutiliser une issue de compatibilite
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Alerte compatibilite: multilingual a casse la surveillance nocturne';
+            const { owner, repo } = context.repo;
+            const existing = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = existing.data.find((issue) => issue.title === title);
+            const body = [
+              'La surveillance planifiee de compatibilite avec `multilingual` a echoue.',
+              '',
+              `Workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Date: ${new Date().toISOString()}`,
+              '',
+              'Verifier en priorite les jobs `latest` et `upstream-main` pour identifier la regression.',
+            ].join('\n');
+
+            if (match) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: match.number,
+                body,
+              });
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['bug'],
+            });

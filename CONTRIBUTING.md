@@ -8,12 +8,12 @@ Prérequis recommandés :
 
 - Python 3.12+
 - Node.js 20+
-- La dépendance Python `multilingualprogramming[wasm]`
+- La dépendance Python épinglée dans `requirements-build.txt`
 
 Installation minimale :
 
 ```bash
-pip install "multilingualprogramming[wasm]"
+pip install -r requirements-build.txt
 ```
 
 Lancer l'application localement :
@@ -77,6 +77,9 @@ python scripts\compile_wasm.py
 python scripts\integration_checks.py
 python scripts\ui_smoke_checks.py
 ```
+
+Pour tester volontairement une copie locale de `multilingual`, définissez
+`MULTILINGUAL_DEV_PATH` avant de lancer `compile_wasm.py`.
 
 Ordre important : `compile_wasm.py` régénère des artefacts dans `public/`. Relancez ensuite les checks sur les fichiers générés.
 

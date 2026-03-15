@@ -608,14 +608,33 @@ pre {
   grid-area: controls;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  padding: 0 20px;
+  padding: 8px 20px;
   background: rgba(8, 12, 22, 0.98);
   border-top: 1px solid var(--border);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   overflow: visible;
   z-index: 10;
+}
+
+.controls-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.controls-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .control-group {
@@ -983,6 +1002,15 @@ select:focus {
     padding: 8px 12px;
     align-content: center;
     overflow-x: unset;
+  }
+
+  .controls-main {
+    width: 100%;
+  }
+
+  .controls-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .palette-control-stack {

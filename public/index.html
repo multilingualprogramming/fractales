@@ -215,6 +215,7 @@
        BARRE DE CONTRÔLES
        ============================================================ -->
       <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
+        <div class="controls-main">
 
         <!-- Sélecteur de famille -->
         <div class="control-group" role="group" aria-label="Famille de fractales">
@@ -319,22 +320,25 @@
         </div>
 
         <div class="ctrl-sep" aria-hidden="true"></div>
+        </div>
 
-        <!-- Bouton réinitialiser -->
-        <button id="btn-reset" class="btn" type="button" aria-label="Réinitialiser la vue">
-          <span class="btn-icon">⟳</span>
-          <span>Réinitialiser</span>
-        </button>
+        <div class="controls-actions">
+          <!-- Bouton réinitialiser -->
+          <button id="btn-reset" class="btn" type="button" aria-label="Réinitialiser la vue">
+            <span class="btn-icon">⟳</span>
+            <span>Réinitialiser</span>
+          </button>
 
-        <button id="btn-bookmark" class="btn" type="button" aria-label="Enregistrer un signet" title="Signet (touche B)">
-          <span class="btn-icon">★</span>
-          <span>Signet</span>
-        </button>
+          <button id="btn-bookmark" class="btn" type="button" aria-label="Enregistrer un signet" title="Signet (touche B)">
+            <span class="btn-icon">★</span>
+            <span>Signet</span>
+          </button>
 
-        <button id="btn-open-export" class="btn" type="button" aria-label="Ouvrir le panneau d'export">
-          <span class="btn-icon">⬇</span>
-          <span>Exporter</span>
-        </button>
+          <button id="btn-open-export" class="btn" type="button" aria-label="Ouvrir le panneau d'export">
+            <span class="btn-icon">⬇</span>
+            <span>Exporter</span>
+          </button>
+        </div>
 
       </footer>
 

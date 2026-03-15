@@ -99,6 +99,39 @@ déf multibrot(cx, cy, max_iter, puissance):
         iter = iter + 1.0
     retour iter
 
+déf burning_julia(zx, zy, c_re, c_im, max_iter):
+    # Julia version du Burning Ship : |Re(z)| et |Im(z)| à chaque itération
+    soit rayon_echappement_carre = 4.0
+    soit x = zx
+    soit y = zy
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si norme_carre(x, y) > rayon_echappement_carre:
+            retour iter
+        soit ax = abs_escape(x)
+        soit ay = abs_escape(y)
+        soit xtemp = ax * ax - ay * ay + c_re
+        y = 2.0 * ax * ay + c_im
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf biomorphe(cx, cy, max_iter):
+    # Biomorphe de Pickover : fuite si |Re(z)| > 100 OU |Im(z)| > 100
+    # Crée des formes organiques rappelant des micro-organismes
+    soit limite = 100.0
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        soit xtemp = x * x - y * y + cx
+        y = 2.0 * x * y + cy
+        x = xtemp
+        si abs_escape(x) > limite ou abs_escape(y) > limite:
+            retour iter
+        iter = iter + 1.0
+    retour max_iter
+
 déf buddhabrot(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0

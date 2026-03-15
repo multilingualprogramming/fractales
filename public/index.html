@@ -63,6 +63,7 @@
         <canvas id="fractal-canvas-3d" class="canvas-masque" aria-label="Vue 3D WebGL">
           Votre navigateur ne supporte pas WebGL.
         </canvas>
+        <canvas id="julia-coupling-canvas" class="hidden" aria-label="Aperçu Julia couplé" width="200" height="200"></canvas>
 
         <!-- Indicateur de statut du rendu -->
         <div id="render-overlay">
@@ -117,6 +118,7 @@
             <div class="export-actions">
               <button id="btn-export-current" class="btn" type="button">PNG courant</button>
               <button id="btn-export-image" class="btn" type="button">PNG haute résolution</button>
+              <button id="btn-export-svg" class="btn hidden" type="button">SVG vectoriel</button>
             </div>
           </div>
 
@@ -148,6 +150,16 @@
             <div class="export-actions">
               <button id="btn-export-video" class="btn" type="button">Créer la vidéo</button>
             </div>
+          </div>
+        </section>
+
+        <section id="bookmark-panel" class="hidden" aria-label="Signets">
+          <div class="export-header">
+            <h3>Signets</h3>
+            <button id="btn-close-bookmarks" class="btn export-close-btn" type="button" aria-label="Fermer les signets">✕</button>
+          </div>
+          <div id="bookmark-list" class="bookmark-list">
+            <p class="bookmark-empty">Aucun signet. Naviguez vers une vue intéressante et appuyez sur ★ Signet.</p>
           </div>
         </section>
 
@@ -213,6 +225,8 @@
             <option value="ifs">IFS</option>
             <option value="lsystem">L-système</option>
             <option value="magnetique">Magnétiques</option>
+            <option value="lisse">Lisse</option>
+            <option value="orbitrap">Pièges d'orbite</option>
             <option value="classe">Classes</option>
           </select>
         </div>
@@ -251,6 +265,17 @@
         </div>
 
         <div class="ctrl-sep" aria-hidden="true"></div>
+
+        <!-- Paramètre c de Julia -->
+        <div id="julia-c-controls" class="control-group hidden" role="group" aria-label="Paramètre c de Julia">
+          <label class="control-label">c réel :</label>
+          <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
+          <span id="julia-c-re-value" class="control-value">-0.800</span>
+          <label class="control-label julia-c-im-label">c imag :</label>
+          <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
+          <span id="julia-c-im-value" class="control-value">0.156</span>
+        </div>
+        <div id="julia-c-sep" class="ctrl-sep hidden" aria-hidden="true"></div>
 
         <!-- Sélecteur de palette -->
         <div class="palette-control-stack">
@@ -296,12 +321,17 @@
         <div class="ctrl-sep" aria-hidden="true"></div>
 
         <!-- Bouton réinitialiser -->
-        <button id="btn-reset" class="btn" aria-label="Réinitialiser la vue">
+        <button id="btn-reset" class="btn" type="button" aria-label="Réinitialiser la vue">
           <span class="btn-icon">⟳</span>
           <span>Réinitialiser</span>
         </button>
 
-        <button id="btn-open-export" class="btn" aria-label="Ouvrir le panneau d'export">
+        <button id="btn-bookmark" class="btn" type="button" aria-label="Enregistrer un signet" title="Signet (touche B)">
+          <span class="btn-icon">★</span>
+          <span>Signet</span>
+        </button>
+
+        <button id="btn-open-export" class="btn" type="button" aria-label="Ouvrir le panneau d'export">
           <span class="btn-icon">⬇</span>
           <span>Exporter</span>
         </button>

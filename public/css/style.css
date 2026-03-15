@@ -1046,3 +1046,106 @@ select:focus {
   pointer-events: none;
   z-index: 1;
 }
+
+/* ============================================================
+   CANVAS JULIA COUPLÉ
+   ============================================================ */
+
+#julia-coupling-canvas {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid #555;
+  background: #000;
+  border-radius: var(--radius);
+  z-index: 3;
+  pointer-events: none;
+}
+
+#julia-coupling-canvas.hidden {
+  display: none;
+}
+
+/* ============================================================
+   PANNEAU SIGNETS
+   ============================================================ */
+
+#bookmark-panel {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: min(320px, calc(100% - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(8, 12, 20, 0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  z-index: 4;
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+}
+
+#bookmark-panel.hidden {
+  display: none;
+}
+
+.bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bookmark-item .bookmark-goto {
+  flex: 1;
+  text-align: left;
+  font-size: 11px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.bookmark-delete {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  min-width: 28px;
+}
+
+.bookmark-empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   CONTRÔLES JULIA C
+   ============================================================ */
+
+#julia-c-controls.hidden {
+  display: none;
+}
+
+#julia-c-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+#julia-c-controls input[type="range"] {
+  width: 100px;
+}

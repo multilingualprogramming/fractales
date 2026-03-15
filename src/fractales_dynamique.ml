@@ -615,3 +615,38 @@ déf feigenbaum_tree(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf duffing_attractor(cx, cy, max_iter):
+    # Attracteur de Duffing (oscillateur forcé non linéaire)
+    # Carte : x_{n+1} = y_n,  y_{n+1} = -b·x + a·y - y³
+    # Paramètres classiques : a = 2.75, b = 0.20
+    soit a = 2.75
+    soit b = 0.2
+    soit x = 0.1
+    soit y = 0.1
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 480.0:
+        iter_lim = 480.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit xtemp = y
+        soit ytemp = -b * x + a * y - y * y * y
+        x = xtemp
+        y = ytemp
+        si x * x + y * y > 400.0:
+            x = 0.1
+            y = 0.1
+        si iter > 40.0:
+            soit distance = (x - cx) * (x - cx) + (y - cy) * (y - cy)
+            si distance < meilleur:
+                meilleur = distance
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 380.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score

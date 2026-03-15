@@ -237,6 +237,7 @@ let fractalSelectCompact = null;
 let iterSliderCompact = null;
 let iterValueCompact = null;
 let paletteSelectCompact = null;
+let controlsSummaryActions = null;
 let customPaletteEditorOpen = false;
 let controlsCollapsed = false;
 
@@ -264,6 +265,29 @@ function initialiserControlesCompacts() {
 }
 
 initialiserControlesCompacts();
+
+function initialiserActionsCompactes() {
+  if (!controlsSummary || !btnToggleControls) return;
+  const actions = document.createElement("div");
+  actions.className = "controls-summary-actions";
+  actions.innerHTML = `
+    <button class="btn btn-secondary summary-action-btn" type="button" data-action="reset">↺</button>
+    <button class="btn btn-secondary summary-action-btn" type="button" data-action="bookmark">★</button>
+    <button class="btn btn-secondary summary-action-btn" type="button" data-action="export">⇩</button>
+  `;
+  controlsSummary.insertBefore(actions, btnToggleControls);
+  controlsSummaryActions = actions;
+  controlsSummaryActions.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const action = target.dataset.action;
+    if (action === "reset") btnReset?.click();
+    if (action === "bookmark") btnBookmark?.click();
+    if (action === "export") btnOpenExport?.click();
+  });
+}
+
+initialiserActionsCompactes();
 
 // ============================================================
 // PALETTES DE COULEURS

@@ -716,6 +716,22 @@ pre {
   width: min(180px, 100%);
 }
 
+.controls-summary-actions {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-action-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .controls-summary-fractal {
   font-size: 12px;
   font-weight: 600;
@@ -773,6 +789,11 @@ pre {
     flex-wrap: nowrap;
     width: auto;
     overflow: hidden;
+  }
+
+  #controls.collapsed .controls-summary-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
   }
 
   #controls.collapsed .controls-compact select,

@@ -8,6 +8,10 @@ La barre latérale affiche le **code source `.ml` du module contenant la fractal
 sélectionnée** et son équivalent **Python transpilé** — les deux onglets se mettent
 à jour dynamiquement à chaque changement de fractale.
 
+Les réglages propres à certaines fractales sont regroupés dans un bloc
+**Options spécifiques** configurable : il n'apparaît que lorsque la fractale active
+utilise réellement des paramètres dédiés.
+
 L'application peut aussi **exporter la zone courante en PNG**, **générer une
 vidéo WebM de zoom**, et **exporter les fractales L-système en SVG**. La planification
 d'export reste décrite en **français multilingual** dans `fractales_export.ml`, tandis
@@ -215,7 +219,8 @@ index.html
         ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / éditeur personnalisé complet (fond, intérieur, stops)
         ├── Zoom/pan : clic, molette, pincement tactile
         ├── Couplage Julia/Mandelbrot : aperçu Julia 200×200 en temps réel au survol
-        ├── Curseurs Julia c (réel/imaginaire) : contrôle interactif du paramètre c
+        ├── Options spécifiques : bloc dynamique configurable pour les paramètres par fractale
+        ├── Julia c et puissance Multibrot : exemples de réglages dédiés
         ├── Signets (localStorage) : sauvegarde/restauration des vues
         ├── Raccourcis clavier : r (réinitialiser), e (export), b (signet), Échap
         ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom / SVG (L-système)
@@ -362,11 +367,33 @@ Lorsque la fractale active est Mandelbrot (ou une variante d'évasion), un canva
 de 200×200 pixels affiché en surimpression montre en temps réel l'ensemble de Julia
 correspondant à la position du curseur (c = coordonnées complexes du pointeur).
 
-### Curseurs Julia c
+### Options spécifiques
+
+La barre de contrôles sépare les réglages globaux des réglages propres à certaines
+fractales. Le bloc **Options spécifiques** est affiché uniquement lorsque la fractale
+active possède un ou plusieurs paramètres dédiés.
+
+Ce bloc est volontairement **générique et configurable** : il peut être réutilisé
+pour d'autres fractales au-delà de Julia et Multibrot. Pour ajouter un nouveau
+réglage spécifique, il faut :
+
+1. ajouter son sous-groupe dans `public/index.html` ;
+2. le styliser dans `public/css/style.css` ;
+3. l'activer conditionnellement dans `mettreAJourOptionsSpecifiques()` dans `public/js/renderer.js` ;
+4. synchroniser sa valeur avec `params`, les signets et l'export si nécessaire.
+
+### Julia c
 
 Pour toutes les fractales de type Julia (`julia`, `burning_julia`, `julia_lisse`,
-`julia_piege_cercle`), deux curseurs permettent d'ajuster le paramètre c (partie
-réelle et imaginaire) et de relancer le rendu en direct.
+`julia_piege_cercle`), `Options spécifiques` affiche deux curseurs permettant
+d'ajuster le paramètre `c` (partie réelle et imaginaire) et de relancer le rendu
+en direct.
+
+### Puissance Multibrot
+
+Pour `multibrot`, `Options spécifiques` affiche le sélecteur de `puissance`.
+Ce réglage ne doit pas apparaître pour les fractales qui n'utilisent pas
+`params.multibrotPower`.
 
 ### Signets
 

@@ -34,6 +34,7 @@ When adding or changing a fractal, update all relevant places together:
    - rendering path
    - WASM export loading
    - source map
+   - fractal-specific settings in the dedicated `Options spécifiques` UI group when needed
    - syntax highlighting lists when needed
 6. If the change affects documented capabilities, update `README.md`.
 
@@ -114,11 +115,35 @@ Mandelbrot. It uses the cursor's complex coordinates as the `c` parameter.
 - New Mandelbrot-family fractals (e.g. `mandelbrot_lisse`) should be added to the activation
   condition if a live Julia preview is meaningful for them.
 
+### Fractal-specific settings
+
+Fractal-only controls must live in the dedicated `Options spécifiques` group in the footer, not
+mixed permanently into the global controls row. This group is configurable and may host settings
+for any fractal family, not only Julia.
+
+Guidelines:
+- Keep global controls global: family, fractal, iterations, palette, reset, signet, export.
+- Show the `Options spécifiques` group only when the active fractal actually uses at least one
+  dedicated setting.
+- Group each setting family in its own sub-block (for example `#julia-c-controls`,
+  `#multibrot-power-group`) so multiple fractal-specific settings can coexist cleanly.
+- When adding a new per-fractal parameter, update both the DOM visibility logic and the state sync
+  paths in `renderer.js` (initial selection, bookmark restore, export capture if relevant).
+- Reuse existing renderer params when possible (`params.juliaCre`, `params.juliaCim`,
+  `params.multibrotPower`) and introduce new stable param ids only when necessary.
+
 ### Julia c sliders
 
-`mettreAJourControlsJulia(fractalName)` shows `#julia-c-controls` whenever the active fractal
-belongs to the Julia-type family: `julia`, `burning_julia`, `julia_lisse`, `julia_piege_cercle`.
-Add any new 4-parameter fractal (zx, zy, c_re, c_im, max_iter) to this list.
+`mettreAJourOptionsSpecifiques()` shows `#julia-c-controls` whenever the active fractal belongs to
+the Julia-type family: `julia`, `burning_julia`, `julia_lisse`, `julia_piege_cercle`.
+Add any new 4-parameter fractal (`zx`, `zy`, `c_re`, `c_im`, `max_iter`) to this list so its
+controls appear in `Options spécifiques`.
+
+### Multibrot power
+
+`#multibrot-power-group` belongs to the same configurable `Options spécifiques` system and should
+only be visible for fractals that actually use `params.multibrotPower`. Do not leave `Puissance`
+visible for unrelated fractals.
 
 ### Bookmark system
 

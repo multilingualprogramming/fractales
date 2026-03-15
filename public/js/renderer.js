@@ -156,6 +156,7 @@ const iterValue     = document.getElementById("iter-value");
 const familySelect  = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
+const multibrotPowerGroup = document.getElementById("multibrot-power-group");
 const paletteSelect = document.getElementById("palette-select");
 const customPaletteControls = document.getElementById("custom-palette-controls");
 const toggleCustomPaletteButton = document.getElementById("btn-toggle-custom-palette");
@@ -201,7 +202,8 @@ const juliaCImSlider = document.getElementById("julia-c-im");
 const juliaCReValue = document.getElementById("julia-c-re-value");
 const juliaCImValue = document.getElementById("julia-c-im-value");
 const juliaCControls = document.getElementById("julia-c-controls");
-const juliaCControlsSep = document.getElementById("julia-c-sep");
+const fractalOptionsGroup = document.getElementById("fractal-options-group");
+const fractalOptionsSep = document.getElementById("fractal-options-sep");
 const juliaCouplingCanvas = document.getElementById("julia-coupling-canvas");
 const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
@@ -1221,6 +1223,7 @@ function syncSelectors(selectedFractal = params.fractal) {
   familySelect.value = familyId;
   const activeFractal = populateFractalSelect(familyId, selectedFractal);
   params.fractal = activeFractal;
+  if (multibrotPower) multibrotPower.value = String(params.multibrotPower);
   synchroniserControlePalette();
 }
 
@@ -1229,7 +1232,7 @@ function setActiveFractal(fractalName) {
   syncSelectors(fractalName);
   mettreAJourAideInteraction();
   resetView();
-  mettreAJourControlsJulia();
+  mettreAJourOptionsSpecifiques();
   loadSources(params.fractal);
 }
 
@@ -3210,10 +3213,14 @@ function mettreAJourAideInteraction() {
 // JULIA C SLIDERS
 // ============================================================
 
-function mettreAJourControlsJulia() {
+function mettreAJourOptionsSpecifiques() {
   const needsC = ["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal);
+  const needsPower = params.fractal === "multibrot";
+  const needsSpecificOptions = needsC || needsPower;
   if (juliaCControls) juliaCControls.classList.toggle("hidden", !needsC);
-  if (juliaCControlsSep) juliaCControlsSep.classList.toggle("hidden", !needsC);
+  if (multibrotPowerGroup) multibrotPowerGroup.classList.toggle("hidden", !needsPower);
+  if (fractalOptionsGroup) fractalOptionsGroup.classList.toggle("hidden", !needsSpecificOptions);
+  if (fractalOptionsSep) fractalOptionsSep.classList.toggle("hidden", !needsSpecificOptions);
   const needsSVG = LINE_FRACTALS.has(params.fractal);
   if (btnExportSvg) btnExportSvg.classList.toggle("hidden", !needsSVG);
   if (juliaCouplingCanvas) juliaCouplingCanvas.classList.toggle("hidden", params.fractal !== "mandelbrot");
@@ -3295,12 +3302,16 @@ function allerAuSignet(index) {
     if (juliaCImSlider) juliaCImSlider.value = s.juliaCim;
     if (juliaCImValue) juliaCImValue.textContent = s.juliaCim.toFixed(3);
   }
+  if (s.multibrotPower !== undefined) {
+    params.multibrotPower = s.multibrotPower;
+    if (multibrotPower) multibrotPower.value = String(s.multibrotPower);
+  }
   params.palette = s.palette;
   params.paletteBackground = s.paletteBackground;
   params.paletteInterior = s.paletteInterior;
   params.paletteStops = [...(s.paletteStops || params.paletteStops)];
   synchroniserControlePalette();
-  mettreAJourControlsJulia();
+  mettreAJourOptionsSpecifiques();
   loadSources(params.fractal);
   render();
   if (bookmarkPanel) bookmarkPanel.classList.add("hidden");
@@ -3415,7 +3426,7 @@ async function init() {
   syncSelectors(params.fractal);
   synchroniserControlePalette();
   mettreAJourEtatVideo();
-  mettreAJourControlsJulia();
+  mettreAJourOptionsSpecifiques();
 
   // Vue initiale : preset de la fractale sélectionnée
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

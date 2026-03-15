@@ -637,6 +637,28 @@ pre {
   flex: 0 0 auto;
 }
 
+.fractal-options-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+}
+
+.fractal-options-title {
+  color: var(--cyan);
+}
+
+.control-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .control-group {
   display: flex;
   align-items: center;
@@ -1013,6 +1035,10 @@ select:focus {
     justify-content: flex-end;
   }
 
+  .fractal-options-group {
+    width: 100%;
+  }
+
   .palette-control-stack {
     width: 100%;
   }
@@ -1161,7 +1187,10 @@ select:focus {
    CONTRÔLES JULIA C
    ============================================================ */
 
-#julia-c-controls.hidden {
+#julia-c-controls.hidden,
+#multibrot-power-group.hidden,
+#fractal-options-group.hidden,
+#fractal-options-sep.hidden {
   display: none;
 }
 

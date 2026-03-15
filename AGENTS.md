@@ -36,6 +36,7 @@ When adding or changing a fractal, update all relevant places together:
    - source map
    - fractal-specific settings in the dedicated `Options spécifiques` UI group when needed
    - syntax highlighting lists when needed
+   - and update the relevant extracted browser helper module in `public/js/` if the change affects source-panel loading, benchmark UI, bookmarks, export flows, or another split UI concern
 6. If the change affects documented capabilities, update `README.md`.
 
 ## Rendering Guidance
@@ -43,7 +44,7 @@ When adding or changing a fractal, update all relevant places together:
 - Use `POINT_FRACTALS` for density/attractor or point-cloud rendering.
 - Use `LINE_FRACTALS` for geometric curves and recursive line drawings.
 - Use scalar/WASM rendering for escape-time style fractals whenever possible.
-- Browser-side helpers in `renderer.js` are acceptable for drawing/export support, but the main fractal definition must still exist in the French multilingual source.
+- Browser-side helpers in `renderer.js` or sibling modules under `public/js/` are acceptable for drawing/export/UI support, but the main fractal definition must still exist in the French multilingual source.
 
 ### POINT_FRACTALS (density orbit) checklist
 
@@ -96,7 +97,7 @@ Guidelines:
 
 ### SVG export — L-system fractals
 
-`exporterSVG()` in `renderer.js` uses a mock canvas context to capture path commands from
+`renderer-export.js` uses a mock canvas context to capture path commands from
 `dessinerFractaleLineaire`, then emits an SVG `<path>` element. When adding a new L-system
 fractal:
 
@@ -117,8 +118,9 @@ Guidelines:
   dedicated setting.
 - Group each setting family in its own sub-block (for example `#julia-c-controls`,
   `#multibrot-power-group`) so multiple fractal-specific settings can coexist cleanly.
-- When adding a new per-fractal parameter, update both the DOM visibility logic and the state sync
-  paths in `renderer.js` (initial selection, bookmark restore, export capture if relevant).
+- When adding a new per-fractal parameter, update both the DOM visibility logic in `renderer.js`
+  and the relevant state sync paths in the extracted UI modules (initial selection, bookmark
+  restore, export capture if relevant).
 - Reuse existing renderer params when possible (`params.juliaCre`, `params.juliaCim`,
   `params.multibrotPower`) and introduce new stable param ids only when necessary.
 
@@ -137,8 +139,9 @@ visible for unrelated fractals.
 
 ### Bookmark system
 
-`chargerSignets()` / `sauvegarderSignets()` persist view state arrays in `localStorage`
-under the key `"fractalesSignets"`. Each entry contains `{ fractal, centerX, centerY, zoom, label }`.
+`renderer-bookmarks.js` persists view state arrays in `localStorage`
+under the key `"fractales_signets"`. Entries store the captured view object used by the UI
+(fractal, palette, iterations, optional 3D view, and view coordinates when applicable).
 No backend required — entirely browser-side.
 
 ### Palette system
@@ -151,6 +154,9 @@ Run these checks after meaningful changes:
 
 ```powershell
 node --check public\js\renderer.js
+node --check public\js\renderer-source-panel.js
+node --check public\js\renderer-bookmarks.js
+node --check public\js\renderer-export.js
 python scripts\compile_wasm.py
 python scripts\integration_checks.py
 python scripts\ui_smoke_checks.py
@@ -168,6 +174,9 @@ Rebuild order matters: `compile_wasm.py` regenerates `public/main_wasm_bundle.ml
 - `FRACTAL_SOURCE_MAP` in `renderer.js`
 - `wasmFunctions` mapping (the `typeof exports.x === "function"` pattern) in `renderer.js`
 - Classified for rendering: either in `POINT_FRACTALS`, `LINE_FRACTALS`, or in `wasmFunctions`
+
+The integration checks intentionally read those registries from `renderer.js`, so keep the
+canonical fractal metadata there even if related UI behavior is extracted into sibling modules.
 
 POINT_FRACTALS still need a `wasmFunctions` entry (the WASM function is compiled for language-showcase purposes even if rendering uses JS step functions).
 

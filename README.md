@@ -205,7 +205,7 @@ multilingualprogramming        (bibliothèque Python)
 
 ```
 index.html
-  └── renderer.js (module ES)
+  └── renderer.js (module ES orchestrateur)
         ├── WebAssembly.instantiateStreaming("mandelbrot.wasm")
         │     └── exports: mandelbrot / julia / burning_julia / biomorphe /
         │                  mandelbrot_lisse / julia_lisse / burning_ship_lisse / tricorn_lisse /
@@ -214,17 +214,20 @@ index.html
         │                  duffing_attractor / … / nova_magnetique /
         │                  interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export
         ├── Rendu progressif par tranches (requestAnimationFrame)
-        ├── FRACTAL_SOURCE_MAP  → module .ml contenant la fractale active
-        ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py") (contextuel)
+        ├── Métadonnées fractales conservées dans renderer.js :
+        │     VIEW_PRESETS / FRACTAL_FAMILIES / FRACTAL_SOURCE_MAP / wasmFunctions
+        ├── renderer-source-panel.js
+        │     ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py")
+        │     └── fetch("benchmark.json") → badge de performance
+        ├── renderer-bookmarks.js → signets (localStorage) + restauration de vue
+        ├── renderer-export.js → PNG courant / PNG HD / vidéo WebM / SVG (L-système)
         ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / éditeur personnalisé complet (fond, intérieur, stops)
         ├── Zoom/pan : clic, molette, pincement tactile
         ├── Couplage Julia/Mandelbrot : aperçu Julia 200×200 en temps réel au survol
         ├── Options spécifiques : bloc dynamique configurable pour les paramètres par fractale
         ├── Julia c et puissance Multibrot : exemples de réglages dédiés
-        ├── Signets (localStorage) : sauvegarde/restauration des vues
         ├── Raccourcis clavier : r (réinitialiser), e (export), b (signet), Échap
-        ├── Export : PNG courant / PNG haute résolution / vidéo WebM de zoom / SVG (L-système)
-        └── fetch("benchmark.json") → badge de performance
+        └── renderer3d.js → backend WebGL dédié aux vues 3D
 ```
 
 ---
@@ -253,7 +256,11 @@ index.html
 │   └── integration_checks.py      # Tests d'intégration CI
 ├── public/                        # Racine statique déployée sur GitHub Pages
 │   ├── index.html
-│   ├── js/renderer.js             # Chargeur WASM + rendu canvas + export image/vidéo
+│   ├── js/renderer.js             # Orchestrateur UI + registres fractales + rendu principal
+│   ├── js/renderer-source-panel.js # Code source contextuel + benchmark
+│   ├── js/renderer-bookmarks.js   # Signets navigateur
+│   ├── js/renderer-export.js      # Export PNG / WebM / SVG
+│   ├── js/renderer3d.js           # Backend WebGL des fractales 3D
 │   ├── css/style.css
 │   ├── mandelbrot.wasm            # ← généré (binaire WebAssembly)
 │   ├── main.ml / main_wasm_bundle.ml
@@ -277,7 +284,7 @@ pip install "multilingualprogramming[wasm]"
 Outils recommandés pour le développement local :
 
 - Python 3.12+
-- Node.js 20+ pour `node --check public/js/renderer.js`
+- Node.js 20+ pour les vérifications JavaScript des modules de `public/js/`
 - Un serveur statique capable de servir `.wasm` avec le MIME `application/wasm`
 
 ### Build
@@ -287,6 +294,9 @@ python scripts/compile_wasm.py
 python scripts/integration_checks.py
 python scripts/ui_smoke_checks.py
 node --check public/js/renderer.js
+node --check public/js/renderer-source-panel.js
+node --check public/js/renderer-bookmarks.js
+node --check public/js/renderer-export.js
 ```
 
 ### Serveur local
@@ -380,7 +390,7 @@ réglage spécifique, il faut :
 1. ajouter son sous-groupe dans `public/index.html` ;
 2. le styliser dans `public/css/style.css` ;
 3. l'activer conditionnellement dans `mettreAJourOptionsSpecifiques()` dans `public/js/renderer.js` ;
-4. synchroniser sa valeur avec `params`, les signets et l'export si nécessaire.
+4. synchroniser sa valeur avec `params`, puis vérifier sa propagation vers les signets et l'export via les modules UI dédiés si nécessaire.
 
 ### Julia c
 
@@ -424,7 +434,7 @@ Le bouton `Exporter` ouvre un panneau avec quatre fonctions :
 La séparation des rôles reste volontaire :
 
 - `src/fractales_export.ml` contient les helpers français `interpoler_lineaire`, `interpoler_logarithmique` et `ajuster_iterations_export`.
-- `public/js/renderer.js` pilote le rendu hors écran, `MediaRecorder`, `toBlob()` et le téléchargement des fichiers.
+- `public/js/renderer.js` orchestre l'export et délègue le rendu hors écran, `MediaRecorder`, `toBlob()` et le téléchargement à `public/js/renderer-export.js`.
 
 ---
 

@@ -157,6 +157,11 @@ const familySelect  = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const multibrotPowerGroup = document.getElementById("multibrot-power-group");
+const fractalOptionsStack = document.getElementById("fractal-options-stack");
+const fractalOptionsSummary = document.getElementById("fractal-options-summary");
+const fractalOptionsPanel = document.getElementById("fractal-options-panel");
+const btnToggleFractalOptions = document.getElementById("btn-toggle-fractal-options");
+const btnCloseFractalOptions = document.getElementById("btn-close-fractal-options");
 const paletteSelect = document.getElementById("palette-select");
 const customPaletteControls = document.getElementById("custom-palette-controls");
 const toggleCustomPaletteButton = document.getElementById("btn-toggle-custom-palette");
@@ -202,7 +207,6 @@ const juliaCImSlider = document.getElementById("julia-c-im");
 const juliaCReValue = document.getElementById("julia-c-re-value");
 const juliaCImValue = document.getElementById("julia-c-im-value");
 const juliaCControls = document.getElementById("julia-c-controls");
-const fractalOptionsGroup = document.getElementById("fractal-options-group");
 const fractalOptionsSep = document.getElementById("fractal-options-sep");
 const juliaCouplingCanvas = document.getElementById("julia-coupling-canvas");
 const btnBookmark = document.getElementById("btn-bookmark");
@@ -212,6 +216,7 @@ const bookmarkList = document.getElementById("bookmark-list");
 const btnExportSvg = document.getElementById("btn-export-svg");
 
 let customPaletteEditorOpen = false;
+let fractalOptionsPanelOpen = false;
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -606,6 +611,28 @@ function synchroniserControlePalette() {
   paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
   params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
   definirVisibiliteEditeurPalette();
+}
+
+function definirVisibiliteOptionsSpecifiques({ labels = [], forceOuverture } = {}) {
+  if (typeof forceOuverture === "boolean") {
+    fractalOptionsPanelOpen = forceOuverture;
+  }
+  const afficher = labels.length > 0;
+  if (!afficher) fractalOptionsPanelOpen = false;
+  if (fractalOptionsStack) fractalOptionsStack.classList.toggle("hidden", !afficher);
+  if (fractalOptionsSep) fractalOptionsSep.classList.toggle("hidden", !afficher);
+  if (fractalOptionsSummary) fractalOptionsSummary.textContent = afficher ? labels.join(" · ") : "Aucune";
+  if (fractalOptionsPanel) fractalOptionsPanel.classList.toggle("hidden", !(afficher && fractalOptionsPanelOpen));
+  if (btnToggleFractalOptions) {
+    btnToggleFractalOptions.setAttribute("aria-expanded", afficher && fractalOptionsPanelOpen ? "true" : "false");
+    btnToggleFractalOptions.textContent = afficher && fractalOptionsPanelOpen ? "Reduire" : "Editer";
+  }
+}
+
+function lireLibellesOptionsSpecifiques() {
+  if (!fractalOptionsSummary) return [];
+  const texte = fractalOptionsSummary.textContent?.trim() ?? "";
+  return texte && texte !== "Aucune" ? texte.split(" · ") : [];
 }
 
 function fractaleActiveEst3D() {
@@ -2567,6 +2594,24 @@ closeCustomPaletteButton.addEventListener("click", () => {
   definirVisibiliteEditeurPalette(false);
 });
 
+if (btnToggleFractalOptions) {
+  btnToggleFractalOptions.addEventListener("click", () => {
+    definirVisibiliteOptionsSpecifiques({
+      forceOuverture: !fractalOptionsPanelOpen,
+      labels: lireLibellesOptionsSpecifiques(),
+    });
+  });
+}
+
+if (btnCloseFractalOptions) {
+  btnCloseFractalOptions.addEventListener("click", () => {
+    definirVisibiliteOptionsSpecifiques({
+      forceOuverture: false,
+      labels: lireLibellesOptionsSpecifiques(),
+    });
+  });
+}
+
 paletteBackgroundInput.addEventListener("input", () => {
   params.palette = "personnalisee";
   customPaletteEditorOpen = true;
@@ -3216,11 +3261,12 @@ function mettreAJourAideInteraction() {
 function mettreAJourOptionsSpecifiques() {
   const needsC = ["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal);
   const needsPower = params.fractal === "multibrot";
-  const needsSpecificOptions = needsC || needsPower;
   if (juliaCControls) juliaCControls.classList.toggle("hidden", !needsC);
   if (multibrotPowerGroup) multibrotPowerGroup.classList.toggle("hidden", !needsPower);
-  if (fractalOptionsGroup) fractalOptionsGroup.classList.toggle("hidden", !needsSpecificOptions);
-  if (fractalOptionsSep) fractalOptionsSep.classList.toggle("hidden", !needsSpecificOptions);
+  const labels = [];
+  if (needsC) labels.push("Julia c");
+  if (needsPower) labels.push("Puissance");
+  definirVisibiliteOptionsSpecifiques({ labels });
   const needsSVG = LINE_FRACTALS.has(params.fractal);
   if (btnExportSvg) btnExportSvg.classList.toggle("hidden", !needsSVG);
   if (juliaCouplingCanvas) juliaCouplingCanvas.classList.toggle("hidden", params.fractal !== "mandelbrot");

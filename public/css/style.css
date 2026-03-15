@@ -637,26 +637,69 @@ pre {
   flex: 0 0 auto;
 }
 
-.fractal-options-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.03);
-  flex-wrap: wrap;
-}
-
-.fractal-options-title {
-  color: var(--cyan);
-}
-
 .control-subgroup {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.fractal-options-stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fractal-options-summary {
+  min-width: 0;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fractal-options-panel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  min-width: 320px;
+  max-width: min(420px, calc(100vw - 32px));
+  max-height: min(50vh, 420px);
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(8, 12, 20, 0.96);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.38);
+  z-index: 20;
+}
+
+.fractal-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fractal-option-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.fractal-option-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
 }
 
 .control-group {
@@ -1035,8 +1078,17 @@ select:focus {
     justify-content: flex-end;
   }
 
-  .fractal-options-group {
+  .fractal-options-stack {
     width: 100%;
+  }
+
+  .fractal-options-panel {
+    left: 0;
+    right: auto;
+    width: min(420px, calc(100vw - 24px));
+    min-width: 0;
+    bottom: calc(100% + 8px);
+    max-height: 44vh;
   }
 
   .palette-control-stack {
@@ -1189,7 +1241,8 @@ select:focus {
 
 #julia-c-controls.hidden,
 #multibrot-power-group.hidden,
-#fractal-options-group.hidden,
+#fractal-options-stack.hidden,
+#fractal-options-panel.hidden,
 #fractal-options-sep.hidden {
   display: none;
 }

@@ -254,32 +254,55 @@
 
         <div id="fractal-options-sep" class="ctrl-sep hidden" aria-hidden="true"></div>
 
-        <section id="fractal-options-group" class="control-group fractal-options-group hidden" aria-label="Options spécifiques">
-          <span class="control-label fractal-options-title">Options :</span>
-
-          <!-- Puissance Multibrot -->
-          <div id="multibrot-power-group" class="control-subgroup hidden" role="group" aria-label="Puissance Multibrot">
-            <label class="control-label" for="multibrot-power">Puissance :</label>
-            <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
-              <option value="3">n=3</option>
-              <option value="4">n=4</option>
-              <option value="5" selected>n=5</option>
-              <option value="6">n=6</option>
-              <option value="7">n=7</option>
-              <option value="8">n=8</option>
-            </select>
+        <div id="fractal-options-stack" class="fractal-options-stack hidden">
+          <div class="control-group" role="group" aria-label="Options spécifiques">
+            <label class="control-label" for="btn-toggle-fractal-options">Options :</label>
+            <span id="fractal-options-summary" class="control-value fractal-options-summary">Aucune</span>
+            <button id="btn-toggle-fractal-options" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="fractal-options-panel">Editer</button>
           </div>
 
-          <!-- Paramètre c de Julia -->
-          <div id="julia-c-controls" class="control-subgroup hidden" role="group" aria-label="Paramètre c de Julia">
-            <label class="control-label">c réel :</label>
-            <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
-            <span id="julia-c-re-value" class="control-value">-0.800</span>
-            <label class="control-label julia-c-im-label">c imag :</label>
-            <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
-            <span id="julia-c-im-value" class="control-value">0.156</span>
-          </div>
-        </section>
+          <section id="fractal-options-panel" class="fractal-options-panel hidden" aria-label="Réglages spécifiques de la fractale">
+            <div class="custom-palette-header">
+              <span class="custom-palette-title">Options spécifiques</span>
+              <div class="custom-palette-actions">
+                <button id="btn-close-fractal-options" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire les options spécifiques">Reduire</button>
+              </div>
+            </div>
+
+            <div class="fractal-options-list">
+              <!-- Puissance Multibrot -->
+              <div id="multibrot-power-group" class="fractal-option-card hidden" role="group" aria-label="Puissance Multibrot">
+                <div class="fractal-option-title">Multibrot</div>
+                <div class="control-subgroup">
+                  <label class="control-label" for="multibrot-power">Puissance :</label>
+                  <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
+                    <option value="3">n=3</option>
+                    <option value="4">n=4</option>
+                    <option value="5" selected>n=5</option>
+                    <option value="6">n=6</option>
+                    <option value="7">n=7</option>
+                    <option value="8">n=8</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Paramètre c de Julia -->
+              <div id="julia-c-controls" class="fractal-option-card hidden" role="group" aria-label="Paramètre c de Julia">
+                <div class="fractal-option-title">Julia</div>
+                <div class="control-subgroup">
+                  <label class="control-label">c réel :</label>
+                  <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
+                  <span id="julia-c-re-value" class="control-value">-0.800</span>
+                </div>
+                <div class="control-subgroup">
+                  <label class="control-label julia-c-im-label">c imag :</label>
+                  <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
+                  <span id="julia-c-im-value" class="control-value">0.156</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <!-- Sélecteur de palette -->
         <div class="palette-control-stack">

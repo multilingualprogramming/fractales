@@ -41,6 +41,9 @@ def main() -> None:
         "fractal-select",
         "btn-toggle-pan",
         "pan-controls",
+        "controls-summary",
+        "btn-toggle-controls",
+        "controls-main",
         "controls-global",
         "controls-palette",
         "controls-specific",
@@ -48,6 +51,10 @@ def main() -> None:
     for element_id in required_ids:
         if f'id="{element_id}"' not in html:
             fail(f"missing required HTML id: {element_id}")
+
+    for required_class in ['class="header-brand-text"', 'class="header-title"', 'class="header-subtitle"']:
+        if required_class not in html:
+            fail(f"missing responsive header structure: {required_class}")
 
     controls_global_pos = html.find('id="controls-global"')
     controls_palette_pos = html.find('id="controls-palette"')
@@ -148,6 +155,11 @@ def main() -> None:
         "controls sections must allow wrapping",
     )
     require(
+        r"#controls\.collapsed\s+\.controls-main,\s*#controls\.collapsed\s+\.controls-actions\s*\{\s*display:\s*none;",
+        css,
+        "collapsed footer must hide detailed controls",
+    )
+    require(
         r"@media\s*\(max-width:\s*1200px\)\s*\{.*?\.controls-main\s*\{.*?flex-wrap:\s*wrap;",
         css,
         "controls must wrap at medium widths",
@@ -156,6 +168,41 @@ def main() -> None:
         r"@media\s*\(max-width:\s*820px\)\s*\{.*?#header\s*\{.*?flex-wrap:\s*wrap;",
         css,
         "header must become responsive on narrower screens",
+    )
+    require(
+        r"@media\s*\(max-width:\s*540px\)\s*\{.*?\.header-title,\s*.*?\.header-subtitle\s*\{.*?white-space:\s*normal;",
+        css,
+        "header text must wrap on small screens",
+    )
+    require(
+        r"@media\s*\(max-width:\s*540px\)\s*\{.*?\.header-actions \.btn\s*\{.*?flex:\s*1 1 140px;",
+        css,
+        "header action buttons must flex on small screens",
+    )
+    require(
+        r'localStorage\.getItem\("fractales_controls_collapsed"\)',
+        js,
+        "footer collapse state must be restored from localStorage",
+    )
+    require(
+        r'localStorage\.setItem\("fractales_controls_collapsed",\s*controlsCollapsed \? "1" : "0"\)',
+        js,
+        "footer collapse state must be persisted to localStorage",
+    )
+    require(
+        r"function mettreAJourResumeControles\(\)\s*\{.*?controlsSummaryFractal.*?params\.fractal.*?controlsSummaryDetails.*?morceaux\.join\(\" · \"\)",
+        js,
+        "collapsed footer must maintain a live summary of the current view",
+    )
+    require(
+        r"if \(btnToggleControls\) \{\s*btnToggleControls\.addEventListener\(\"click\",\s*\(\)\s*=>\s*\{\s*definirEtatControles\(!controlsCollapsed\);",
+        js,
+        "footer collapse toggle must be wired to the controls button",
+    )
+    require(
+        r"function appliquerEtatControles\(\)\s*\{.*?controlsFooter.*?classList\.toggle\(\"collapsed\",\s*controlsCollapsed\).*?btnToggleControls.*?setAttribute\(\"aria-expanded\",\s*controlsCollapsed \? \"false\" : \"true\"\).*?btnToggleControls.*?textContent = controlsCollapsed \? \"Afficher\" : \"Réduire\";",
+        js,
+        "footer collapse state must update CSS, aria-expanded, and button label",
     )
 
     print("[ui-smoke] all checks passed")

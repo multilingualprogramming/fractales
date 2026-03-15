@@ -37,23 +37,23 @@ const params = {
 };
 
 const VIEW_PRESETS = {
-  mandelbrot:   { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  mandelbrot: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   mandelbrot_classe: { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  julia:        { centerX: 0.0,  centerY: 0.0, span: 3.0 },
+  julia: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   burning_ship: { centerX: -0.5, centerY: -0.5, span: 3.0 },
-  tricorn:      { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  multibrot:    { centerX: 0.0, centerY: 0.0, span: 2.8 },
-  celtic:       { centerX: -0.5, centerY: 0.0, span: 3.2 },
-  buffalo:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  tricorn: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  multibrot: { centerX: 0.0, centerY: 0.0, span: 2.8 },
+  celtic: { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  buffalo: { centerX: -0.5, centerY: 0.0, span: 3.2 },
   perpendicular_burning_ship: { centerX: -0.5, centerY: -0.4, span: 3.0 },
-  heart:        { centerX: -0.2, centerY: 0.0, span: 3.0 },
+  heart: { centerX: -0.2, centerY: 0.0, span: 3.0 },
   perpendicular_mandelbrot: { centerX: -0.5, centerY: 0.0, span: 3.2 },
   perpendicular_celtic: { centerX: -0.5, centerY: 0.0, span: 3.2 },
-  duck:         { centerX: -0.5, centerY: 0.0, span: 3.0 },
-  buddhabrot:   { centerX: -0.5, centerY: 0.0, span: 3.2 },
-  newton:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
-  phoenix:      { centerX: -0.5, centerY: 0.0, span: 3.2 },
-  lyapunov:     { centerX: 3.1,  centerY: 3.1, span: 1.7 },
+  duck: { centerX: -0.5, centerY: 0.0, span: 3.0 },
+  buddhabrot: { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  newton: { centerX: 0.0, centerY: 0.0, span: 3.0 },
+  phoenix: { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  lyapunov: { centerX: 3.1, centerY: 3.1, span: 1.7 },
   lyapunov_multisequence: { centerX: 3.1, centerY: 3.1, span: 1.7 },
   bassin_newton_generalise: { centerX: 0.0, centerY: 0.0, span: 3.2 },
   orbitale_de_nova: { centerX: 0.0, centerY: 0.0, span: 2.1 },
@@ -67,8 +67,8 @@ const VIEW_PRESETS = {
   aizawa_attractor: { centerX: 0.0, centerY: 0.0, span: 4.8 },
   sprott_attractor: { centerX: 0.0, centerY: 0.0, span: 4.6 },
   feigenbaum_tree: { centerX: 0.45, centerY: 0.0, span: 2.2 },
-  barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
-  sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
+  barnsley: { centerX: 0.0, centerY: 5.0, span: 9.0 },
+  sierpinski: { centerX: 0.5, centerY: 0.35, span: 1.0 },
   tapis_sierpinski: { centerX: 0.0, centerY: 0.0, span: 2.2 },
   menger_sponge: { centerX: 0.0, centerY: 0.0, span: 3.2 },
   mandelbulb: { centerX: 0.0, centerY: 0.0, span: 3.6 },
@@ -77,11 +77,11 @@ const VIEW_PRESETS = {
   mandelbox: { centerX: 0.0, centerY: 0.3, span: 7.0 },
   vicsek_fractal: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   lichtenberg_figures: { centerX: 0.0, centerY: 0.0, span: 3.8 },
-  koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
+  koch: { centerX: 0.45, centerY: -0.28, span: 0.9 },
   dragon_heighway: { centerX: 0.2, centerY: 0.0, span: 2.8 },
   courbe_levy_c: { centerX: 0.0, centerY: 0.0, span: 2.5 },
   gosper_curve: { centerX: 0.15, centerY: 0.05, span: 3.2 },
-  cantor_set:   { centerX: 0.0, centerY: 0.0, span: 2.6 },
+  cantor_set: { centerX: 0.0, centerY: 0.0, span: 2.6 },
   triangle_de_cercles_recursifs: { centerX: 0.0, centerY: 0.05, span: 2.4 },
   apollonian_gasket: { centerX: 0.0, centerY: 0.0, span: 2.2 },
   t_square_fractal: { centerX: 0.0, centerY: 0.0, span: 2.8 },
@@ -89,25 +89,25 @@ const VIEW_PRESETS = {
   hilbert_curve: { centerX: 0.0, centerY: 0.0, span: 2.3 },
   peano_curve: { centerX: 0.0, centerY: 0.0, span: 2.3 },
   arbre_pythagore: { centerX: 0.0, centerY: 0.7, span: 2.6 },
-  magnet1:      { centerX: 1.5,  centerY: 0.0, span: 4.0 },
-  magnet2:      { centerX: 1.5,  centerY: 0.0, span: 5.0 },
-  magnet3:      { centerX: 1.2,  centerY: 0.0, span: 4.4 },
+  magnet1: { centerX: 1.5, centerY: 0.0, span: 4.0 },
+  magnet2: { centerX: 1.5, centerY: 0.0, span: 5.0 },
+  magnet3: { centerX: 1.2, centerY: 0.0, span: 4.4 },
   lambda_fractale: { centerX: 0.0, centerY: 0.0, span: 8.0 },
   lambda_cubique: { centerX: 0.0, centerY: 0.0, span: 6.2 },
   magnet_cosinus: { centerX: 0.0, centerY: 0.0, span: 4.6 },
-  magnet_sinus:   { centerX: 0.0, centerY: 0.0, span: 4.6 },
+  magnet_sinus: { centerX: 0.0, centerY: 0.0, span: 4.6 },
   nova_magnetique: { centerX: 0.0, centerY: 0.0, span: 3.2 },
   burning_julia: { centerX: 0.0, centerY: 0.0, span: 3.0 },
-  biomorphe:     { centerX: -0.5, centerY: 0.0, span: 3.2 },
+  biomorphe: { centerX: -0.5, centerY: 0.0, span: 3.2 },
   duffing_attractor: { centerX: 0.0, centerY: 0.0, span: 5.0 },
-  mandelbrot_lisse:  { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  julia_lisse:       { centerX: 0.0,  centerY: 0.0, span: 3.0 },
+  mandelbrot_lisse: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  julia_lisse: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   burning_ship_lisse: { centerX: -0.5, centerY: -0.5, span: 3.0 },
-  tricorn_lisse:     { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  tricorn_lisse: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   mandelbrot_piege_cercle: { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  mandelbrot_piege_croix:  { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  mandelbrot_piege_ligne:  { centerX: -0.5, centerY: 0.0, span: 3.5 },
-  julia_piege_cercle:      { centerX: 0.0,  centerY: 0.0, span: 3.0 },
+  mandelbrot_piege_croix: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  mandelbrot_piege_ligne: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  julia_piege_cercle: { centerX: 0.0, centerY: 0.0, span: 3.0 },
 };
 
 function getMultibrotPreset(power) {
@@ -145,15 +145,20 @@ let vueExportArrivee = null;
 // ÉLÉMENTS DOM
 // ============================================================
 
-const canvas        = document.getElementById("fractal-canvas");
-const canvas3d      = document.getElementById("fractal-canvas-3d");
-const ctx           = canvas.getContext("2d", { willReadFrequently: false });
-const renderStatus  = document.getElementById("render-status");
+const canvas = document.getElementById("fractal-canvas");
+const canvas3d = document.getElementById("fractal-canvas-3d");
+const ctx = canvas.getContext("2d", { willReadFrequently: false });
+const renderStatus = document.getElementById("render-status");
 const coordsDisplay = document.getElementById("coords-display");
-const nav3dHud      = document.getElementById("nav-3d-hud");
-const iterSlider    = document.getElementById("iter-slider");
-const iterValue     = document.getElementById("iter-value");
-const familySelect  = document.getElementById("family-select");
+const nav3dHud = document.getElementById("nav-3d-hud");
+const iterSlider = document.getElementById("iter-slider");
+const iterValue = document.getElementById("iter-value");
+const controlsFooter = document.getElementById("controls");
+const controlsSummary = document.getElementById("controls-summary");
+const controlsSummaryFractal = document.getElementById("controls-summary-fractal");
+const controlsSummaryDetails = document.getElementById("controls-summary-details");
+const btnToggleControls = document.getElementById("btn-toggle-controls");
+const familySelect = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const multibrotPowerGroup = document.getElementById("multibrot-power-group");
@@ -170,15 +175,15 @@ const customPaletteStops = document.getElementById("custom-palette-stops");
 const addPaletteStopButton = document.getElementById("btn-add-palette-stop");
 const paletteBackgroundInput = document.getElementById("palette-background");
 const paletteInteriorInput = document.getElementById("palette-interior");
-const btnReset      = document.getElementById("btn-reset");
-const btnPanUp      = document.getElementById("btn-pan-up");
-const btnPanLeft    = document.getElementById("btn-pan-left");
-const btnPanRight   = document.getElementById("btn-pan-right");
-const btnPanDown    = document.getElementById("btn-pan-down");
-const btnZoomIn     = document.getElementById("btn-zoom-in");
-const btnZoomOut    = document.getElementById("btn-zoom-out");
-const btnTogglePan  = document.getElementById("btn-toggle-pan");
-const btnToggle      = document.getElementById("btn-toggle-sidebar");
+const btnReset = document.getElementById("btn-reset");
+const btnPanUp = document.getElementById("btn-pan-up");
+const btnPanLeft = document.getElementById("btn-pan-left");
+const btnPanRight = document.getElementById("btn-pan-right");
+const btnPanDown = document.getElementById("btn-pan-down");
+const btnZoomIn = document.getElementById("btn-zoom-in");
+const btnZoomOut = document.getElementById("btn-zoom-out");
+const btnTogglePan = document.getElementById("btn-toggle-pan");
+const btnToggle = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
 const btnOpenExport = document.getElementById("btn-open-export");
 const btnCloseExport = document.getElementById("btn-close-export");
@@ -187,12 +192,12 @@ const btnExportImage = document.getElementById("btn-export-image");
 const btnCaptureStart = document.getElementById("btn-capture-start");
 const btnCaptureEnd = document.getElementById("btn-capture-end");
 const btnExportVideo = document.getElementById("btn-export-video");
-const sidebar        = document.getElementById("sidebar");
-const panControls    = document.getElementById("pan-controls");
-const zoomHint      = document.getElementById("zoom-hint");
-const badgeDiv      = document.getElementById("benchmark-badge");
-const badgeLoading  = document.getElementById("badge-loading");
-const exportPanel   = document.getElementById("export-panel");
+const sidebar = document.getElementById("sidebar");
+const panControls = document.getElementById("pan-controls");
+const zoomHint = document.getElementById("zoom-hint");
+const badgeDiv = document.getElementById("benchmark-badge");
+const badgeLoading = document.getElementById("badge-loading");
+const exportPanel = document.getElementById("export-panel");
 const exportImageWidth = document.getElementById("export-image-width");
 const exportImageHeight = document.getElementById("export-image-height");
 const exportVideoWidth = document.getElementById("export-video-width");
@@ -206,7 +211,6 @@ const juliaCImSlider = document.getElementById("julia-c-im");
 const juliaCReValue = document.getElementById("julia-c-re-value");
 const juliaCImValue = document.getElementById("julia-c-im-value");
 const juliaCControls = document.getElementById("julia-c-controls");
-const juliaCouplingCanvas = document.getElementById("julia-coupling-canvas");
 const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
@@ -214,6 +218,7 @@ const bookmarkList = document.getElementById("bookmark-list");
 const btnExportSvg = document.getElementById("btn-export-svg");
 
 let customPaletteEditorOpen = false;
+let controlsCollapsed = false;
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -394,10 +399,10 @@ const FRACTAL_FAMILIES = [
     id: "lisse",
     label: "Lisse",
     fractales: [
-      ["mandelbrot_lisse",     "Mandelbrot lisse"],
-      ["julia_lisse",          "Julia lisse"],
-      ["burning_ship_lisse",   "Burning Ship lisse"],
-      ["tricorn_lisse",        "Tricorn lisse"],
+      ["mandelbrot_lisse", "Mandelbrot lisse"],
+      ["julia_lisse", "Julia lisse"],
+      ["burning_ship_lisse", "Burning Ship lisse"],
+      ["tricorn_lisse", "Tricorn lisse"],
     ],
   },
   {
@@ -405,9 +410,9 @@ const FRACTAL_FAMILIES = [
     label: "Pièges d'orbite",
     fractales: [
       ["mandelbrot_piege_cercle", "Mandelbrot · piège cercle"],
-      ["mandelbrot_piege_croix",  "Mandelbrot · piège croix"],
-      ["mandelbrot_piege_ligne",  "Mandelbrot · piège ligne"],
-      ["julia_piege_cercle",      "Julia · piège cercle"],
+      ["mandelbrot_piege_croix", "Mandelbrot · piège croix"],
+      ["mandelbrot_piege_ligne", "Mandelbrot · piège ligne"],
+      ["julia_piege_cercle", "Julia · piège cercle"],
     ],
   },
   {
@@ -608,6 +613,7 @@ function synchroniserControlePalette() {
   paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
   params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
   definirVisibiliteEditeurPalette();
+  mettreAJourResumeControles();
 }
 
 function definirVisibiliteOptionsSpecifiques({ labels = [] } = {}) {
@@ -616,6 +622,42 @@ function definirVisibiliteOptionsSpecifiques({ labels = [] } = {}) {
   if (fractalOptionsStack) fractalOptionsStack.classList.toggle("hidden", !afficher);
   if (fractalOptionsSummary) fractalOptionsSummary.textContent = afficher ? labels.join(" · ") : "Aucune";
   if (fractalOptionsPanel) fractalOptionsPanel.classList.toggle("hidden", !afficher);
+  mettreAJourResumeControles();
+}
+
+function mettreAJourResumeControles() {
+  if (controlsSummaryFractal) controlsSummaryFractal.textContent = params.fractal;
+  const morceaux = [`${params.maxIter} itérations`, paletteSelect?.selectedOptions?.[0]?.textContent?.trim() || params.palette];
+  if (!controlsSpecific?.classList.contains("hidden") && fractalOptionsSummary) {
+    const resumeSpecifique = fractalOptionsSummary.textContent?.trim();
+    if (resumeSpecifique && resumeSpecifique !== "Aucune") morceaux.push(resumeSpecifique);
+  }
+  if (controlsSummaryDetails) controlsSummaryDetails.textContent = morceaux.join(" · ");
+}
+
+function appliquerEtatControles() {
+  if (controlsFooter) controlsFooter.classList.toggle("collapsed", controlsCollapsed);
+  if (btnToggleControls) btnToggleControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
+  if (btnToggleControls) btnToggleControls.textContent = controlsCollapsed ? "Afficher" : "Réduire";
+  if (controlsSummary) controlsSummary.classList.toggle("hidden", false);
+  mettreAJourResumeControles();
+}
+
+function chargerEtatControles() {
+  try {
+    controlsCollapsed = localStorage.getItem("fractales_controls_collapsed") === "1";
+  } catch {
+    controlsCollapsed = false;
+  }
+  appliquerEtatControles();
+}
+
+function definirEtatControles(estReduit) {
+  controlsCollapsed = Boolean(estReduit);
+  try {
+    localStorage.setItem("fractales_controls_collapsed", controlsCollapsed ? "1" : "0");
+  } catch {}
+  appliquerEtatControles();
 }
 
 function fractaleActiveEst3D() {
@@ -849,8 +891,8 @@ function sierpinskiStep(x, y, r) {
 function etapeTapisSierpinski(x, y, r) {
   const cellules = [
     [-1, -1], [0, -1], [1, -1],
-    [-1,  0],          [1,  0],
-    [-1,  1], [0,  1], [1,  1],
+    [-1, 0], [1, 0],
+    [-1, 1], [0, 1], [1, 1],
   ];
   const index = Math.min(cellules.length - 1, (r * cellules.length) | 0);
   const [dx, dy] = cellules[index];
@@ -946,10 +988,10 @@ function projeterMandelbulb(x, y, z) {
 // Tétraèdre de Sierpiński — SFI à 4 contractions (3D)
 function etapeTetraedre(x, y, z, r) {
   const k = Math.min(3, (r * 4) | 0);
-  if (k === 0) return [x * 0.5,           y * 0.5,           z * 0.5];
-  if (k === 1) return [x * 0.5 + 0.5,     y * 0.5,           z * 0.5];
-  if (k === 2) return [x * 0.5 + 0.25,    y * 0.5 + 0.433013, z * 0.5];
-               return [x * 0.5 + 0.25,    y * 0.5 + 0.144338, z * 0.5 + 0.408248];
+  if (k === 0) return [x * 0.5, y * 0.5, z * 0.5];
+  if (k === 1) return [x * 0.5 + 0.5, y * 0.5, z * 0.5];
+  if (k === 2) return [x * 0.5 + 0.25, y * 0.5 + 0.433013, z * 0.5];
+  return [x * 0.5 + 0.25, y * 0.5 + 0.144338, z * 0.5 + 0.408248];
 }
 
 // Projection centrée sur le barycentre du tétraèdre, angle élevé pour
@@ -2051,11 +2093,11 @@ async function loadWasm() {
         // Fourni par précaution ; la fonction arithmétique pure n'en a pas besoin
         memory: new WebAssembly.Memory({ initial: 16, maximum: 1024 }),
         // Requis par le générateur WAT multilingual (même si non utilisés ici)
-        print_str: (_ptr, _len) => {},
-        print_f64: (_x) => {},
-        print_bool: (_b) => {},
-        print_sep: () => {},
-        print_newline: () => {},
+        print_str: (_ptr, _len) => { },
+        print_f64: (_x) => { },
+        print_bool: (_b) => { },
+        print_sep: () => { },
+        print_newline: () => { },
         pow_f64: Math.pow,
       },
     };
@@ -2184,7 +2226,7 @@ function resizeCanvas() {
   const w = container.clientWidth;
   const h = container.clientHeight;
   if (canvas.width !== w || canvas.height !== h) {
-    canvas.width  = w;
+    canvas.width = w;
     canvas.height = h;
     imageDataBuffer = null;  // invalider le buffer
   }
@@ -2219,7 +2261,7 @@ function render() {
 
   const cx0 = view.centerX - (w / 2) * view.pixelSize;
   const cy0 = view.centerY - (h / 2) * view.pixelSize;
-  const ps  = view.pixelSize;
+  const ps = view.pixelSize;
   const max = params.maxIter;
   const pal = params;
 
@@ -2329,7 +2371,7 @@ function render() {
   }
 
   requestAnimationFrame(step);
-}function updateStatusBar(msg, autoHide = false) {
+} function updateStatusBar(msg, autoHide = false) {
   renderStatus.textContent = msg;
   renderStatus.classList.remove("hidden");
   if (autoHide) {
@@ -2344,7 +2386,7 @@ function render() {
 /** Convertit les coordonnées canvas ? coordonnées du plan complexe. */
 function canvasToComplex(px, py) {
   return {
-    re: view.centerX + (px - canvas.width  / 2) * view.pixelSize,
+    re: view.centerX + (px - canvas.width / 2) * view.pixelSize,
     im: view.centerY + (py - canvas.height / 2) * view.pixelSize,
   };
 }
@@ -2368,8 +2410,8 @@ function zoomAt(px, py, factor) {
     return;
   }
   const { re, im } = canvasToComplex(px, py);
-  view.centerX  = re + (view.centerX - re) / factor;
-  view.centerY  = im + (view.centerY - im) / factor;
+  view.centerX = re + (view.centerX - re) / factor;
+  view.centerY = im + (view.centerY - im) / factor;
   view.pixelSize /= factor;
   render();
 }
@@ -2452,9 +2494,9 @@ let dragViewX, dragViewY;
 
 canvas.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
-  dragStart  = { x: e.offsetX, y: e.offsetY };
-  dragViewX  = view.centerX;
-  dragViewY  = view.centerY;
+  dragStart = { x: e.offsetX, y: e.offsetY };
+  dragViewX = view.centerX;
+  dragViewY = view.centerY;
   canvas.setPointerCapture(e.pointerId);
 });
 
@@ -2472,9 +2514,6 @@ canvas.addEventListener("pointermove", (e) => {
     couplagePendingId = setTimeout(() => {
       const jFn = wasmFunctions.julia;
       if (!jFn) return;
-      const jW = juliaCouplingCanvas.width;
-      const jH = juliaCouplingCanvas.height;
-      const jCtx = juliaCouplingCanvas.getContext("2d");
       const jImg = jCtx.createImageData(jW, jH);
       const jMax = Math.min(params.maxIter, 128);
       const jSpan = 3.0;
@@ -2488,7 +2527,7 @@ canvas.addEventListener("pointermove", (e) => {
           const jIter = jFn(jcx, jcy, couplageCre, couplagehCim, jMax);
           const [r, g, b] = getColor(jIter, jMax, params);
           const ji = (jpy * jW + jpx) * 4;
-          jImg.data[ji] = r; jImg.data[ji+1] = g; jImg.data[ji+2] = b; jImg.data[ji+3] = 255;
+          jImg.data[ji] = r; jImg.data[ji + 1] = g; jImg.data[ji + 2] = b; jImg.data[ji + 3] = 255;
         }
       }
       jCtx.putImageData(jImg, 0, 0);
@@ -2503,7 +2542,7 @@ canvas.addEventListener("pointermove", (e) => {
   render();
 });
 
-canvas.addEventListener("pointerup",   () => { dragStart = null; });
+canvas.addEventListener("pointerup", () => { dragStart = null; });
 canvas.addEventListener("pointerleave", () => { dragStart = null; });
 
 // --- Pincement (tactile) ---
@@ -2533,6 +2572,7 @@ canvas.addEventListener("touchend", () => { lastPinchDist = null; });
 iterSlider.addEventListener("input", () => {
   params.maxIter = parseInt(iterSlider.value, 10);
   iterValue.textContent = params.maxIter;
+  mettreAJourResumeControles();
   render();
 });
 
@@ -2545,8 +2585,15 @@ fractalSelect.addEventListener("change", () => {
   setActiveFractal(fractalSelect.value);
 });
 
+if (btnToggleControls) {
+  btnToggleControls.addEventListener("click", () => {
+    definirEtatControles(!controlsCollapsed);
+  });
+}
+
 multibrotPower.addEventListener("change", () => {
   params.multibrotPower = parseInt(multibrotPower.value, 10);
+  mettreAJourResumeControles();
   if (params.fractal === "multibrot") {
     resetView();
   }
@@ -2912,77 +2959,77 @@ const codePython = document.getElementById("code-python");
  * Utilisé pour l'affichage contextuel dans la barre latérale.
  */
 const FRACTAL_SOURCE_MAP = {
-  mandelbrot:                  "fractales_escape",
-  mandelbrot_classe:           "fractales_classes_compat",
-  julia:                       "fractales_escape",
-  burning_ship:                "fractales_escape",
-  tricorn:                     "fractales_escape",
-  multibrot:                   "fractales_escape",
-  celtic:                      "fractales_variantes",
-  buffalo:                     "fractales_variantes",
-  perpendicular_burning_ship:  "fractales_variantes",
-  heart:                       "fractales_variantes",
-  perpendicular_mandelbrot:    "fractales_variantes",
-  perpendicular_celtic:        "fractales_variantes",
-  duck:                        "fractales_variantes",
-  buddhabrot:                  "fractales_escape",
-  newton:                      "fractales_dynamique",
-  phoenix:                     "fractales_dynamique",
-  lyapunov:                    "fractales_dynamique",
-  lyapunov_multisequence:      "fractales_dynamique",
-  bassin_newton_generalise:    "fractales_dynamique",
-  orbitale_de_nova:            "fractales_dynamique",
-  collatz_complexe:            "fractales_dynamique",
-  attracteur_de_clifford:      "fractales_dynamique",
+  mandelbrot: "fractales_escape",
+  mandelbrot_classe: "fractales_classes_compat",
+  julia: "fractales_escape",
+  burning_ship: "fractales_escape",
+  tricorn: "fractales_escape",
+  multibrot: "fractales_escape",
+  celtic: "fractales_variantes",
+  buffalo: "fractales_variantes",
+  perpendicular_burning_ship: "fractales_variantes",
+  heart: "fractales_variantes",
+  perpendicular_mandelbrot: "fractales_variantes",
+  perpendicular_celtic: "fractales_variantes",
+  duck: "fractales_variantes",
+  buddhabrot: "fractales_escape",
+  newton: "fractales_dynamique",
+  phoenix: "fractales_dynamique",
+  lyapunov: "fractales_dynamique",
+  lyapunov_multisequence: "fractales_dynamique",
+  bassin_newton_generalise: "fractales_dynamique",
+  orbitale_de_nova: "fractales_dynamique",
+  collatz_complexe: "fractales_dynamique",
+  attracteur_de_clifford: "fractales_dynamique",
   attracteur_de_peter_de_jong: "fractales_dynamique",
-  attracteur_ikeda:            "fractales_dynamique",
-  attracteur_de_henon:         "fractales_dynamique",
-  lorenz_attractor:            "fractales_dynamique",
-  rossler_attractor:           "fractales_dynamique",
-  aizawa_attractor:            "fractales_dynamique",
-  sprott_attractor:            "fractales_dynamique",
-  feigenbaum_tree:             "fractales_dynamique",
-  barnsley:                    "fractales_ifs",
-  sierpinski:                  "fractales_ifs",
-  tapis_sierpinski:            "fractales_ifs",
-  menger_sponge:               "fractales_ifs",
-  mandelbulb:                  "fractales_ifs",
-  tetraedre_sierpinski:        "fractales_ifs",
-  julia_quaternion:            "fractales_ifs",
-  mandelbox:                   "fractales_ifs",
-  vicsek_fractal:              "fractales_ifs",
-  lichtenberg_figures:         "fractales_ifs",
-  koch:                        "fractales_lsystem",
-  dragon_heighway:             "fractales_lsystem",
-  courbe_levy_c:               "fractales_lsystem",
-  gosper_curve:                "fractales_lsystem",
-  cantor_set:                  "fractales_lsystem",
+  attracteur_ikeda: "fractales_dynamique",
+  attracteur_de_henon: "fractales_dynamique",
+  lorenz_attractor: "fractales_dynamique",
+  rossler_attractor: "fractales_dynamique",
+  aizawa_attractor: "fractales_dynamique",
+  sprott_attractor: "fractales_dynamique",
+  feigenbaum_tree: "fractales_dynamique",
+  barnsley: "fractales_ifs",
+  sierpinski: "fractales_ifs",
+  tapis_sierpinski: "fractales_ifs",
+  menger_sponge: "fractales_ifs",
+  mandelbulb: "fractales_ifs",
+  tetraedre_sierpinski: "fractales_ifs",
+  julia_quaternion: "fractales_ifs",
+  mandelbox: "fractales_ifs",
+  vicsek_fractal: "fractales_ifs",
+  lichtenberg_figures: "fractales_ifs",
+  koch: "fractales_lsystem",
+  dragon_heighway: "fractales_lsystem",
+  courbe_levy_c: "fractales_lsystem",
+  gosper_curve: "fractales_lsystem",
+  cantor_set: "fractales_lsystem",
   triangle_de_cercles_recursifs: "fractales_lsystem",
-  apollonian_gasket:           "fractales_lsystem",
-  t_square_fractal:            "fractales_lsystem",
-  h_fractal:                   "fractales_lsystem",
-  hilbert_curve:               "fractales_lsystem",
-  peano_curve:                 "fractales_lsystem",
-  arbre_pythagore:             "fractales_lsystem",
-  magnet1:                     "fractales_magnetiques",
-  magnet2:                     "fractales_magnetiques",
-  magnet3:                     "fractales_magnetiques",
-  lambda_fractale:             "fractales_magnetiques",
-  lambda_cubique:              "fractales_magnetiques",
-  magnet_cosinus:              "fractales_magnetiques",
-  magnet_sinus:                "fractales_magnetiques",
-  nova_magnetique:             "fractales_magnetiques",
-  burning_julia:               "fractales_escape",
-  biomorphe:                   "fractales_escape",
-  duffing_attractor:           "fractales_dynamique",
-  mandelbrot_lisse:            "fractales_lisse",
-  julia_lisse:                 "fractales_lisse",
-  burning_ship_lisse:          "fractales_lisse",
-  tricorn_lisse:               "fractales_lisse",
-  mandelbrot_piege_cercle:     "fractales_orbitrap",
-  mandelbrot_piege_croix:      "fractales_orbitrap",
-  mandelbrot_piege_ligne:      "fractales_orbitrap",
-  julia_piege_cercle:          "fractales_orbitrap",
+  apollonian_gasket: "fractales_lsystem",
+  t_square_fractal: "fractales_lsystem",
+  h_fractal: "fractales_lsystem",
+  hilbert_curve: "fractales_lsystem",
+  peano_curve: "fractales_lsystem",
+  arbre_pythagore: "fractales_lsystem",
+  magnet1: "fractales_magnetiques",
+  magnet2: "fractales_magnetiques",
+  magnet3: "fractales_magnetiques",
+  lambda_fractale: "fractales_magnetiques",
+  lambda_cubique: "fractales_magnetiques",
+  magnet_cosinus: "fractales_magnetiques",
+  magnet_sinus: "fractales_magnetiques",
+  nova_magnetique: "fractales_magnetiques",
+  burning_julia: "fractales_escape",
+  biomorphe: "fractales_escape",
+  duffing_attractor: "fractales_dynamique",
+  mandelbrot_lisse: "fractales_lisse",
+  julia_lisse: "fractales_lisse",
+  burning_ship_lisse: "fractales_lisse",
+  tricorn_lisse: "fractales_lisse",
+  mandelbrot_piege_cercle: "fractales_orbitrap",
+  mandelbrot_piege_croix: "fractales_orbitrap",
+  mandelbrot_piege_ligne: "fractales_orbitrap",
+  julia_piege_cercle: "fractales_orbitrap",
 };
 
 /** Cache : { moduleName: { mlHtml, pyHtml } } */
@@ -2998,7 +3045,7 @@ async function loadSources(fractalName) {
 
   // Mettre à jour les étiquettes des onglets
   tabFrench.textContent = `FR ${module}.ml`;
-  tabPython.textContent  = `PY ${module}.py`;
+  tabPython.textContent = `PY ${module}.py`;
 
   // Retourner le cache si disponible
   if (sourcesCache[module]) {
@@ -3014,7 +3061,7 @@ async function loadSources(fractalName) {
   let mlHtml;
   try {
     const resp = await fetch(`${module}.ml`);
-    const src  = resp.ok ? await resp.text() : `# Source indisponible (${module}.ml)`;
+    const src = resp.ok ? await resp.text() : `# Source indisponible (${module}.ml)`;
     mlHtml = highlightFrench(escapeHtml(src));
   } catch {
     mlHtml = `<span class="cmt"># Impossible de charger ${module}.ml</span>`;
@@ -3025,7 +3072,7 @@ async function loadSources(fractalName) {
   let pyHtml;
   try {
     const resp = await fetch(`${module}.py`);
-    const src  = resp.ok ? await resp.text() : `# Transpilation indisponible (${module}.py)`;
+    const src = resp.ok ? await resp.text() : `# Transpilation indisponible (${module}.py)`;
     pyHtml = highlightPython(escapeHtml(src));
   } catch {
     pyHtml = `<span class="cmt"># Impossible de charger ${module}.py</span>`;
@@ -3234,7 +3281,6 @@ function mettreAJourOptionsSpecifiques() {
   definirVisibiliteOptionsSpecifiques({ labels });
   const needsSVG = LINE_FRACTALS.has(params.fractal);
   if (btnExportSvg) btnExportSvg.classList.toggle("hidden", !needsSVG);
-  if (juliaCouplingCanvas) juliaCouplingCanvas.classList.toggle("hidden", params.fractal !== "mandelbrot");
 }
 
 if (juliaCReSlider) {
@@ -3390,14 +3436,14 @@ async function exporterSVG() {
       }
     },
     rect(x, y, rw, rh) {
-      pathCommands.push(`M${x.toFixed(3)},${y.toFixed(3)}L${(x+rw).toFixed(3)},${y.toFixed(3)}L${(x+rw).toFixed(3)},${(y+rh).toFixed(3)}L${x.toFixed(3)},${(y+rh).toFixed(3)}Z`);
+      pathCommands.push(`M${x.toFixed(3)},${y.toFixed(3)}L${(x + rw).toFixed(3)},${y.toFixed(3)}L${(x + rw).toFixed(3)},${(y + rh).toFixed(3)}L${x.toFixed(3)},${(y + rh).toFixed(3)}Z`);
     },
     beginPath() { pathCommands.length = 0; },
-    stroke() {},
-    fillRect() {},
-    set strokeStyle(_) {},
-    set fillStyle(_) {},
-    set lineWidth(_) {},
+    stroke() { },
+    fillRect() { },
+    set strokeStyle(_) { },
+    set fillStyle(_) { },
+    set lineWidth(_) { },
   };
 
   dessinerFractaleLineaire(mockCtx, w, h, vueSVG, params);
@@ -3438,6 +3484,7 @@ async function init() {
   synchroniserControlePalette();
   mettreAJourEtatVideo();
   mettreAJourOptionsSpecifiques();
+  chargerEtatControles();
 
   // Vue initiale : preset de la fractale sélectionnée
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

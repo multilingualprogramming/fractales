@@ -105,16 +105,6 @@ fractal:
 - The mock context captures `moveTo` / `lineTo`; make sure your drawing function does not rely
   on `arc`, `fillRect`, or other non-path primitives (those are silently ignored in the mock).
 
-### Julia coupling canvas
-
-The `#julia-coupling-canvas` (200×200) shows a live Julia preview when the active fractal is
-Mandelbrot. It uses the cursor's complex coordinates as the `c` parameter.
-
-- Only activate the mousemove listener when `params.fractal === "mandelbrot"`.
-- The coupling canvas renders at reduced iteration count for performance.
-- New Mandelbrot-family fractals (e.g. `mandelbrot_lisse`) should be added to the activation
-  condition if a live Julia preview is meaningful for them.
-
 ### Fractal-specific settings
 
 Fractal-only controls must live in the dedicated `Options spécifiques` group in the footer, not

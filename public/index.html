@@ -34,10 +34,10 @@
             <circle cx="22" cy="14" r="1.5" stroke="#9d4edd" stroke-width="1" opacity="0.8" />
             <line x1="1" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="0.5" opacity="0.3" />
           </svg>
-          Explorateur de <span>Fractales</span>
-          <span class="header-subtitle" style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:4px">
-            · multilingual → WebAssembly
-          </span>
+          <div class="header-brand-text">
+            <div class="header-title">Explorateur de <span>Fractales</span></div>
+            <div class="header-subtitle">· multilingual → WebAssembly</div>
+          </div>
         </div>
 
         <div class="header-actions">
@@ -63,7 +63,6 @@
         <canvas id="fractal-canvas-3d" class="canvas-masque" aria-label="Vue 3D WebGL">
           Votre navigateur ne supporte pas WebGL.
         </canvas>
-        <canvas id="julia-coupling-canvas" class="hidden" aria-label="Aperçu Julia couplé" width="200" height="200"></canvas>
 
         <!-- Indicateur de statut du rendu -->
         <div id="render-overlay">
@@ -77,13 +76,15 @@
 
         <!-- Astuce de zoom (disparaît automatiquement) -->
         <div id="zoom-hint" role="status" aria-live="polite">
-          Glisser : déplacement &nbsp;·&nbsp; Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette : zoom libre
+          Glisser : déplacement &nbsp;·&nbsp; Clic : zoom ×2 &nbsp;·&nbsp; Double-clic : dézoom &nbsp;·&nbsp; Molette :
+          zoom libre
         </div>
 
         <div id="pan-controls" aria-label="Contrôles de déplacement">
           <div class="pan-header">
             <div class="pan-title">Déplacement</div>
-            <button id="btn-toggle-pan" class="pan-toggle-btn" type="button" aria-label="Masquer les contrôles de déplacement">−</button>
+            <button id="btn-toggle-pan" class="pan-toggle-btn" type="button"
+              aria-label="Masquer les contrôles de déplacement">−</button>
           </div>
           <div class="zoom-row" aria-label="Contrôles de zoom">
             <button id="btn-zoom-in" class="pan-btn zoom-btn" type="button" aria-label="Zoom avant">+</button>
@@ -100,7 +101,8 @@
         <section id="export-panel" class="hidden" aria-label="Panneau d'export">
           <div class="export-header">
             <h3>Export</h3>
-            <button id="btn-close-export" class="btn export-close-btn" type="button" aria-label="Fermer le panneau d'export">✕</button>
+            <button id="btn-close-export" class="btn export-close-btn" type="button"
+              aria-label="Fermer le panneau d'export">✕</button>
           </div>
 
           <div class="export-section">
@@ -156,7 +158,8 @@
         <section id="bookmark-panel" class="hidden" aria-label="Signets">
           <div class="export-header">
             <h3>Signets</h3>
-            <button id="btn-close-bookmarks" class="btn export-close-btn" type="button" aria-label="Fermer les signets">✕</button>
+            <button id="btn-close-bookmarks" class="btn export-close-btn" type="button"
+              aria-label="Fermer les signets">✕</button>
           </div>
           <div id="bookmark-list" class="bookmark-list">
             <p class="bookmark-empty">Aucun signet. Naviguez vers une vue intéressante et appuyez sur ★ Signet.</p>
@@ -174,7 +177,8 @@
           <!-- Titre -->
           <div class="sidebar-header">
             <h2>Source &amp; Performances</h2>
-            <button id="btn-close-sidebar" type="button" class="btn sidebar-close-btn" aria-label="Fermer le panneau">✕</button>
+            <button id="btn-close-sidebar" type="button" class="btn sidebar-close-btn"
+              aria-label="Fermer le panneau">✕</button>
           </div>
 
           <!-- Badge benchmark -->
@@ -215,7 +219,14 @@
        BARRE DE CONTRÔLES
        ============================================================ -->
       <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
-        <div class="controls-main">
+        <div id="controls-summary" class="controls-summary hidden">
+          <div class="controls-summary-main">
+            <span id="controls-summary-fractal" class="controls-summary-fractal">mandelbrot</span>
+            <span id="controls-summary-details" class="controls-summary-details">256 itérations · Aurora</span>
+          </div>
+          <button id="btn-toggle-controls" class="btn btn-secondary controls-toggle-btn" type="button" aria-expanded="true" aria-controls="controls-main">Réduire</button>
+        </div>
+        <div id="controls-main" class="controls-main">
           <section id="controls-global" class="controls-section" aria-label="Options globales">
             <div class="controls-section-header">Options globales</div>
 
@@ -264,29 +275,36 @@
                     <option value="infrared">Mineral</option>
                     <option value="personnalisee">🎨 Personnalisée</option>
                   </select>
-                  <button id="btn-toggle-custom-palette" class="btn btn-secondary hidden" type="button" aria-expanded="false" aria-controls="custom-palette-controls">Editer</button>
+                  <button id="btn-toggle-custom-palette" class="btn btn-secondary hidden" type="button"
+                    aria-expanded="false" aria-controls="custom-palette-controls">Editer</button>
                 </div>
 
-                <section id="custom-palette-controls" class="custom-palette-panel hidden" aria-label="Éditeur de palette personnalisée">
+                <section id="custom-palette-controls" class="custom-palette-panel hidden"
+                  aria-label="Éditeur de palette personnalisée">
                   <div class="custom-palette-header">
                     <span class="custom-palette-title">Palette personnalisée</span>
                     <div class="custom-palette-actions">
-                      <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
-                      <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire l'editeur de palette">Reduire</button>
+                      <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un
+                        stop</button>
+                      <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button"
+                        aria-label="Reduire l'editeur de palette">Reduire</button>
                     </div>
                   </div>
                   <div id="custom-palette-preview" class="custom-palette-preview" aria-hidden="true"></div>
                   <div class="custom-palette-basics">
                     <label class="color-control" for="palette-background">
                       <span class="control-label">Fond</span>
-                      <input id="palette-background" type="color" value="#020008" aria-label="Choisir la couleur de fond" />
+                      <input id="palette-background" type="color" value="#020008"
+                        aria-label="Choisir la couleur de fond" />
                     </label>
                     <label class="color-control" for="palette-interior">
                       <span class="control-label">Intérieur</span>
-                      <input id="palette-interior" type="color" value="#fff5b4" aria-label="Choisir la couleur intérieure" />
+                      <input id="palette-interior" type="color" value="#fff5b4"
+                        aria-label="Choisir la couleur intérieure" />
                     </label>
                   </div>
-                  <div id="custom-palette-stops" class="custom-palette-stops" role="list" aria-label="Stops de gradient"></div>
+                  <div id="custom-palette-stops" class="custom-palette-stops" role="list"
+                    aria-label="Stops de gradient"></div>
                 </section>
               </div>
             </section>
@@ -300,13 +318,15 @@
                   <span id="fractal-options-summary" class="control-value fractal-options-summary">Aucune</span>
                 </div>
 
-                <section id="fractal-options-panel" class="fractal-options-panel" aria-label="Réglages spécifiques de la fractale">
+                <section id="fractal-options-panel" class="fractal-options-panel"
+                  aria-label="Réglages spécifiques de la fractale">
                   <div class="custom-palette-header">
                     <span class="custom-palette-title">Options spécifiques</span>
                   </div>
 
                   <div class="fractal-options-list">
-                    <div id="multibrot-power-group" class="fractal-option-card hidden" role="group" aria-label="Puissance Multibrot">
+                    <div id="multibrot-power-group" class="fractal-option-card hidden" role="group"
+                      aria-label="Puissance Multibrot">
                       <div class="fractal-option-title">Multibrot</div>
                       <div class="control-subgroup">
                         <label class="control-label" for="multibrot-power">Puissance :</label>
@@ -321,16 +341,19 @@
                       </div>
                     </div>
 
-                    <div id="julia-c-controls" class="fractal-option-card hidden" role="group" aria-label="Paramètre c de Julia">
+                    <div id="julia-c-controls" class="fractal-option-card hidden" role="group"
+                      aria-label="Paramètre c de Julia">
                       <div class="fractal-option-title">Julia</div>
                       <div class="control-subgroup">
                         <label class="control-label">c réel :</label>
-                        <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
+                        <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8"
+                          aria-label="Partie réelle de c" />
                         <span id="julia-c-re-value" class="control-value">-0.800</span>
                       </div>
                       <div class="control-subgroup">
                         <label class="control-label julia-c-im-label">c imag :</label>
-                        <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
+                        <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156"
+                          aria-label="Partie imaginaire de c" />
                         <span id="julia-c-im-value" class="control-value">0.156</span>
                       </div>
                     </div>
@@ -348,7 +371,8 @@
             <span>Réinitialiser</span>
           </button>
 
-          <button id="btn-bookmark" class="btn" type="button" aria-label="Enregistrer un signet" title="Signet (touche B)">
+          <button id="btn-bookmark" class="btn" type="button" aria-label="Enregistrer un signet"
+            title="Signet (touche B)">
             <span class="btn-icon">★</span>
             <span>Signet</span>
           </button>

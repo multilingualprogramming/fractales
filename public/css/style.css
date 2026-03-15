@@ -84,10 +84,30 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 0.03em;
   color: var(--text-bright);
+}
+
+.header-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header-title {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.header-subtitle {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .header-brand .logo-icon {
@@ -381,10 +401,21 @@ body {
     ". bas .";
 }
 
-#btn-pan-up { grid-area: haut; }
-#btn-pan-left { grid-area: gauche; }
-#btn-pan-right { grid-area: droite; }
-#btn-pan-down { grid-area: bas; }
+#btn-pan-up {
+  grid-area: haut;
+}
+
+#btn-pan-left {
+  grid-area: gauche;
+}
+
+#btn-pan-right {
+  grid-area: droite;
+}
+
+#btn-pan-down {
+  grid-area: bas;
+}
 
 .pan-btn {
   border: 1px solid var(--border);
@@ -609,6 +640,7 @@ pre {
 #controls {
   grid-area: controls;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
@@ -619,6 +651,59 @@ pre {
   backdrop-filter: blur(10px);
   overflow: visible;
   z-index: 10;
+}
+
+.controls-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.controls-summary-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.controls-summary-fractal {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-bright);
+  text-transform: none;
+}
+
+.controls-summary-details {
+  min-width: 0;
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls-toggle-btn {
+  flex: 0 0 auto;
+}
+
+#controls.collapsed .controls-summary {
+  display: flex;
+}
+
+#controls:not(.collapsed) .controls-summary {
+  display: none;
+}
+
+#controls.collapsed .controls-main,
+#controls.collapsed .controls-actions {
+  display: none;
 }
 
 .controls-main {
@@ -1112,6 +1197,10 @@ select:focus {
     flex: 1 1 260px;
   }
 
+  .header-brand-text {
+    min-width: 0;
+  }
+
   .header-actions {
     width: 100%;
     justify-content: flex-end;
@@ -1167,6 +1256,20 @@ select:focus {
 @media (max-width: 540px) {
   :root {
     --controls-h: 116px;
+  }
+
+  .header-title,
+  .header-subtitle {
+    white-space: normal;
+  }
+
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .header-actions .btn {
+    flex: 1 1 140px;
+    justify-content: center;
   }
 
   #controls {
@@ -1244,25 +1347,6 @@ select:focus {
       rgba(0, 0, 0, 0.03) 4px);
   pointer-events: none;
   z-index: 1;
-}
-
-/* ============================================================
-   CANVAS JULIA COUPLÉ
-   ============================================================ */
-
-#julia-coupling-canvas {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  border: 1px solid #555;
-  background: #000;
-  border-radius: var(--radius);
-  z-index: 3;
-  pointer-events: none;
-}
-
-#julia-coupling-canvas.hidden {
-  display: none;
 }
 
 /* ============================================================

@@ -63,6 +63,9 @@ const VIEW_PRESETS = {
   attracteur_ikeda: { centerX: 0.68, centerY: -0.67, span: 3.9 },
   attracteur_de_henon: { centerX: 0.3, centerY: 0.1, span: 3.0 },
   lorenz_attractor: { centerX: 0.0, centerY: -0.2, span: 7.2 },
+  rossler_attractor: { centerX: 0.2, centerY: 0.0, span: 5.8 },
+  aizawa_attractor: { centerX: 0.0, centerY: 0.0, span: 4.8 },
+  sprott_attractor: { centerX: 0.0, centerY: 0.0, span: 4.6 },
   feigenbaum_tree: { centerX: 0.45, centerY: 0.0, span: 2.2 },
   barnsley:     { centerX: 0.0,  centerY: 5.0, span: 9.0 },
   sierpinski:   { centerX: 0.5,  centerY: 0.35, span: 1.0 },
@@ -76,6 +79,7 @@ const VIEW_PRESETS = {
   lichtenberg_figures: { centerX: 0.0, centerY: 0.0, span: 3.8 },
   koch:         { centerX: 0.45, centerY: -0.28, span: 0.9 },
   dragon_heighway: { centerX: 0.2, centerY: 0.0, span: 2.8 },
+  courbe_levy_c: { centerX: 0.0, centerY: 0.0, span: 2.5 },
   gosper_curve: { centerX: 0.15, centerY: 0.05, span: 3.2 },
   cantor_set:   { centerX: 0.0, centerY: 0.0, span: 2.6 },
   triangle_de_cercles_recursifs: { centerX: 0.0, centerY: 0.05, span: 2.4 },
@@ -103,8 +107,8 @@ function getMultibrotPreset(power) {
   return { centerX: 0.0, centerY: 0.0, span: 2.2 };
 }
 
-const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "feigenbaum_tree"]);
-const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "gosper_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
+const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal", "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "rossler_attractor", "aizawa_attractor", "sprott_attractor", "feigenbaum_tree"]);
+const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "courbe_levy_c", "gosper_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
 // Les fractales 3D en JS pur (julia_quaternion, mandelbox) sont toujours disponibles.
@@ -301,6 +305,9 @@ const FRACTAL_FAMILIES = [
       ["attracteur_ikeda", "Attracteur d'Ikeda"],
       ["attracteur_de_henon", "Attracteur de Hénon"],
       ["lorenz_attractor", "Attracteur de Lorenz"],
+      ["rossler_attractor", "Attracteur de Rössler"],
+      ["aizawa_attractor", "Attracteur d'Aizawa"],
+      ["sprott_attractor", "Attracteur de Sprott"],
       ["feigenbaum_tree", "Arbre de Feigenbaum"],
     ],
   },
@@ -326,6 +333,7 @@ const FRACTAL_FAMILIES = [
     fractales: [
       ["koch", "Koch"],
       ["dragon_heighway", "Dragon de Heighway"],
+      ["courbe_levy_c", "Courbe de Lévy C"],
       ["gosper_curve", "Courbe de Gosper"],
       ["cantor_set", "Ensemble de Cantor"],
       ["triangle_de_cercles_recursifs", "Triangle de cercles récursifs"],
@@ -937,6 +945,18 @@ function projeterFractalePonctuelle(nom, x, y, z, iter, largeur) {
     const [px, py] = projeterLorenzAttractor(x, y, z);
     return { x: px, y: py, proximite: 0.0, rayon: 0 };
   }
+  if (nom === "rossler_attractor") {
+    const [px, py, proximite] = projeterRosslerAttractor(x, y, z);
+    return { x: px, y: py, proximite, rayon: 0 };
+  }
+  if (nom === "aizawa_attractor") {
+    const [px, py, proximite] = projeterAizawaAttractor(x, y, z);
+    return { x: px, y: py, proximite, rayon: 0 };
+  }
+  if (nom === "sprott_attractor") {
+    const [px, py, proximite] = projeterSprottAttractor(x, y, z);
+    return { x: px, y: py, proximite, rayon: 0 };
+  }
   if (nom === "feigenbaum_tree") {
     const px = ((2.5 + ((iter % Math.max(1200, largeur)) / Math.max(1200, largeur)) * 1.5) - 3.25) * 1.333;
     return { x: px, y, proximite: 0.0, rayon: 0 };
@@ -1046,6 +1066,70 @@ function projeterLorenzAttractor(x, y, z) {
   ];
 }
 
+function etapeRosslerAttractor(x, y, z) {
+  const a = 0.2;
+  const b = 0.2;
+  const c = 5.7;
+  const dt = 0.02;
+  return [
+    x + (-y - z) * dt,
+    y + (x + a * y) * dt,
+    z + (b + z * (x - c)) * dt,
+  ];
+}
+
+function projeterRosslerAttractor(x, y, z) {
+  const profondeur = Math.max(0, Math.min(1, 0.5 - z / 18.0));
+  return [
+    x * 0.16 + z * 0.035,
+    y * 0.16 - z * 0.04,
+    profondeur,
+  ];
+}
+
+function etapeAizawaAttractor(x, y, z) {
+  const a = 0.95;
+  const b = 0.7;
+  const c = 0.6;
+  const d = 3.5;
+  const e = 0.25;
+  const f = 0.1;
+  const dt = 0.008;
+  const r2 = x * x + y * y;
+  return [
+    x + (((z - b) * x) - d * y) * dt,
+    y + (d * x + (z - b) * y) * dt,
+    z + (c + a * z - (z * z * z) / 3.0 - r2 * (1.0 + e * z) + f * z * x * x * x) * dt,
+  ];
+}
+
+function projeterAizawaAttractor(x, y, z) {
+  const profondeur = Math.max(0, Math.min(1, 0.5 - z / 10.0));
+  return [
+    x * 0.18 + z * 0.03,
+    y * 0.18 - z * 0.055,
+    profondeur,
+  ];
+}
+
+function etapeSprottAttractor(x, y, z) {
+  const dt = 0.04;
+  return [
+    x + y * z * dt,
+    y + (x - y) * dt,
+    z + (1.0 - x * y) * dt,
+  ];
+}
+
+function projeterSprottAttractor(x, y, z) {
+  const profondeur = Math.max(0, Math.min(1, 0.5 - z / 12.0));
+  return [
+    x * 0.19 + z * 0.045,
+    y * 0.18 - z * 0.03,
+    profondeur,
+  ];
+}
+
 function dessinerCantor(ctxCible, w, h, maxIter) {
   const profondeur = Math.max(3, Math.min(8, Math.floor(maxIter / 64) + 2));
   const hauteurLigne = Math.max(6, Math.min(18, h / (profondeur + 3)));
@@ -1114,6 +1198,16 @@ function genererDragonHeighway(iterations) {
       else if (ch === "Y") next += "-FX-Y";
       else next += ch;
     }
+    s = next;
+  }
+  return s;
+}
+
+function genererCourbeLevyC(iterations) {
+  let s = "F";
+  for (let i = 0; i < iterations; i++) {
+    let next = "";
+    for (const ch of s) next += ch === "F" ? "+F--F+" : ch;
     s = next;
   }
   return s;
@@ -1380,21 +1474,24 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const estIkeda = params.fractal === "attracteur_ikeda";
   const estHenon = params.fractal === "attracteur_de_henon";
   const estLorenz = params.fractal === "lorenz_attractor";
+  const estRossler = params.fractal === "rossler_attractor";
+  const estAizawa = params.fractal === "aizawa_attractor";
+  const estSprott = params.fractal === "sprott_attractor";
   const estFeigenbaum = params.fractal === "feigenbaum_tree";
   const estBuddhabrot = params.fractal === "buddhabrot";
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, params.maxIter * 70)
-    : (estJuliaQuaternion ? Math.max(150000, params.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900))));
-  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
-  const pointsPerFrame = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000)));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : (estHenon ? 0.0 : 0.0))))));
-  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : 0.0);
+    : (estJuliaQuaternion ? Math.max(150000, params.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900))));
+  const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott) ? 140 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
+  const pointsPerFrame = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000)));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz || estRossler || estAizawa) ? 0.1 : (estSprott ? 0.2 : (estHenon ? 0.1 : 0.0)))))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estAizawa) ? 0.1 : (estSprott ? 0.1 : (estHenon ? 0.0 : 0.0)))))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : ((estSprott ? 0.1 : 0.0)));
   let emitted = 0;
   let iter = 0;
   // est3D : orbite 3D projetée isométriquement — pondération par profondeur activée.
-  const est3D = estMenger || estMandelbulb || estTetraedre || estJuliaQuaternion || estMandelbox;
+  const est3D = estMenger || estMandelbulb || estTetraedre || estJuliaQuaternion || estMandelbox || estRossler || estAizawa || estSprott;
   const tampon = creerTamponPonctuel(w, h);
 
   const putPoint = (px, py, poids = 1, rayon = 0, lumiere = 0) => {
@@ -1491,6 +1588,16 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
           [x, y] = etapeAttracteurHenon(x, y);
         } else if (estLorenz) {
           [x, y, z] = etapeLorenzAttractor(x, y, z);
+          if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+        } else if (estRossler) {
+          [x, y, z] = etapeRosslerAttractor(x, y, z);
+          if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+        } else if (estAizawa) {
+          [x, y, z] = etapeAizawaAttractor(x, y, z);
+          if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+        } else if (estSprott) {
+          [x, y, z] = etapeSprottAttractor(x, y, z);
+          if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.2; y = 0.1; z = 0.1; }
         } else if (estFeigenbaum) {
           const rr = 2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5;
           x = rr * (x || 0.5) * (1.0 - (x || 0.5));
@@ -1559,6 +1666,10 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
     const n = Math.max(8, Math.min(15, Math.floor(renduParams.maxIter / 64) + 7));
     const commands = genererDragonHeighway(n);
     dessinerCommandeLineaireMonde(traceur, commands, -0.6, 0.0, 0.0, 1.7 / Math.pow(Math.SQRT2, n), Math.PI / 2);
+  } else if (renduParams.fractal === "courbe_levy_c") {
+    const n = Math.max(8, Math.min(15, Math.floor(renduParams.maxIter / 64) + 7));
+    const commands = genererCourbeLevyC(n);
+    dessinerCommandeLineaireMonde(traceur, commands, -0.78, 0.0, 0.0, 1.55 / Math.pow(Math.SQRT2, n), Math.PI / 4);
   } else if (renduParams.fractal === "gosper_curve") {
     const n = Math.max(1, Math.min(4, Math.floor(renduParams.maxIter / 112) + 1));
     const commands = genererGosper(n);
@@ -1614,17 +1725,20 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const estIkeda = renduParams.fractal === "attracteur_ikeda";
   const estHenon = renduParams.fractal === "attracteur_de_henon";
   const estLorenz = renduParams.fractal === "lorenz_attractor";
+  const estRossler = renduParams.fractal === "rossler_attractor";
+  const estAizawa = renduParams.fractal === "aizawa_attractor";
+  const estSprott = renduParams.fractal === "sprott_attractor";
   const estFeigenbaum = renduParams.fractal === "feigenbaum_tree";
   const estBuddhabrot = renduParams.fractal === "buddhabrot";
   const rng = makeRng(0x9e3779b9 ^ (renduParams.maxIter << 7) ^ renduParams.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, renduParams.maxIter * 70)
-    : (estJuliaQuaternion ? Math.max(150000, renduParams.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900))));
-  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz) ? 120 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
-  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz) ? 0.1 : (estHenon ? 0.1 : 0.0))))));
-  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong) ? 0.1 : 0.0)))));
-  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : 0.0);
-  const est3D = estMenger || estMandelbulb || estTetraedre || estJuliaQuaternion || estMandelbox;
+    : (estJuliaQuaternion ? Math.max(150000, renduParams.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900))));
+  const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott) ? 140 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
+  let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz || estRossler || estAizawa) ? 0.1 : (estSprott ? 0.2 : 0.0))))));
+  let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estAizawa) ? 0.1 : (estSprott ? 0.1 : 0.0))))));
+  let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : (estSprott ? 0.1 : 0.0));
+  const est3D = estMenger || estMandelbulb || estTetraedre || estJuliaQuaternion || estMandelbox || estRossler || estAizawa || estSprott;
   let emitted = 0;
   let iter = 0;
   const tampon = creerTamponPonctuel(w, h);
@@ -1714,6 +1828,16 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
         [x, y] = etapeAttracteurHenon(x, y);
       } else if (estLorenz) {
         [x, y, z] = etapeLorenzAttractor(x, y, z);
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+      } else if (estRossler) {
+        [x, y, z] = etapeRosslerAttractor(x, y, z);
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+      } else if (estAizawa) {
+        [x, y, z] = etapeAizawaAttractor(x, y, z);
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.1; y = 0.0; z = 0.0; }
+      } else if (estSprott) {
+        [x, y, z] = etapeSprottAttractor(x, y, z);
+        if (!isFinite(x) || !isFinite(y) || !isFinite(z) || x * x + y * y + z * z > 4096) { x = 0.2; y = 0.1; z = 0.1; }
       } else if (estFeigenbaum) {
         const rr = 2.5 + ((iter % Math.max(1200, w)) / Math.max(1200, w)) * 1.5;
         x = rr * (x || 0.5) * (1.0 - (x || 0.5));
@@ -1907,6 +2031,9 @@ async function loadWasm() {
       attracteur_ikeda: typeof exports.attracteur_ikeda === "function" ? exports.attracteur_ikeda : null,
       attracteur_de_henon: typeof exports.attracteur_de_henon === "function" ? exports.attracteur_de_henon : null,
       lorenz_attractor: typeof exports.lorenz_attractor === "function" ? exports.lorenz_attractor : null,
+      rossler_attractor: typeof exports.rossler_attractor === "function" ? exports.rossler_attractor : null,
+      aizawa_attractor: typeof exports.aizawa_attractor === "function" ? exports.aizawa_attractor : null,
+      sprott_attractor: typeof exports.sprott_attractor === "function" ? exports.sprott_attractor : null,
       feigenbaum_tree: typeof exports.feigenbaum_tree === "function" ? exports.feigenbaum_tree : null,
       barnsley: typeof exports.barnsley === "function" ? exports.barnsley : null,
       sierpinski: typeof exports.sierpinski === "function" ? exports.sierpinski : null,
@@ -1920,6 +2047,7 @@ async function loadWasm() {
       mandelbox: typeof exports.mandelbox === "function" ? exports.mandelbox : mandelboxJS,
       koch: typeof exports.koch === "function" ? exports.koch : null,
       dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
+      courbe_levy_c: typeof exports.courbe_levy_c === "function" ? exports.courbe_levy_c : null,
       gosper_curve: typeof exports.gosper_curve === "function" ? exports.gosper_curve : null,
       cantor_set: typeof exports.cantor_set === "function" ? exports.cantor_set : null,
       triangle_de_cercles_recursifs: typeof exports.triangle_de_cercles_recursifs === "function" ? exports.triangle_de_cercles_recursifs : null,
@@ -2674,6 +2802,9 @@ const FRACTAL_SOURCE_MAP = {
   attracteur_ikeda:            "fractales_dynamique",
   attracteur_de_henon:         "fractales_dynamique",
   lorenz_attractor:            "fractales_dynamique",
+  rossler_attractor:           "fractales_dynamique",
+  aizawa_attractor:            "fractales_dynamique",
+  sprott_attractor:            "fractales_dynamique",
   feigenbaum_tree:             "fractales_dynamique",
   barnsley:                    "fractales_ifs",
   sierpinski:                  "fractales_ifs",
@@ -2687,6 +2818,7 @@ const FRACTAL_SOURCE_MAP = {
   lichtenberg_figures:         "fractales_ifs",
   koch:                        "fractales_lsystem",
   dragon_heighway:             "fractales_lsystem",
+  courbe_levy_c:               "fractales_lsystem",
   gosper_curve:                "fractales_lsystem",
   cantor_set:                  "fractales_lsystem",
   triangle_de_cercles_recursifs: "fractales_lsystem",
@@ -2808,7 +2940,7 @@ function highlightFrench(code) {
 function applyFrenchTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|rossler_attractor|aizawa_attractor|sprott_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|courbe_levy_c|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|etapeTapisSierpinski|etapeAttracteurClifford|etapeAttracteurPeterDeJong|etapeAttracteurIkeda|etapeAttracteurHenon|etapeLorenzAttractor|etapeRosslerAttractor|etapeAizawaAttractor|etapeSprottAttractor|etapeMengerSponge|etapeVicsekFractal|etapeLichtenberg|etapeMandelbulb|projeterMengerSponge|projeterLorenzAttractor|projeterRosslerAttractor|projeterAizawaAttractor|projeterSprottAttractor|projeterMandelbulb|koch_generer|genererDragonHeighway|genererCourbeLevyC|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|abs_dynamique|abs_koch|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }
@@ -2831,7 +2963,7 @@ function highlightPython(code) {
 function applyPyTokens(line, kwRe) {
   return line
     .replace(kwRe, `<span class="kw">$1</span>`)
-    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
+    .replace(/\b(mandelbrot|mandelbrot_classe|julia|burning_ship|tricorn|multibrot|celtic|buffalo|perpendicular_burning_ship|heart|perpendicular_mandelbrot|perpendicular_celtic|duck|buddhabrot|newton|phoenix|lyapunov|lyapunov_multisequence|bassin_newton_generalise|orbitale_de_nova|collatz_complexe|attracteur_de_clifford|attracteur_de_peter_de_jong|attracteur_ikeda|attracteur_de_henon|lorenz_attractor|rossler_attractor|aizawa_attractor|sprott_attractor|feigenbaum_tree|barnsley|sierpinski|tapis_sierpinski|menger_sponge|mandelbulb|vicsek_fractal|lichtenberg_figures|koch|dragon_heighway|courbe_levy_c|gosper_curve|cantor_set|triangle_de_cercles_recursifs|apollonian_gasket|t_square_fractal|h_fractal|hilbert_curve|peano_curve|arbre_pythagore|magnet1|magnet2|magnet3|lambda_fractale|lambda_cubique|magnet_cosinus|magnet_sinus|nova_magnetique|barnsley_etape|sierpinski_etape|menger_etape|vicsek_etape|projeter_menger_x|projeter_menger_y|projeter_lorenz_x|projeter_lorenz_y|koch_generer|genererDragonHeighway|genererCourbeLevyC|genererGosper|genererHilbert|genererPeano|norme_carre|complexe_diviser_re|complexe_diviser_im|iterer|etape|racine_approx|abs_val|remplacer|regle|generer|sinus_dynamique|cosinus_dynamique|sinus_magnetique|cosinus_magnetique)\b/g, `<span class="fn">$1</span>`)
     .replace(/\b(\d+\.\d+|\d+)\b/g, `<span class="num">$1</span>`)
     .replace(/\b(cx|cy|zx|zy|c_re|c_im|max_iter|x|y|iter|xtemp|ax|ay|x2|y2|fx|fy|dfx|dfy|denom|delta_x|delta_y|x_prec|y_prec|xtemp|ytemp|d1|d2|d3|d4|puissance|rn|angle|r|theta|nx|ny|a|b|niveau|echelle|dist|score|somme|exposant|parametre)\b/g, `<span class="param">$1</span>`);
 }

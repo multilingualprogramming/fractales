@@ -416,6 +416,24 @@ déf projeter_lorenz_x(x, y, z):
 déf projeter_lorenz_y(x, y, z):
     retour (z - 26.0) * 0.07 - (x + y) * 0.02
 
+déf projeter_rossler_x(x, y, z):
+    retour x * 0.16 + z * 0.035
+
+déf projeter_rossler_y(x, y, z):
+    retour y * 0.16 - z * 0.04
+
+déf projeter_aizawa_x(x, y, z):
+    retour x * 0.18 + z * 0.03
+
+déf projeter_aizawa_y(x, y, z):
+    retour y * 0.18 - z * 0.055
+
+déf projeter_sprott_x(x, y, z):
+    retour x * 0.19 + z * 0.045
+
+déf projeter_sprott_y(x, y, z):
+    retour y * 0.18 - z * 0.03
+
 déf lorenz_attractor(cx, cy, max_iter):
     soit sigma = 10.0
     soit rho = 28.0
@@ -446,6 +464,127 @@ déf lorenz_attractor(cx, cy, max_iter):
         iter = iter + 1.0
 
     soit score = max_iter - meilleur * 420.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score
+
+déf rossler_attractor(cx, cy, max_iter):
+    soit a = 0.2
+    soit b = 0.2
+    soit c = 5.7
+    soit dt = 0.02
+    soit x = 0.1
+    soit y = 0.0
+    soit z = 0.0
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 560.0:
+        iter_lim = 560.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit dx = -y - z
+        soit dy = x + a * y
+        soit dz = b + z * (x - c)
+        x = x + dx * dt
+        y = y + dy * dt
+        z = z + dz * dt
+        si iter > 40.0:
+            soit px = projeter_rossler_x(x, y, z)
+            soit py = projeter_rossler_y(x, y, z)
+            soit distance = (px - cx) * (px - cx) + (py - cy) * (py - cy)
+            si distance < meilleur:
+                meilleur = distance
+        si x * x + y * y + z * z > 4096.0:
+            x = 0.1
+            y = 0.0
+            z = 0.0
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 520.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score
+
+déf aizawa_attractor(cx, cy, max_iter):
+    soit a = 0.95
+    soit b = 0.7
+    soit c = 0.6
+    soit d = 3.5
+    soit e = 0.25
+    soit f = 0.1
+    soit dt = 0.008
+    soit x = 0.1
+    soit y = 0.0
+    soit z = 0.0
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 720.0:
+        iter_lim = 720.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit r2 = x * x + y * y
+        soit dx = (z - b) * x - d * y
+        soit dy = d * x + (z - b) * y
+        soit dz = c + a * z - (z * z * z) / 3.0 - r2 * (1.0 + e * z) + f * z * x * x * x
+        x = x + dx * dt
+        y = y + dy * dt
+        z = z + dz * dt
+        si iter > 70.0:
+            soit px = projeter_aizawa_x(x, y, z)
+            soit py = projeter_aizawa_y(x, y, z)
+            soit distance = (px - cx) * (px - cx) + (py - cy) * (py - cy)
+            si distance < meilleur:
+                meilleur = distance
+        si x * x + y * y + z * z > 4096.0:
+            x = 0.1
+            y = 0.0
+            z = 0.0
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 540.0
+    si score < 0.0:
+        retour 0.0
+    si score > max_iter:
+        retour max_iter
+    retour score
+
+déf sprott_attractor(cx, cy, max_iter):
+    soit dt = 0.04
+    soit x = 0.2
+    soit y = 0.1
+    soit z = 0.1
+    soit meilleur = 1.0e9
+    soit iter_lim = max_iter
+    si iter_lim > 520.0:
+        iter_lim = 520.0
+    soit iter = 0.0
+
+    tantque iter < iter_lim:
+        soit dx = y * z
+        soit dy = x - y
+        soit dz = 1.0 - x * y
+        x = x + dx * dt
+        y = y + dy * dt
+        z = z + dz * dt
+        si iter > 32.0:
+            soit px = projeter_sprott_x(x, y, z)
+            soit py = projeter_sprott_y(x, y, z)
+            soit distance = (px - cx) * (px - cx) + (py - cy) * (py - cy)
+            si distance < meilleur:
+                meilleur = distance
+        si x * x + y * y + z * z > 4096.0:
+            x = 0.2
+            y = 0.1
+            z = 0.1
+        iter = iter + 1.0
+
+    soit score = max_iter - meilleur * 520.0
     si score < 0.0:
         retour 0.0
     si score > max_iter:

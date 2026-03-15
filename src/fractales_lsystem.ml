@@ -80,6 +80,39 @@ déf dragon_heighway(cx, cy, max_iter):
         retour 6.0
     retour score
 
+déf courbe_levy_c(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit echelle = 1.0
+    soit nmax = min_koch(max_iter, 14.0)
+    soit inv_racine2 = 0.70710678118
+
+    tantque niveau < nmax:
+        soit somme = x + y
+        soit diff = y - x
+        soit branche = niveau % 2.0
+        si branche == 0.0:
+            x = (somme - 0.5) * inv_racine2
+            y = diff * inv_racine2
+        sinon:
+            x = (somme + 0.5) * inv_racine2
+            y = diff * inv_racine2
+        soit d = (abs_koch(y) + abs_koch(abs_koch(x) - 0.18)) / echelle
+        si d < dist:
+            dist = d
+        echelle = echelle * 1.41421356237
+        niveau = niveau + 1.0
+
+    soit seuil = 0.028
+    si dist < seuil:
+        retour max_iter * 0.91
+    soit score = max_iter * 0.9 - (dist / (seuil * 10.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
 déf gosper_curve(cx, cy, max_iter):
     soit x = cx
     soit y = cy

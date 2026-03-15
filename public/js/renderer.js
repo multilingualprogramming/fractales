@@ -3285,6 +3285,16 @@ function allerAuSignet(index) {
   params.maxIter = s.maxIter;
   iterSlider.value = s.maxIter;
   iterValue.textContent = s.maxIter;
+  if (s.juliaCre !== undefined) {
+    params.juliaCre = s.juliaCre;
+    if (juliaCReSlider) juliaCReSlider.value = s.juliaCre;
+    if (juliaCReValue) juliaCReValue.textContent = s.juliaCre.toFixed(3);
+  }
+  if (s.juliaCim !== undefined) {
+    params.juliaCim = s.juliaCim;
+    if (juliaCImSlider) juliaCImSlider.value = s.juliaCim;
+    if (juliaCImValue) juliaCImValue.textContent = s.juliaCim.toFixed(3);
+  }
   params.palette = s.palette;
   params.paletteBackground = s.paletteBackground;
   params.paletteInterior = s.paletteInterior;
@@ -3312,9 +3322,9 @@ function rendreListeSignets() {
 
 if (btnBookmark) {
   btnBookmark.addEventListener("click", () => {
-    rendreListeSignets();
-    exportPanel.classList.add("hidden");
-    if (bookmarkPanel) bookmarkPanel.classList.toggle("hidden");
+    // Always save the current view first, then show the panel
+    ajouterSignet();
+    if (bookmarkPanel) bookmarkPanel.classList.remove("hidden");
   });
 }
 if (btnCloseBookmarks) {

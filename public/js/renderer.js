@@ -686,6 +686,10 @@ function definirEtatControles(estReduit) {
     localStorage.setItem("fractales_controls_collapsed", controlsCollapsed ? "1" : "0");
   } catch {}
   appliquerEtatControles();
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    render();
+  });
 }
 
 function fractaleActiveEst3D() {

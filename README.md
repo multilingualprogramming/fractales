@@ -479,5 +479,5 @@ Si vous modifiez le comportement visible, ajoutez ou retirez une fractale, ou ch
 
 ## Licence
 
-MIT — voir `LICENSE`.
+GNU General Public License v3.0 (GPL-3.0) — voir `LICENSE`.
 

@@ -157,11 +157,10 @@ const familySelect  = document.getElementById("family-select");
 const fractalSelect = document.getElementById("fractal-select");
 const multibrotPower = document.getElementById("multibrot-power");
 const multibrotPowerGroup = document.getElementById("multibrot-power-group");
+const controlsSpecific = document.getElementById("controls-specific");
 const fractalOptionsStack = document.getElementById("fractal-options-stack");
 const fractalOptionsSummary = document.getElementById("fractal-options-summary");
 const fractalOptionsPanel = document.getElementById("fractal-options-panel");
-const btnToggleFractalOptions = document.getElementById("btn-toggle-fractal-options");
-const btnCloseFractalOptions = document.getElementById("btn-close-fractal-options");
 const paletteSelect = document.getElementById("palette-select");
 const customPaletteControls = document.getElementById("custom-palette-controls");
 const toggleCustomPaletteButton = document.getElementById("btn-toggle-custom-palette");
@@ -207,7 +206,6 @@ const juliaCImSlider = document.getElementById("julia-c-im");
 const juliaCReValue = document.getElementById("julia-c-re-value");
 const juliaCImValue = document.getElementById("julia-c-im-value");
 const juliaCControls = document.getElementById("julia-c-controls");
-const fractalOptionsSep = document.getElementById("fractal-options-sep");
 const juliaCouplingCanvas = document.getElementById("julia-coupling-canvas");
 const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
@@ -216,7 +214,6 @@ const bookmarkList = document.getElementById("bookmark-list");
 const btnExportSvg = document.getElementById("btn-export-svg");
 
 let customPaletteEditorOpen = false;
-let fractalOptionsPanelOpen = false;
 
 // ============================================================
 // PALETTES DE COULEURS
@@ -613,26 +610,12 @@ function synchroniserControlePalette() {
   definirVisibiliteEditeurPalette();
 }
 
-function definirVisibiliteOptionsSpecifiques({ labels = [], forceOuverture } = {}) {
-  if (typeof forceOuverture === "boolean") {
-    fractalOptionsPanelOpen = forceOuverture;
-  }
+function definirVisibiliteOptionsSpecifiques({ labels = [] } = {}) {
   const afficher = labels.length > 0;
-  if (!afficher) fractalOptionsPanelOpen = false;
+  if (controlsSpecific) controlsSpecific.classList.toggle("hidden", !afficher);
   if (fractalOptionsStack) fractalOptionsStack.classList.toggle("hidden", !afficher);
-  if (fractalOptionsSep) fractalOptionsSep.classList.toggle("hidden", !afficher);
   if (fractalOptionsSummary) fractalOptionsSummary.textContent = afficher ? labels.join(" · ") : "Aucune";
-  if (fractalOptionsPanel) fractalOptionsPanel.classList.toggle("hidden", !(afficher && fractalOptionsPanelOpen));
-  if (btnToggleFractalOptions) {
-    btnToggleFractalOptions.setAttribute("aria-expanded", afficher && fractalOptionsPanelOpen ? "true" : "false");
-    btnToggleFractalOptions.textContent = afficher && fractalOptionsPanelOpen ? "Reduire" : "Editer";
-  }
-}
-
-function lireLibellesOptionsSpecifiques() {
-  if (!fractalOptionsSummary) return [];
-  const texte = fractalOptionsSummary.textContent?.trim() ?? "";
-  return texte && texte !== "Aucune" ? texte.split(" · ") : [];
+  if (fractalOptionsPanel) fractalOptionsPanel.classList.toggle("hidden", !afficher);
 }
 
 function fractaleActiveEst3D() {
@@ -2593,24 +2576,6 @@ toggleCustomPaletteButton.addEventListener("click", () => {
 closeCustomPaletteButton.addEventListener("click", () => {
   definirVisibiliteEditeurPalette(false);
 });
-
-if (btnToggleFractalOptions) {
-  btnToggleFractalOptions.addEventListener("click", () => {
-    definirVisibiliteOptionsSpecifiques({
-      forceOuverture: !fractalOptionsPanelOpen,
-      labels: lireLibellesOptionsSpecifiques(),
-    });
-  });
-}
-
-if (btnCloseFractalOptions) {
-  btnCloseFractalOptions.addEventListener("click", () => {
-    definirVisibiliteOptionsSpecifiques({
-      forceOuverture: false,
-      labels: lireLibellesOptionsSpecifiques(),
-    });
-  });
-}
 
 paletteBackgroundInput.addEventListener("input", () => {
   params.palette = "personnalisee";

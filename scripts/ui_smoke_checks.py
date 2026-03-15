@@ -41,10 +41,22 @@ def main() -> None:
         "fractal-select",
         "btn-toggle-pan",
         "pan-controls",
+        "controls-global",
+        "controls-palette",
+        "controls-specific",
     ]
     for element_id in required_ids:
         if f'id="{element_id}"' not in html:
             fail(f"missing required HTML id: {element_id}")
+
+    controls_global_pos = html.find('id="controls-global"')
+    controls_palette_pos = html.find('id="controls-palette"')
+    controls_specific_pos = html.find('id="controls-specific"')
+    controls_actions_pos = html.find('class="controls-actions"')
+    if min(controls_global_pos, controls_palette_pos, controls_specific_pos, controls_actions_pos) == -1:
+        fail("missing grouped footer control sections")
+    if not (controls_global_pos < controls_palette_pos < controls_specific_pos < controls_actions_pos):
+        fail("footer control sections must be ordered global -> palette -> specific -> actions")
 
     required_dom_refs = [
         "btnPanUp",
@@ -117,6 +129,34 @@ def main() -> None:
     for key_name in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", '"+"', '"="', '"-"', '"_"', '"NumpadAdd"', '"NumpadSubtract"']:
         if key_name not in js:
             fail(f"missing keyboard shortcut mapping for {key_name}")
+
+    css_path = ROOT / "public" / "css" / "style.css"
+    css = css_path.read_text(encoding="utf-8")
+    require(
+        r"#app\s*\{\s*display:\s*grid;\s*grid-template-rows:\s*var\(--header-h\)\s+1fr\s+auto;",
+        css,
+        "app layout must reserve an auto-sized controls row",
+    )
+    require(
+        r"\.controls-main\s*\{.*?display:\s*flex;.*?min-width:\s*0;",
+        css,
+        "controls-main must remain a responsive flex container",
+    )
+    require(
+        r"\.controls-section\s*\{.*?flex-wrap:\s*wrap;",
+        css,
+        "controls sections must allow wrapping",
+    )
+    require(
+        r"@media\s*\(max-width:\s*1200px\)\s*\{.*?\.controls-main\s*\{.*?flex-wrap:\s*wrap;",
+        css,
+        "controls must wrap at medium widths",
+    )
+    require(
+        r"@media\s*\(max-width:\s*820px\)\s*\{.*?#header\s*\{.*?flex-wrap:\s*wrap;",
+        css,
+        "header must become responsive on narrower screens",
+    )
 
     print("[ui-smoke] all checks passed")
 

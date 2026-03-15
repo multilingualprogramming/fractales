@@ -216,136 +216,129 @@
        ============================================================ -->
       <footer id="controls" role="toolbar" aria-label="Contrôles de rendu">
         <div class="controls-main">
+          <section id="controls-global" class="controls-section" aria-label="Options globales">
+            <div class="controls-section-header">Options globales</div>
 
-        <!-- Sélecteur de famille -->
-        <div class="control-group" role="group" aria-label="Famille de fractales">
-          <label class="control-label" for="family-select">Famille :</label>
-          <select id="family-select" aria-label="Choisir une famille de fractales">
-            <option value="evasion">Évasion</option>
-            <option value="dynamique">Dynamique</option>
-            <option value="ifs">IFS</option>
-            <option value="lsystem">L-système</option>
-            <option value="magnetique">Magnétiques</option>
-            <option value="lisse">Lisse</option>
-            <option value="orbitrap">Pièges d'orbite</option>
-            <option value="classe">Classes</option>
-          </select>
-        </div>
-
-        <div class="ctrl-sep" aria-hidden="true"></div>
-
-        <!-- Sélecteur de fractale -->
-        <div class="control-group" role="group" aria-label="Type de fractale">
-          <label class="control-label" for="fractal-select">Fractale :</label>
-          <select id="fractal-select" aria-label="Choisir une fractale"></select>
-        </div>
-
-        <div class="ctrl-sep" aria-hidden="true"></div>
-
-        <!-- Slider d'itérations -->
-        <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
-          <label class="control-label" for="iter-slider">Itérations :</label>
-          <input type="range" id="iter-slider" min="64" max="1024" step="64" value="256" aria-valuemin="64"
-            aria-valuemax="1024" aria-valuenow="256" />
-          <span id="iter-value" class="control-value">256</span>
-        </div>
-
-        <div class="ctrl-sep" aria-hidden="true"></div>
-
-        <div id="fractal-options-sep" class="ctrl-sep hidden" aria-hidden="true"></div>
-
-        <div id="fractal-options-stack" class="fractal-options-stack hidden">
-          <div class="control-group" role="group" aria-label="Options spécifiques">
-            <label class="control-label" for="btn-toggle-fractal-options">Options :</label>
-            <span id="fractal-options-summary" class="control-value fractal-options-summary">Aucune</span>
-            <button id="btn-toggle-fractal-options" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="fractal-options-panel">Editer</button>
-          </div>
-
-          <section id="fractal-options-panel" class="fractal-options-panel hidden" aria-label="Réglages spécifiques de la fractale">
-            <div class="custom-palette-header">
-              <span class="custom-palette-title">Options spécifiques</span>
-              <div class="custom-palette-actions">
-                <button id="btn-close-fractal-options" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire les options spécifiques">Reduire</button>
-              </div>
+            <div class="control-group" role="group" aria-label="Famille de fractales">
+              <label class="control-label" for="family-select">Famille :</label>
+              <select id="family-select" aria-label="Choisir une famille de fractales">
+                <option value="evasion">Évasion</option>
+                <option value="dynamique">Dynamique</option>
+                <option value="ifs">IFS</option>
+                <option value="lsystem">L-système</option>
+                <option value="magnetique">Magnétiques</option>
+                <option value="lisse">Lisse</option>
+                <option value="orbitrap">Pièges d'orbite</option>
+                <option value="classe">Classes</option>
+              </select>
             </div>
 
-            <div class="fractal-options-list">
-              <!-- Puissance Multibrot -->
-              <div id="multibrot-power-group" class="fractal-option-card hidden" role="group" aria-label="Puissance Multibrot">
-                <div class="fractal-option-title">Multibrot</div>
-                <div class="control-subgroup">
-                  <label class="control-label" for="multibrot-power">Puissance :</label>
-                  <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
-                    <option value="3">n=3</option>
-                    <option value="4">n=4</option>
-                    <option value="5" selected>n=5</option>
-                    <option value="6">n=6</option>
-                    <option value="7">n=7</option>
-                    <option value="8">n=8</option>
-                  </select>
-                </div>
-              </div>
+            <div class="control-group" role="group" aria-label="Type de fractale">
+              <label class="control-label" for="fractal-select">Fractale :</label>
+              <select id="fractal-select" aria-label="Choisir une fractale"></select>
+            </div>
 
-              <!-- Paramètre c de Julia -->
-              <div id="julia-c-controls" class="fractal-option-card hidden" role="group" aria-label="Paramètre c de Julia">
-                <div class="fractal-option-title">Julia</div>
-                <div class="control-subgroup">
-                  <label class="control-label">c réel :</label>
-                  <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
-                  <span id="julia-c-re-value" class="control-value">-0.800</span>
-                </div>
-                <div class="control-subgroup">
-                  <label class="control-label julia-c-im-label">c imag :</label>
-                  <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
-                  <span id="julia-c-im-value" class="control-value">0.156</span>
-                </div>
-              </div>
+            <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">
+              <label class="control-label" for="iter-slider">Itérations :</label>
+              <input type="range" id="iter-slider" min="64" max="1024" step="64" value="256" aria-valuemin="64"
+                aria-valuemax="1024" aria-valuenow="256" />
+              <span id="iter-value" class="control-value">256</span>
             </div>
           </section>
-        </div>
 
-        <!-- Sélecteur de palette -->
-        <div class="palette-control-stack">
-        <div class="control-group" role="group" aria-label="Palette de couleurs">
-          <label class="control-label" for="palette-select">Palette :</label>
-          <select id="palette-select" aria-label="Choisir une palette de couleurs">
-            <option value="feu">🌋 Plasma</option>
-            <option value="ocean">⚡ Océan électrique</option>
-            <option value="aurora" selected>🌌 Synthwave</option>
-            <option value="braise">Cuivre</option>
-            <option value="lagon">Glacier</option>
-            <option value="crepuscule">Velours</option>
-            <option value="neon">Arcade UV</option>
-            <option value="infrared">Mineral</option>
-            <option value="personnalisee">🎨 Personnalisée</option>
-          </select>
-          <button id="btn-toggle-custom-palette" class="btn btn-secondary hidden" type="button" aria-expanded="false" aria-controls="custom-palette-controls">Editer</button>
-        </div>
+          <div class="controls-column">
+            <section id="controls-palette" class="controls-section" aria-label="Palette">
+              <div class="controls-section-header">Palette</div>
 
-        <section id="custom-palette-controls" class="custom-palette-panel hidden" aria-label="Éditeur de palette personnalisée">
-          <div class="custom-palette-header">
-            <span class="custom-palette-title">Palette personnalisée</span>
-            <div class="custom-palette-actions">
-              <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
-              <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire l'editeur de palette">Reduire</button>
-            </div>
+              <div class="palette-control-stack">
+                <div class="control-group" role="group" aria-label="Palette de couleurs">
+                  <label class="control-label" for="palette-select">Palette :</label>
+                  <select id="palette-select" aria-label="Choisir une palette de couleurs">
+                    <option value="feu">🌋 Plasma</option>
+                    <option value="ocean">⚡ Océan électrique</option>
+                    <option value="aurora" selected>🌌 Synthwave</option>
+                    <option value="braise">Cuivre</option>
+                    <option value="lagon">Glacier</option>
+                    <option value="crepuscule">Velours</option>
+                    <option value="neon">Arcade UV</option>
+                    <option value="infrared">Mineral</option>
+                    <option value="personnalisee">🎨 Personnalisée</option>
+                  </select>
+                  <button id="btn-toggle-custom-palette" class="btn btn-secondary hidden" type="button" aria-expanded="false" aria-controls="custom-palette-controls">Editer</button>
+                </div>
+
+                <section id="custom-palette-controls" class="custom-palette-panel hidden" aria-label="Éditeur de palette personnalisée">
+                  <div class="custom-palette-header">
+                    <span class="custom-palette-title">Palette personnalisée</span>
+                    <div class="custom-palette-actions">
+                      <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un stop</button>
+                      <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button" aria-label="Reduire l'editeur de palette">Reduire</button>
+                    </div>
+                  </div>
+                  <div id="custom-palette-preview" class="custom-palette-preview" aria-hidden="true"></div>
+                  <div class="custom-palette-basics">
+                    <label class="color-control" for="palette-background">
+                      <span class="control-label">Fond</span>
+                      <input id="palette-background" type="color" value="#020008" aria-label="Choisir la couleur de fond" />
+                    </label>
+                    <label class="color-control" for="palette-interior">
+                      <span class="control-label">Intérieur</span>
+                      <input id="palette-interior" type="color" value="#fff5b4" aria-label="Choisir la couleur intérieure" />
+                    </label>
+                  </div>
+                  <div id="custom-palette-stops" class="custom-palette-stops" role="list" aria-label="Stops de gradient"></div>
+                </section>
+              </div>
+            </section>
+
+            <section id="controls-specific" class="controls-section hidden" aria-label="Options spécifiques">
+              <div class="controls-section-header">Options spécifiques</div>
+
+              <div id="fractal-options-stack" class="fractal-options-stack">
+                <div class="control-group" role="group" aria-label="Options spécifiques">
+                  <label class="control-label" for="fractal-options-summary">Options :</label>
+                  <span id="fractal-options-summary" class="control-value fractal-options-summary">Aucune</span>
+                </div>
+
+                <section id="fractal-options-panel" class="fractal-options-panel" aria-label="Réglages spécifiques de la fractale">
+                  <div class="custom-palette-header">
+                    <span class="custom-palette-title">Options spécifiques</span>
+                  </div>
+
+                  <div class="fractal-options-list">
+                    <div id="multibrot-power-group" class="fractal-option-card hidden" role="group" aria-label="Puissance Multibrot">
+                      <div class="fractal-option-title">Multibrot</div>
+                      <div class="control-subgroup">
+                        <label class="control-label" for="multibrot-power">Puissance :</label>
+                        <select id="multibrot-power" aria-label="Choisir la puissance du Multibrot">
+                          <option value="3">n=3</option>
+                          <option value="4">n=4</option>
+                          <option value="5" selected>n=5</option>
+                          <option value="6">n=6</option>
+                          <option value="7">n=7</option>
+                          <option value="8">n=8</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div id="julia-c-controls" class="fractal-option-card hidden" role="group" aria-label="Paramètre c de Julia">
+                      <div class="fractal-option-title">Julia</div>
+                      <div class="control-subgroup">
+                        <label class="control-label">c réel :</label>
+                        <input type="range" id="julia-c-re" min="-2.0" max="2.0" step="0.001" value="-0.8" aria-label="Partie réelle de c" />
+                        <span id="julia-c-re-value" class="control-value">-0.800</span>
+                      </div>
+                      <div class="control-subgroup">
+                        <label class="control-label julia-c-im-label">c imag :</label>
+                        <input type="range" id="julia-c-im" min="-2.0" max="2.0" step="0.001" value="0.156" aria-label="Partie imaginaire de c" />
+                        <span id="julia-c-im-value" class="control-value">0.156</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </section>
           </div>
-          <div id="custom-palette-preview" class="custom-palette-preview" aria-hidden="true"></div>
-          <div class="custom-palette-basics">
-            <label class="color-control" for="palette-background">
-              <span class="control-label">Fond</span>
-              <input id="palette-background" type="color" value="#020008" aria-label="Choisir la couleur de fond" />
-            </label>
-            <label class="color-control" for="palette-interior">
-              <span class="control-label">Intérieur</span>
-              <input id="palette-interior" type="color" value="#fff5b4" aria-label="Choisir la couleur intérieure" />
-            </label>
-          </div>
-          <div id="custom-palette-stops" class="custom-palette-stops" role="list" aria-label="Stops de gradient"></div>
-        </section>
-        </div>
-
-        <div class="ctrl-sep" aria-hidden="true"></div>
         </div>
 
         <div class="controls-actions">

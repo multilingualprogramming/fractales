@@ -97,6 +97,13 @@ jobs:
               print_newline() {},
               pow_f64(base, exponent) { return Math.pow(base, exponent); },
             },
+            wasi_snapshot_preview1: {
+              fd_write(fd, iovs, iovs_len, nwritten) { return 0; },
+              fd_read(fd, iovs, iovs_len, nread) { return 0; },
+              args_sizes_get(argc, argv_buf_size) { return 0; },
+              args_get(argv, argv_buf) { return 0; },
+              proc_exit(code) {},
+            },
           }).then(({ instance }) => {
             const required = ['mandelbrot','julia','burning_ship','tricorn','multibrot','celtic','buffalo','perpendicular_burning_ship','newton','phoenix','barnsley','sierpinski','koch','magnet1','magnet2','lambda_fractale'];
             const exports = instance.exports;

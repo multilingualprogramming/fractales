@@ -1,4 +1,4 @@
-# fractales_classes_compat.ml
+# fractales_classes_compat.multi
 # Compatibilite WASM pour usage "classe" en conditions reelles.
 # Strategie: conserver un coeur fonctionnel (sans etat d'instance),
 # puis exposer une facade objet minimale + wrapper d'export plat.

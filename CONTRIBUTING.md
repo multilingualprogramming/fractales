@@ -25,19 +25,19 @@ python -m http.server 8080 --directory public
 
 ## Principes du dépôt
 
-- Les implémentations canoniques des fractales doivent vivre dans `src/*.ml`.
+- Les implémentations canoniques des fractales doivent vivre dans `src/*.multi`.
 - N'ajoutez pas une nouvelle fractale uniquement dans `public/js/renderer.js`, sauf s'il s'agit strictement d'un helper de dessin côté navigateur.
 - Préférez les libellés et textes d'interface en français.
 - Conservez les identifiants exportés stables, sauf demande explicite de renommage.
-- N'éditez pas `public/main.ml` ni `public/main_wasm_bundle.ml` à la main : ils sont régénérés par `python scripts/compile_wasm.py`.
+- N'éditez pas `public/main.multi` ni `public/main_wasm_bundle.multi` à la main : ils sont régénérés par `python scripts/compile_wasm.py`.
 
 ## Workflow pour modifier une fractale
 
 Quand vous ajoutez ou modifiez une fractale, mettez à jour tous les points concernés ensemble :
 
-1. Ajoutez ou modifiez la fonction dans le module `src/*.ml` approprié.
-2. Enregistrez la fractale dans `src/main.ml`.
-3. Mettez à jour les exports attendus dans `scripts/compile_wasm.ml`.
+1. Ajoutez ou modifiez la fonction dans le module `src/*.multi` approprié.
+2. Enregistrez la fractale dans `src/main.multi`.
+3. Mettez à jour les exports attendus dans `scripts/compile_wasm.multi`.
 4. Mettez à jour les attentes d'intégration dans `scripts/integration_checks.py`.
 5. Câblez la fractale dans `public/js/renderer.js` :
    - presets
@@ -89,7 +89,7 @@ Ordre important : `compile_wasm.py` régénère des artefacts dans `public/`. Re
 - Décrivez le comportement modifié et les zones du dépôt touchées.
 - Indiquez les commandes de validation exécutées localement.
 - Ajoutez des captures d'écran ou une courte vidéo si l'interface ou le rendu changent visiblement.
-- Si vous ajoutez une fractale, vérifiez sa présence dans `src/main.ml`, `scripts/compile_wasm.ml`, `scripts/integration_checks.py` et dans les registres conservés dans `public/js/renderer.js` (`VIEW_PRESETS`, `FRACTAL_FAMILIES`, `FRACTAL_SOURCE_MAP`, `wasmFunctions`, `POINT_FRACTALS`/`LINE_FRACTALS` selon le cas).
+- Si vous ajoutez une fractale, vérifiez sa présence dans `src/main.multi`, `scripts/compile_wasm.multi`, `scripts/integration_checks.py` et dans les registres conservés dans `public/js/renderer.js` (`VIEW_PRESETS`, `FRACTAL_FAMILIES`, `FRACTAL_SOURCE_MAP`, `wasmFunctions`, `POINT_FRACTALS`/`LINE_FRACTALS` selon le cas).
 
 ## Documentation
 

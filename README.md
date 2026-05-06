@@ -4,7 +4,7 @@ Application GitHub Pages qui rend **70 fractales** en **WebAssembly**, dont le c
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
-La barre latérale affiche le **code source `.ml` du module contenant la fractale
+La barre latérale affiche le **code source `.multi` du module contenant la fractale
 sélectionnée** et son équivalent **Python transpilé** — les deux onglets se mettent
 à jour dynamiquement à chaque changement de fractale.
 
@@ -14,14 +14,14 @@ utilise réellement des paramètres dédiés.
 
 L'application peut aussi **exporter la zone courante en PNG**, **générer une
 vidéo WebM de zoom**, et **exporter les fractales L-système en SVG**. La planification
-d'export reste décrite en **français multilingual** dans `fractales_export.ml`, tandis
+d'export reste décrite en **français multilingual** dans `fractales_export.multi`, tandis
 que le navigateur gère le rendu hors écran, l'encodage et le téléchargement.
 
 Les fractales 3D `tetraedre_sierpinski`, `julia_quaternion` et `mandelbox`
 utilisent un **backend WebGL dédié** pour la navigation 3D (orbite, translation,
 zoom, profondeur), tandis que leur identité, leur classement et leurs
 implémentations canoniques restent définis côté **sources multilingual
-françaises** dans `src/*.ml`.
+françaises** dans `src/*.multi`.
 
 ---
 
@@ -43,23 +43,23 @@ françaises** dans `src/*.ml`.
 
 ```
 src/
-  fractales_escape.ml          ┐
-  fractales_variantes.ml       │
-  fractales_dynamique.ml       │  sources multilingual français
-  fractales_ifs.ml             │  → compilés vers WebAssembly (WASM)
-  fractales_lsystem.ml         │
-  fractales_magnetiques.ml     │
-  fractales_lisse.ml           │  ★ coloration lisse (log_lisse sans math natif)
-  fractales_orbitrap.ml        │  ★ pièges orbitaux (cercle, croix, ligne)
-  fractales_export.ml          ┘  aides d'interpolation/export en français
-  fractales_classes_compat.ml  ← pont WASM pour mandelbrot_classe
-  fractales_classes.ml         ← OOP (classe/soi/super) → Python uniquement
-  main.ml                      ← point d'entrée humain (imports + assertions)
+  fractales_escape.multi          ┐
+  fractales_variantes.multi       │
+  fractales_dynamique.multi       │  sources multilingual français
+  fractales_ifs.multi             │  → compilés vers WebAssembly (WASM)
+  fractales_lsystem.multi         │
+  fractales_magnetiques.multi     │
+  fractales_lisse.multi           │  ★ coloration lisse (log_lisse sans math natif)
+  fractales_orbitrap.multi        │  ★ pièges orbitaux (cercle, croix, ligne)
+  fractales_export.multi          ┘  aides d'interpolation/export en français
+  fractales_classes_compat.multi  ← pont WASM pour mandelbrot_classe
+  fractales_classes.multi         ← OOP (classe/soi/super) → Python uniquement
+  main.multi                      ← point d'entrée humain (imports + assertions)
         │
         │  python scripts/compile_wasm.py  (GitHub Actions)
         │
-        ├─ [2]  Bundle WASM aplati   → public/main_wasm_bundle.ml
-        ├─ [2b] Copie individuelle   → public/fractales_*.ml + fractales_*.py
+        ├─ [2]  Bundle WASM aplati   → public/main_wasm_bundle.multi
+        ├─ [2b] Copie individuelle   → public/fractales_*.multi + fractales_*.py
         ├─ [3]  Transpilation Python → public/mandelbrot_transpiled.py
         ├─ [4]  WAT + WASM           → public/main.wat + public/mandelbrot.wasm
         └─ [6]  Benchmark            → public/benchmark.json
@@ -70,7 +70,7 @@ uniquement l'API WebAssembly standard (`WebAssembly.instantiateStreaming`).
 
 ---
 
-## Programmation orientée objet — `fractales_classes.ml`
+## Programmation orientée objet — `fractales_classes.multi`
 
 Ce module démontre les fonctionnalités OOP du langage multilingual :
 
@@ -111,13 +111,13 @@ Fractale
         └── SierpinskiFractale   (soi.etape polymorphe)
 ```
 
-> `fractales_classes.ml` est transpilé en Python mais **non compilé vers WASM**
+> `fractales_classes.multi` est transpilé en Python mais **non compilé vers WASM**
 > (le générateur WAT ne supporte pas encore la syntaxe de classe).
 > Les fonctions plates des autres modules restent les implémentations WASM actives.
 
 ---
 
-## Nouveaux modules — `fractales_magnetiques.ml`
+## Nouveaux modules — `fractales_magnetiques.multi`
 
 ### Magnet I
 
@@ -217,7 +217,7 @@ index.html
         ├── Métadonnées fractales conservées dans renderer.js :
         │     VIEW_PRESETS / FRACTAL_FAMILIES / FRACTAL_SOURCE_MAP / wasmFunctions
         ├── renderer-source-panel.js
-        │     ├── loadSources(fractal) → fetch("{module}.ml" + "{module}.py")
+        │     ├── loadSources(fractal) → fetch("{module}.multi" + "{module}.py")
         │     └── fetch("benchmark.json") → badge de performance
         ├── renderer-bookmarks.js → signets (localStorage) + restauration de vue
         ├── renderer-export.js → PNG courant / PNG HD / vidéo WebM / SVG (L-système)
@@ -238,20 +238,20 @@ index.html
 .
 ├── .github/workflows/deploy.yml   # CI/CD → GitHub Pages
 ├── src/
-│   ├── main.ml                    # Point d'entrée humain (imports + assertions)
-│   ├── fractales_escape.ml        # Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot, Burning Julia, Biomorphe
-│   ├── fractales_variantes.ml     # Celtic, Buffalo, Perpendicular Burning Ship, Heart, Duck, …
-│   ├── fractales_dynamique.ml     # Newton, Phoenix, Lyapunov, attracteurs de Clifford/Hénon/Lorenz/…, Duffing
-│   ├── fractales_ifs.ml           # Barnsley, Sierpinski, Mandelbulb, Mandelbox, Vicsek, …
-│   ├── fractales_lsystem.ml       # Koch, Dragon, Lévy C, Gosper, Hilbert, Peano, Arbre de Pythagore, …
-│   ├── fractales_magnetiques.ml   # Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
-│   ├── fractales_lisse.ml         # ★ Coloration lisse (mandelbrot_lisse, julia_lisse, …) — log_lisse sans math natif
-│   ├── fractales_orbitrap.ml      # ★ Pièges orbitaux (piege_cercle, piege_croix, piege_ligne, julia_piege_cercle)
-│   ├── fractales_export.ml        # Interpolation et réglages d'export en français
-│   ├── fractales_classes_compat.ml # Pont WASM pour mandelbrot_classe
-│   └── fractales_classes.ml       # ★ Hiérarchie OOP (classe/soi/super) — Python uniquement
+│   ├── main.multi                    # Point d'entrée humain (imports + assertions)
+│   ├── fractales_escape.multi        # Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot, Burning Julia, Biomorphe
+│   ├── fractales_variantes.multi     # Celtic, Buffalo, Perpendicular Burning Ship, Heart, Duck, …
+│   ├── fractales_dynamique.multi     # Newton, Phoenix, Lyapunov, attracteurs de Clifford/Hénon/Lorenz/…, Duffing
+│   ├── fractales_ifs.multi           # Barnsley, Sierpinski, Mandelbulb, Mandelbox, Vicsek, …
+│   ├── fractales_lsystem.multi       # Koch, Dragon, Lévy C, Gosper, Hilbert, Peano, Arbre de Pythagore, …
+│   ├── fractales_magnetiques.multi   # Magnet I, II, III, Lambda, variantes sin/cos, Nova magnétique
+│   ├── fractales_lisse.multi         # ★ Coloration lisse (mandelbrot_lisse, julia_lisse, …) — log_lisse sans math natif
+│   ├── fractales_orbitrap.multi      # ★ Pièges orbitaux (piege_cercle, piege_croix, piege_ligne, julia_piege_cercle)
+│   ├── fractales_export.multi        # Interpolation et réglages d'export en français
+│   ├── fractales_classes_compat.multi # Pont WASM pour mandelbrot_classe
+│   └── fractales_classes.multi       # ★ Hiérarchie OOP (classe/soi/super) — Python uniquement
 ├── scripts/
-│   ├── compile_wasm.ml            # Pipeline de build (source multilingual)
+│   ├── compile_wasm.multi            # Pipeline de build (source multilingual)
 │   ├── compile_wasm.py            # Lanceur Python du pipeline
 │   └── integration_checks.py      # Tests d'intégration CI
 ├── public/                        # Racine statique déployée sur GitHub Pages
@@ -263,8 +263,8 @@ index.html
 │   ├── js/renderer3d.js           # Backend WebGL des fractales 3D
 │   ├── css/style.css
 │   ├── mandelbrot.wasm            # ← généré (binaire WebAssembly)
-│   ├── main.ml / main_wasm_bundle.ml
-│   ├── fractales_*.ml             # ← copies des sources (affichage contextuel)
+│   ├── main.multi / main_wasm_bundle.multi
+│   ├── fractales_*.multi          # ← copies des sources (affichage contextuel)
 │   ├── fractales_*.py             # ← transpilations individuelles (affichage contextuel)
 │   ├── mandelbrot_transpiled.py   # ← transpilation du bundle complet
 │   └── benchmark.json
@@ -325,14 +325,14 @@ Le flux de contribution est documenté dans [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 Résumé des règles les plus importantes :
 
-- Les implémentations canoniques des fractales vivent dans `src/*.ml`.
-- `public/main_wasm_bundle.ml` et `public/main.ml` sont régénérés ; ne les éditez pas à la main.
-- Toute fractale ajoutée dans `src/main.ml` doit aussi être enregistrée dans `scripts/compile_wasm.ml`, `scripts/integration_checks.py` et `public/js/renderer.js`.
+- Les implémentations canoniques des fractales vivent dans `src/*.multi`.
+- `public/main_wasm_bundle.multi` et `public/main.multi` sont régénérés ; ne les éditez pas à la main.
+- Toute fractale ajoutée dans `src/main.multi` doit aussi être enregistrée dans `scripts/compile_wasm.multi`, `scripts/integration_checks.py` et `public/js/renderer.js`.
 - Après une modification significative, exécutez les vérifications locales avant d'ouvrir une PR.
 
 ---
 
-## Nouveaux modules — `fractales_lisse.ml`
+## Nouveaux modules — `fractales_lisse.multi`
 
 Implémente la **coloration lisse** (smooth coloring) pour les ensembles d'évasion.
 La formule `μ = iter + 2 − (ln ln |z|² − ln ln 2) / ln 2` élimine les bandes de couleur.
@@ -356,7 +356,7 @@ Fractales exposées : `mandelbrot_lisse`, `julia_lisse`, `burning_ship_lisse`, `
 
 ---
 
-## Nouveaux modules — `fractales_orbitrap.ml`
+## Nouveaux modules — `fractales_orbitrap.multi`
 
 Implémente les **pièges orbitaux** (orbit traps). À chaque itération, la distance minimale
 de l'orbite à une forme géométrique (cercle `|z|=1`, axes, diagonale) est enregistrée.
@@ -441,7 +441,7 @@ Le bouton `Exporter` ouvre un panneau avec quatre fonctions :
 
 La séparation des rôles reste volontaire :
 
-- `src/fractales_export.ml` contient les helpers français `interpoler_lineaire`, `interpoler_logarithmique` et `ajuster_iterations_export`.
+- `src/fractales_export.multi` contient les helpers français `interpoler_lineaire`, `interpoler_logarithmique` et `ajuster_iterations_export`.
 - `public/js/renderer.js` orchestre l'export et délègue le rendu hors écran, `MediaRecorder`, `toBlob()` et le téléchargement à `public/js/renderer-export.js`.
 
 ---

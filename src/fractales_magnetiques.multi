@@ -1,8 +1,8 @@
-# fractales_magnetiques.ml
+# fractales_magnetiques.multi
 # Nouvelles fractales : Magnet I, Magnet II, Lambda (logistique complexe)
 #
 # Ces fonctions sont compilées vers WebAssembly (ajoutées à MODULES_WASM).
-# Elles complètent la hiérarchie OOP de fractales_classes.ml.
+# Elles complètent la hiérarchie OOP de fractales_classes.multi.
 #
 # Références mathématiques :
 #   Magnet I  : z_{n+1} = ((z² + c - 1) / (2z + c - 2))²

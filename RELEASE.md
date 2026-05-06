@@ -8,9 +8,9 @@ Cette version livre une application GitHub Pages qui compile des sources multili
 ## Points forts à reprendre dans la release GitHub
 
 - Plus de cinquante fractales disponibles, couvrant les familles Évasion, Dynamique, IFS, L-système et Magnétiques.
-- Pipeline original en français: les implémentations canoniques vivent dans `src/*.ml` puis sont compilées en WebAssembly pour le navigateur.
+- Pipeline original en français: les implémentations canoniques vivent dans `src/*.multi` puis sont compilées en WebAssembly pour le navigateur.
 - Prise en charge des fractales 3D avec backend WebGL dédié pour `tetraedre_sierpinski`, `julia_quaternion` et `mandelbox`.
-- Affichage contextuel du source multilingual `.ml` et de la version Python transpilée dans la barre latérale.
+- Affichage contextuel du source multilingual `.multi` et de la version Python transpilée dans la barre latérale.
 - Export PNG courant, PNG haute résolution et vidéo WebM de zoom.
 - Palettes préréglées et palette personnalisée éditable depuis l'interface.
 - Build et déploiement GitHub Pages automatisés via GitHub Actions.
@@ -44,4 +44,4 @@ git push origin v0.1.0
 ## Notes
 
 - Cette release correspond à la première base stable documentée du projet.
-- `fractales_classes.ml` reste un module de démonstration Python-only et ne fait pas partie du bundle WASM actif.
+- `fractales_classes.multi` reste un module de démonstration Python-only et ne fait pas partie du bundle WASM actif.

@@ -6,7 +6,7 @@ These instructions apply to the entire repository.
 
 ## Project Rules
 
-- The canonical fractal implementations must live in the French multilingual source files under `src/*.ml`.
+- The canonical fractal implementations must live in the French multilingual source files under `src/*.multi`.
 - Do not introduce a new fractal only in `public/js/renderer.js` unless it is strictly a browser-side drawing helper; the fractal name itself must exist in the French multilingual source.
 - Prefer French user-facing labels and status text in the UI.
 - Keep internal exported ids stable once introduced unless a rename is explicitly requested.
@@ -16,17 +16,17 @@ These instructions apply to the entire repository.
 When adding or changing a fractal, update all relevant places together:
 
 1. Add or update the function in the appropriate French multilingual source module in `src/`:
-   - `fractales_escape.ml` — escape-time (Mandelbrot family, Julia family, Burning Julia, Biomorphe)
-   - `fractales_variantes.ml` — Celtic, Buffalo, Perpendicular variants, Heart, Duck
-   - `fractales_dynamique.ml` — Newton, Phoenix, Lyapunov, attractors, Duffing
-   - `fractales_ifs.ml` — IFS / Barnsley, Sierpinski, Mandelbulb, Vicsek, …
-   - `fractales_lsystem.ml` — L-system geometric curves
-   - `fractales_magnetiques.ml` — Magnet family, Lambda, Nova magnétique
-   - `fractales_lisse.ml` — smooth coloring variants (escape-time with μ formula)
-   - `fractales_orbitrap.ml` — orbit trap variants (min-distance encoding)
-   - `fractales_export.ml` — interpolation / export helpers only (no fractal definitions)
-2. Register the fractal in `src/main.ml`.
-3. Update WASM export expectations in `scripts/compile_wasm.ml`.
+   - `fractales_escape.multi` — escape-time (Mandelbrot family, Julia family, Burning Julia, Biomorphe)
+   - `fractales_variantes.multi` — Celtic, Buffalo, Perpendicular variants, Heart, Duck
+   - `fractales_dynamique.multi` — Newton, Phoenix, Lyapunov, attractors, Duffing
+   - `fractales_ifs.multi` — IFS / Barnsley, Sierpinski, Mandelbulb, Vicsek, …
+   - `fractales_lsystem.multi` — L-system geometric curves
+   - `fractales_magnetiques.multi` — Magnet family, Lambda, Nova magnétique
+   - `fractales_lisse.multi` — smooth coloring variants (escape-time with μ formula)
+   - `fractales_orbitrap.multi` — orbit trap variants (min-distance encoding)
+   - `fractales_export.multi` — interpolation / export helpers only (no fractal definitions)
+2. Register the fractal in `src/main.multi`.
+3. Update WASM export expectations in `scripts/compile_wasm.multi`.
 4. Update integration expectations in `scripts/integration_checks.py`.
 5. Wire the fractal into `public/js/renderer.js`:
    - presets
@@ -70,7 +70,7 @@ Any new 3D orbit fractal should:
 - Avoid degenerate orbits: if an update rule is `nz = f(x, z) + c_z`, verify at least one of `z₀ ≠ 0` or `c_z ≠ 0`; otherwise z stays zero and the 3D formula collapses to 2D.
 - Guard against orbit escape in iterative maps with growth: add a reset if `|orbit| > threshold` before projecting.
 
-### Smooth coloring — `fractales_lisse.ml`
+### Smooth coloring — `fractales_lisse.multi`
 
 Smooth coloring applies the formula `μ = iter + 2 − (ln ln |z|² − ln ln 2) / ln 2` at escape
 to eliminate iteration banding. Key constraints for new smooth variants:
@@ -82,7 +82,7 @@ to eliminate iteration banding. Key constraints for new smooth variants:
 - 4-parameter variants (e.g. `julia_lisse(zx, zy, c_re, c_im, max_iter)`) follow the same
   dispatch convention as `julia` — they read `params.juliaCre` / `params.juliaCim` in the renderer.
 
-### Orbit trap coloring — `fractales_orbitrap.ml`
+### Orbit trap coloring — `fractales_orbitrap.multi`
 
 Orbit trap fractals record the minimum distance from the orbit to a geometric shape and return
 `max_iter / (1 + dist_min × scale)`. This encodes coloring as a single float in `[0, max_iter]`
@@ -162,13 +162,13 @@ python scripts\integration_checks.py
 python scripts\ui_smoke_checks.py
 ```
 
-Rebuild order matters: `compile_wasm.py` regenerates `public/main_wasm_bundle.ml` from `src/*.ml`, overwriting any manual edits to the bundle. Always edit `src/fractales_ifs.ml` (and sibling modules), never `public/main_wasm_bundle.ml` directly.
+Rebuild order matters: `compile_wasm.py` regenerates `public/main_wasm_bundle.multi` from `src/*.multi`, overwriting any manual edits to the bundle. Always edit `src/fractales_ifs.multi` (and sibling modules), never `public/main_wasm_bundle.multi` directly.
 
 ## Integration check contract
 
-`scripts/integration_checks.py` enforces that every fractal registered in `src/main.ml` appears in **all** of:
+`scripts/integration_checks.py` enforces that every fractal registered in `src/main.multi` appears in **all** of:
 - `REQUIRED_EXPORTS` in `integration_checks.py`
-- `exports_requises` in `scripts/compile_wasm.ml`
+- `exports_requises` in `scripts/compile_wasm.multi`
 - `FRACTAL_FAMILIES` in `renderer.js`
 - `VIEW_PRESETS` in `renderer.js`
 - `FRACTAL_SOURCE_MAP` in `renderer.js`
@@ -184,4 +184,4 @@ POINT_FRACTALS still need a `wasmFunctions` entry (the WASM function is compiled
 
 - Prefer ASCII in code unless the file already uses accented French text.
 - Keep changes consistent with the repository’s existing French terminology.
-- `public/main.ml` is overwritten by `compile_wasm.py` (copied from `src/main.ml`). Edit `src/main.ml`.
+- `public/main.multi` is overwritten by `compile_wasm.py` (copied from `src/main.multi`). Edit `src/main.multi`.

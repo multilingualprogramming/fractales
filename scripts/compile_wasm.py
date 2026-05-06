@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict launcher: transpile scripts/compile_wasm.ml and execute main()."""
+"""Strict launcher: transpile scripts/compile_wasm.multi and execute main()."""
 
 import io
 import os
@@ -31,27 +31,27 @@ def main() -> None:
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
     racine = Path(__file__).parent.parent
-    script_ml = racine / "scripts" / "compile_wasm.ml"
-    if not script_ml.exists():
-        raise RuntimeError(f"Script multilingual introuvable: {script_ml}")
+    script_multi = racine / "scripts" / "compile_wasm.multi"
+    if not script_multi.exists():
+        raise RuntimeError(f"Script multilingual introuvable: {script_multi}")
 
     ajouter_depot_multilingual_au_chemin(racine)
     from multilingualprogramming import ProgramExecutor
     from multilingualprogramming.codegen.runtime_builtins import RuntimeBuiltins
 
-    source_ml = script_ml.read_text(encoding="utf-8")
-    code_python = ProgramExecutor(language="fr").transpile(source_ml)
+    source_multi = script_multi.read_text(encoding="utf-8")
+    code_python = ProgramExecutor(language="fr").transpile(source_multi)
     if not code_python or not code_python.strip():
-        raise RuntimeError("Transpilation vide pour scripts/compile_wasm.ml")
+        raise RuntimeError("Transpilation vide pour scripts/compile_wasm.multi")
 
     espace_builtins = RuntimeBuiltins("fr").namespace()
     espace_execution = dict(espace_builtins)
-    espace_execution.update({"__name__": "__compile_wasm_ml__", "__file__": str(script_ml)})
+    espace_execution.update({"__name__": "__compile_wasm_multi__", "__file__": str(script_multi)})
     exec(code_python, espace_execution)
 
     point_entree = espace_execution.get("main")
     if not callable(point_entree):
-        raise RuntimeError("Fonction main() introuvable dans scripts/compile_wasm.ml")
+        raise RuntimeError("Fonction main() introuvable dans scripts/compile_wasm.multi")
     point_entree()
 
 

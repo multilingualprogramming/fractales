@@ -7,12 +7,12 @@ importer importlib
 depuis pathlib importer Path
 
 soit RACINE = Path(__file__).parent.parent
-soit SOURCE_ML = RACINE / "src" / "main.ml"
+soit SOURCE_MULTI = RACINE / "src" / "main.multi"
 soit DOSSIER_PUBLIC = RACINE / "public"
 DOSSIER_PUBLIC.mkdir(parents=Vrai, exist_ok=Vrai)
 
-soit SORTIE_ML = DOSSIER_PUBLIC / "main.ml"
-soit SORTIE_ML_BUNDLE = DOSSIER_PUBLIC / "main_wasm_bundle.ml"
+soit SORTIE_MULTI = DOSSIER_PUBLIC / "main.multi"
+soit SORTIE_MULTI_BUNDLE = DOSSIER_PUBLIC / "main_wasm_bundle.multi"
 soit SORTIE_PY = DOSSIER_PUBLIC / "mandelbrot_transpiled.py"
 soit SORTIE_BENCH = DOSSIER_PUBLIC / "benchmark.json"
 soit SORTIE_WASM_RS = DOSSIER_PUBLIC / "wasm_intermediate.rs"
@@ -122,33 +122,33 @@ déf copier_sources_modules():
     # Copie chaque module source vers public/ et le transpile en Python individuel.
     # Permet l'affichage contextuel dans la barre latérale (un fichier par fractale).
     pour nom_module dans MODULES_WASM:
-        soit chemin_src = RACINE / "src" / f"{nom_module}.ml"
+        soit chemin_src = RACINE / "src" / f"{nom_module}.multi"
         si non chemin_src.exists():
             continuer
-        shutil.copy(chemin_src, DOSSIER_PUBLIC / f"{nom_module}.ml")
+        shutil.copy(chemin_src, DOSSIER_PUBLIC / f"{nom_module}.multi")
         essayer:
             soit source_mod = chemin_src.read_text(encoding="utf-8")
             soit code_py_mod = transpiler_strict(source_mod)
             (DOSSIER_PUBLIC / f"{nom_module}.py").write_text(code_py_mod, encoding="utf-8")
-            afficher(f"    OK {nom_module}.ml -> {nom_module}.py")
+            afficher(f"    OK {nom_module}.multi -> {nom_module}.py")
         sauf Exception comme err:
             afficher(f"    Avertissement ({nom_module}): {err}")
     # Module OOP : transpilation Python uniquement (classes non supportees en WAT)
-    soit chemin_classes = RACINE / "src" / "fractales_classes.ml"
+    soit chemin_classes = RACINE / "src" / "fractales_classes.multi"
     si chemin_classes.exists():
-        shutil.copy(chemin_classes, DOSSIER_PUBLIC / "fractales_classes.ml")
+        shutil.copy(chemin_classes, DOSSIER_PUBLIC / "fractales_classes.multi")
         essayer:
             soit source_cls = chemin_classes.read_text(encoding="utf-8")
             soit code_py_cls = transpiler_strict(source_cls)
             (DOSSIER_PUBLIC / "fractales_classes.py").write_text(code_py_cls, encoding="utf-8")
-            afficher(f"    OK fractales_classes.ml -> fractales_classes.py")
+            afficher(f"    OK fractales_classes.multi -> fractales_classes.py")
         sauf Exception comme err:
             afficher(f"    Avertissement (fractales_classes): {err}")
 
 déf construire_source_wasm_modulaire():
-    soit morceaux = ["# Bundle WASM genere automatiquement depuis src/*.ml", "importer math", ""]
+    soit morceaux = ["# Bundle WASM genere automatiquement depuis src/*.multi", "importer math", ""]
     pour nom_module dans MODULES_WASM:
-        soit chemin = RACINE / "src" / f"{nom_module}.ml"
+        soit chemin = RACINE / "src" / f"{nom_module}.multi"
         si non chemin.exists():
             lever RuntimeError(f"Module introuvable pour bundle WASM: {chemin}")
         soit texte = chemin.read_text(encoding="utf-8")
@@ -178,19 +178,19 @@ déf main():
     afficher(SEPARATEUR)
 
     afficher("")
-    afficher(f"[1] Lecture de {SOURCE_ML.relative_to(RACINE)}")
-    si non SOURCE_ML.exists():
-        lever RuntimeError(f"Fichier source introuvable: {SOURCE_ML}")
-    soit source_humaine = SOURCE_ML.read_text(encoding="utf-8")
+    afficher(f"[1] Lecture de {SOURCE_MULTI.relative_to(RACINE)}")
+    si non SOURCE_MULTI.exists():
+        lever RuntimeError(f"Fichier source introuvable: {SOURCE_MULTI}")
+    soit source_humaine = SOURCE_MULTI.read_text(encoding="utf-8")
     afficher(f"    {longueur(source_humaine)} caracteres, {source_humaine.count(chr(10))} lignes")
 
     afficher("")
-    afficher(f"[2] Copie vers {SORTIE_ML.relative_to(RACINE)}")
-    shutil.copy(SOURCE_ML, SORTIE_ML)
+    afficher(f"[2] Copie vers {SORTIE_MULTI.relative_to(RACINE)}")
+    shutil.copy(SOURCE_MULTI, SORTIE_MULTI)
     afficher("    Copie.")
     soit source_wasm = construire_source_wasm_modulaire()
-    SORTIE_ML_BUNDLE.write_text(source_wasm, encoding="utf-8")
-    afficher(f"    Bundle WASM ecrit: {SORTIE_ML_BUNDLE.relative_to(RACINE)}")
+    SORTIE_MULTI_BUNDLE.write_text(source_wasm, encoding="utf-8")
+    afficher(f"    Bundle WASM ecrit: {SORTIE_MULTI_BUNDLE.relative_to(RACINE)}")
 
     si SORTIE_WASM.exists():
         SORTIE_WASM.unlink()
@@ -243,8 +243,8 @@ déf main():
     afficher("")
     afficher(SEPARATEUR)
     afficher("  OK Build strict multilingual termine.")
-    afficher(f"    ML   : {SORTIE_ML.relative_to(RACINE)}")
-    afficher(f"    ML+  : {SORTIE_ML_BUNDLE.relative_to(RACINE)}")
+    afficher(f"    MULTI   : {SORTIE_MULTI.relative_to(RACINE)}")
+    afficher(f"    MULTI+  : {SORTIE_MULTI_BUNDLE.relative_to(RACINE)}")
     afficher(f"    PY   : {SORTIE_PY.relative_to(RACINE)}")
     si intermediaire_wasm_disponible:
         afficher(f"    RS   : {SORTIE_WASM_RS.relative_to(RACINE)}")

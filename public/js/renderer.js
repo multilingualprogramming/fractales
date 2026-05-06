@@ -4,7 +4,7 @@
  * Charge mandelbrot.wasm (compilé depuis le source français multilingual),
  * rend l'ensemble de Mandelbrot sur un <canvas>, et gère toute l'interactivité.
  *
- * Pipeline : source français (.ml) ? WASM (build-time) ? browser WebAssembly API
+ * Pipeline : source français (.multi) ? WASM (build-time) ? browser WebAssembly API
  */
 
 "use strict";
@@ -2922,7 +2922,7 @@ window.addEventListener("resize", () => {
 });
 
 /**
- * Associe chaque fractale au module source (.ml / .py) qui la contient.
+ * Associe chaque fractale au module source (.multi / .py) qui la contient.
  * Utilisé pour l'affichage contextuel dans la barre latérale.
  */
 const FRACTAL_SOURCE_MAP = {

@@ -119,7 +119,7 @@ def extract_js_object_keys(text: str, name: str) -> list[str]:
 def extract_main_mode_names(text: str) -> set[str]:
     mode_lists = re.findall(r'soit MODES_[A-Z_]+ = \[(.*?)\]', text)
     if not mode_lists:
-        fail("unable to parse MODES_* from src/main.ml")
+        fail("unable to parse MODES_* from src/main.multi")
     names: set[str] = set()
     for raw_list in mode_lists:
         names.update(re.findall(r'"([^"]+)"', raw_list))
@@ -128,7 +128,7 @@ def extract_main_mode_names(text: str) -> set[str]:
 
 def extract_source_function_names() -> set[str]:
     names: set[str] = set()
-    for path in SRC.glob("*.ml"):
+    for path in SRC.glob("*.multi"):
         text = path.read_text(encoding="utf-8")
         names.update(re.findall(r"^déf\s+([a-zA-Z0-9_]+)\s*\(", text, re.MULTILINE))
     return names
@@ -228,14 +228,14 @@ def check_renderer_contract() -> None:
 
 
 def check_source_keywords() -> None:
-    for path in SRC.glob("*.ml"):
+    for path in SRC.glob("*.multi"):
         text = path.read_text(encoding="utf-8")
         if "fonction " in text:
             fail(f"legacy keyword 'fonction' still present in {path.relative_to(ROOT)}")
 
 
 def check_fractal_registration_consistency() -> None:
-    main_text = (SRC / "main.ml").read_text(encoding="utf-8")
+    main_text = (SRC / "main.multi").read_text(encoding="utf-8")
     renderer_text = (PUBLIC / "js" / "renderer.js").read_text(encoding="utf-8")
 
     main_names = extract_main_mode_names(main_text)
@@ -244,21 +244,21 @@ def check_fractal_registration_consistency() -> None:
 
     missing_source_impl = sorted((main_names - {"mandelbrot_classe"}) - source_functions)
     if missing_source_impl:
-        fail(f"fractals registered in src/main.ml without source implementation: {missing_source_impl}")
+        fail(f"fractals registered in src/main.multi without source implementation: {missing_source_impl}")
 
     missing_in_renderer = sorted(main_names - renderer_names)
     if missing_in_renderer:
-        fail(f"fractals registered in src/main.ml but missing from renderer families: {missing_in_renderer}")
+        fail(f"fractals registered in src/main.multi but missing from renderer families: {missing_in_renderer}")
 
     missing_in_exports = sorted((main_names - {"mandelbrot_classe"}) - REQUIRED_EXPORTS)
     if missing_in_exports:
-        fail(f"fractals registered in src/main.ml but missing from REQUIRED_EXPORTS: {missing_in_exports}")
+        fail(f"fractals registered in src/main.multi but missing from REQUIRED_EXPORTS: {missing_in_exports}")
 
 
 def main() -> None:
     print("[integration] running checks...")
-    require_file(PUBLIC / "main.ml")
-    require_file(PUBLIC / "main_wasm_bundle.ml")
+    require_file(PUBLIC / "main.multi")
+    require_file(PUBLIC / "main_wasm_bundle.multi")
     require_file(PUBLIC / "mandelbrot_transpiled.py")
     require_file(PUBLIC / "benchmark.json")
 

@@ -138,27 +138,27 @@ export function initialiserPanneauSource({
 
   async function loadSources(fractalName) {
     const module = fractalSourceMap[fractalName] ?? "main";
-    tabFrench.textContent = `FR ${module}.ml`;
+    tabFrench.textContent = `FR ${module}.multi`;
     tabPython.textContent = `PY ${module}.py`;
 
     if (sourcesCache[module]) {
-      codeFrench.innerHTML = sourcesCache[module].mlHtml;
+      codeFrench.innerHTML = sourcesCache[module].multiHtml;
       codePython.innerHTML = sourcesCache[module].pyHtml;
       return;
     }
 
-    codeFrench.innerHTML = `<span class="cmt"># Chargement de ${module}.ml…</span>`;
+    codeFrench.innerHTML = `<span class="cmt"># Chargement de ${module}.multi…</span>`;
     codePython.innerHTML = `<span class="cmt"># Chargement de ${module}.py…</span>`;
 
-    let mlHtml;
+    let multiHtml;
     try {
-      const response = await fetch(`${module}.ml`);
-      const source = response.ok ? await response.text() : `# Source indisponible (${module}.ml)`;
-      mlHtml = highlightFrench(escapeHtml(source));
+      const response = await fetch(`${module}.multi`);
+      const source = response.ok ? await response.text() : `# Source indisponible (${module}.multi)`;
+      multiHtml = highlightFrench(escapeHtml(source));
     } catch {
-      mlHtml = `<span class="cmt"># Impossible de charger ${module}.ml</span>`;
+      multiHtml = `<span class="cmt"># Impossible de charger ${module}.multi</span>`;
     }
-    codeFrench.innerHTML = mlHtml;
+    codeFrench.innerHTML = multiHtml;
 
     let pyHtml;
     try {
@@ -170,7 +170,7 @@ export function initialiserPanneauSource({
     }
     codePython.innerHTML = pyHtml;
 
-    sourcesCache[module] = { mlHtml, pyHtml };
+    sourcesCache[module] = { multiHtml, pyHtml };
   }
 
   async function loadBenchmark() {

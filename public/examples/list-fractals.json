@@ -1,0 +1,84 @@
+{
+  "tool": "list_fractals",
+  "description": "Retrieve the complete fractal catalogue",
+  "request": {},
+  "http": {
+    "method": "GET",
+    "url": "https://multilingualprogramming.github.io/fractales/api/fractals.json"
+  },
+  "response_excerpt": {
+    "schema": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
+    "generated_from": "public/js/renderer.js",
+    "base_url": "https://multilingualprogramming.github.io/fractales",
+    "total": 71,
+    "fractals": [
+      {
+        "id": "mandelbrot",
+        "label": "Mandelbrot",
+        "description": "The canonical Mandelbrot set: z_{n+1} = z_n^2 + c, escape-time coloring.",
+        "family": "evasion",
+        "family_label": "Évasion",
+        "render_mode": "escape_time",
+        "is_3d": false,
+        "parameters": {"has_julia_c": false, "has_power": false},
+        "source": {
+          "module": "fractales_escape",
+          "language": "multilingual",
+          "url": "https://multilingualprogramming.github.io/fractales/fractales_escape.multi",
+          "python_url": "https://multilingualprogramming.github.io/fractales/fractales_escape.py"
+        },
+        "preset": {"centerX": -0.5, "centerY": 0.0, "span": 3.5},
+        "default_pixelsize": 0.004375,
+        "deep_link": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&ps=4.3750e-03&i=256&p=aurora",
+        "viewer_url": "https://multilingualprogramming.github.io/fractales/"
+      },
+      {
+        "id": "julia",
+        "label": "Julia (c = -0.8 + 0.156i)",
+        "description": "Julia set for a fixed complex parameter c, variable z_0.",
+        "family": "evasion",
+        "family_label": "Évasion",
+        "render_mode": "escape_time",
+        "is_3d": false,
+        "parameters": {"has_julia_c": true, "has_power": false},
+        "source": {
+          "module": "fractales_escape",
+          "language": "multilingual",
+          "url": "https://multilingualprogramming.github.io/fractales/fractales_escape.multi",
+          "python_url": "https://multilingualprogramming.github.io/fractales/fractales_escape.py"
+        },
+        "preset": {"centerX": 0.0, "centerY": 0.0, "span": 3.0},
+        "default_pixelsize": 0.00375,
+        "deep_link": "https://multilingualprogramming.github.io/fractales/#f=julia&x=0.0&y=0.0&ps=3.7500e-03&i=256&p=aurora",
+        "viewer_url": "https://multilingualprogramming.github.io/fractales/"
+      },
+      {
+        "id": "barnsley",
+        "label": "Barnsley",
+        "description": "Barnsley fern: iterated function system (IFS) botanical fractal.",
+        "family": "ifs",
+        "family_label": "IFS",
+        "render_mode": "point_cloud",
+        "is_3d": false,
+        "parameters": {"has_julia_c": false, "has_power": false},
+        "source": {
+          "module": "fractales_ifs",
+          "language": "multilingual",
+          "url": "https://multilingualprogramming.github.io/fractales/fractales_ifs.multi",
+          "python_url": "https://multilingualprogramming.github.io/fractales/fractales_ifs.py"
+        },
+        "preset": {"centerX": 0.0, "centerY": 0.0, "span": 4.0},
+        "default_pixelsize": 0.005,
+        "deep_link": "https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=5.0000e-03&i=256&p=aurora",
+        "viewer_url": "https://multilingualprogramming.github.io/fractales/"
+      },
+      {"note": "...and 68 more fractals — fetch /api/fractals.json for the full list"}
+    ]
+  },
+  "notes": [
+    "The full response contains all 71 fractals. This example shows 3.",
+    "Use 'family' to filter by mathematical type.",
+    "Use 'render_mode' to filter by rendering approach.",
+    "The 'deep_link' field is a ready-to-use viewer URL."
+  ]
+}

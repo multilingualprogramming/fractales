@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
+  "title": "Fractal",
+  "description": "A fractal entry returned by the Fractales static API",
+  "type": "object",
+  "required": ["id", "label", "description", "family", "render_mode", "is_3d", "parameters", "source", "preset", "default_pixelsize", "deep_link", "viewer_url"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique fractal identifier in snake_case",
+      "examples": ["mandelbrot", "julia", "barnsley", "koch"]
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short mathematical description of the iteration formula or construction method"
+    },
+    "family": {
+      "type": "string",
+      "enum": ["evasion", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "classe"],
+      "description": "Family identifier: evasion=escape-time, dynamique=attractors/basins, ifs=iterated function systems, lsystem=L-system curves, magnetique=magnetic renormalization, lisse=smooth coloring, orbitrap=orbit trap, classe=OOP demo"
+    },
+    "family_label": {
+      "type": "string",
+      "description": "Human-readable family name"
+    },
+    "render_mode": {
+      "type": "string",
+      "enum": ["escape_time", "point_cloud", "line", "webgl_3d"],
+      "description": "Rendering approach used by the viewer"
+    },
+    "is_3d": {
+      "type": "boolean",
+      "description": "True if rendered in a 3D WebGL context"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Extra parameters accepted by this fractal",
+      "properties": {
+        "has_julia_c": {
+          "type": "boolean",
+          "description": "Fractal accepts a complex parameter c (Julia sets)"
+        },
+        "has_power": {
+          "type": "boolean",
+          "description": "Fractal accepts an integer degree parameter d (Multibrot)"
+        }
+      },
+      "required": ["has_julia_c", "has_power"]
+    },
+    "source": {
+      "type": "object",
+      "description": "Source code location",
+      "required": ["module", "language", "url", "python_url"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "Source module filename without extension"
+        },
+        "language": {
+          "type": "string",
+          "const": "multilingual",
+          "description": "Implementation language (multilingual, a French-syntax language compiled to WebAssembly)"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the .multi (multilingual) source file"
+        },
+        "python_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the auto-transpiled Python equivalent"
+        }
+      }
+    },
+    "preset": {
+      "type": "object",
+      "description": "Default view preset in complex plane coordinates",
+      "required": ["centerX", "centerY", "span"],
+      "properties": {
+        "centerX": {"type": "number", "description": "Real axis center"},
+        "centerY": {"type": "number", "description": "Imaginary axis center"},
+        "span": {"type": "number", "description": "Total visible width in complex plane units at 800px reference width"}
+      }
+    },
+    "default_pixelsize": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Default pixel size (span / 800). Use as ps= in deep links for the default zoom."
+    },
+    "deep_link": {
+      "type": "string",
+      "format": "uri",
+      "description": "Ready-to-use viewer URL that opens this fractal at its default view with aurora palette"
+    },
+    "viewer_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base viewer URL (without parameters)"
+    }
+  }
+}

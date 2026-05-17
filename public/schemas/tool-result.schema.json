@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multilingualprogramming.github.io/fractales/schemas/tool-result.schema.json",
+  "title": "ToolResult",
+  "description": "Generic wrapper for results returned when an AI agent executes a Fractales tool. Agents should unwrap 'data' and handle 'error' before passing results to the user.",
+  "type": "object",
+  "required": ["tool", "success"],
+  "properties": {
+    "tool": {
+      "type": "string",
+      "description": "Name of the tool that produced this result"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "True if the tool call completed without error"
+    },
+    "data": {
+      "description": "The result payload. Shape depends on the tool. See individual tool definitions in tools.json.",
+      "oneOf": [
+        {"type": "object"},
+        {"type": "array"},
+        {"type": "string"},
+        {"type": "null"}
+      ]
+    },
+    "error": {
+      "type": "object",
+      "description": "Present when success is false",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["NOT_FOUND", "INVALID_PARAM", "NETWORK_ERROR", "PARSE_ERROR"],
+          "description": "Machine-readable error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error explanation"
+        }
+      }
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL that was fetched to produce this result (for GET-based tools)"
+    }
+  }
+}

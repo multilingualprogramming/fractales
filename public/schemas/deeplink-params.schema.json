@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multilingualprogramming.github.io/fractales/schemas/deeplink-params.schema.json",
+  "title": "DeepLink Parameters",
+  "description": "Parameters for the fractal viewer URL hash fragment. The viewer reads these from window.location.hash on load and encodes them on every navigation action. Format: BASE_URL/#f={f}&x={x}&y={y}&ps={ps}&r={r}&i={i}&p={p}",
+  "type": "object",
+  "required": ["f", "x", "y", "ps"],
+  "properties": {
+    "f": {
+      "type": "string",
+      "description": "Fractal identifier (snake_case). Must match an id in /api/fractals.json. The viewer falls back to 'mandelbrot' for unknown values.",
+      "examples": ["mandelbrot", "julia", "barnsley", "burning_ship", "lorenz_attractor"]
+    },
+    "x": {
+      "type": "number",
+      "description": "Center X coordinate on the real axis of the complex plane"
+    },
+    "y": {
+      "type": "number",
+      "description": "Center Y coordinate on the imaginary axis of the complex plane"
+    },
+    "ps": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Pixel size: how many complex-plane units correspond to one pixel. Controls zoom level. Typical values: 4e-3 (full view), 1e-6 (deep zoom), 1e-12 (extreme zoom). The viewer uses logarithmic interpolation during animated navigation."
+    },
+    "r": {
+      "type": "number",
+      "description": "Rotation angle in radians. Applied to the complex plane before sampling. Range: 0 to 2π (values outside are accepted but normalized). Default: 0.",
+      "default": 0
+    },
+    "i": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 10000,
+      "description": "Maximum iterations for escape-time computation. Higher values reveal finer detail at the cost of render time. Default: 256.",
+      "default": 256
+    },
+    "p": {
+      "type": "string",
+      "enum": ["aurora", "feu", "ocean", "braise", "lagon", "crepuscule", "neon", "infrared", "personnalisee"],
+      "description": "Color palette identifier. Default: aurora. Use /api/palettes.json for descriptions.",
+      "default": "aurora"
+    }
+  },
+  "examples": [
+    {
+      "f": "mandelbrot",
+      "x": -0.5,
+      "y": 0.0,
+      "ps": 0.004375,
+      "i": 256,
+      "p": "aurora"
+    },
+    {
+      "f": "mandelbrot",
+      "x": -0.7436447860,
+      "y": 0.1318252536,
+      "ps": 1.5e-9,
+      "r": 0.523,
+      "i": 1024,
+      "p": "ocean"
+    },
+    {
+      "f": "julia",
+      "x": 0.0,
+      "y": 0.0,
+      "ps": 0.00375,
+      "i": 512,
+      "p": "neon"
+    }
+  ]
+}

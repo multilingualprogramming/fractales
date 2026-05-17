@@ -1,0 +1,58 @@
+{
+  "tool": "get_fractal",
+  "description": "Retrieve complete metadata for the Mandelbrot set",
+  "request": {
+    "fractal_id": "mandelbrot"
+  },
+  "http": {
+    "method": "GET",
+    "url": "https://multilingualprogramming.github.io/fractales/api/fractals.json",
+    "note": "Fetch the full catalog, then filter where id === 'mandelbrot'"
+  },
+  "response": {
+    "id": "mandelbrot",
+    "label": "Mandelbrot",
+    "description": "The canonical Mandelbrot set: z_{n+1} = z_n^2 + c, escape-time coloring.",
+    "family": "evasion",
+    "family_label": "Évasion",
+    "render_mode": "escape_time",
+    "is_3d": false,
+    "parameters": {
+      "has_julia_c": false,
+      "has_power": false
+    },
+    "source": {
+      "module": "fractales_escape",
+      "language": "multilingual",
+      "url": "https://multilingualprogramming.github.io/fractales/fractales_escape.multi",
+      "python_url": "https://multilingualprogramming.github.io/fractales/fractales_escape.py"
+    },
+    "preset": {
+      "centerX": -0.5,
+      "centerY": 0.0,
+      "span": 3.5
+    },
+    "default_pixelsize": 0.004375,
+    "deep_link": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&ps=4.3750e-03&i=256&p=aurora",
+    "viewer_url": "https://multilingualprogramming.github.io/fractales/"
+  },
+  "follow_up_actions": [
+    {
+      "action": "Open in viewer",
+      "url": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&ps=4.3750e-03&i=256&p=aurora"
+    },
+    {
+      "action": "Read multilingual source",
+      "url": "https://multilingualprogramming.github.io/fractales/fractales_escape.multi"
+    },
+    {
+      "action": "Read Python transpilation",
+      "url": "https://multilingualprogramming.github.io/fractales/fractales_escape.py"
+    },
+    {
+      "action": "Get all escape-time fractals",
+      "tool": "get_family",
+      "request": {"family_id": "evasion"}
+    }
+  ]
+}

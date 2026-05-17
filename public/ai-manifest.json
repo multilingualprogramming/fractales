@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "name": "Fractales",
+  "tagline": "Multilingual WebAssembly fractal explorer — 71 fractals, static GitHub Pages, FAIR open knowledge",
+  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 71 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
+  "base_url": "https://multilingualprogramming.github.io/fractales",
+  "viewer_url": "https://multilingualprogramming.github.io/fractales/",
+  "repository": "https://github.com/multilingualprogramming/fractales",
+  "license": "open",
+  "language": "multilingual",
+  "runtime": "WebAssembly",
+  "hosting": "GitHub Pages (static)",
+  "capabilities": {
+    "machine_readable_catalog": true,
+    "deep_links": true,
+    "animated_navigation": true,
+    "rotation_support": true,
+    "source_code_access": true,
+    "benchmark_data": true,
+    "mcp_tools": true,
+    "openai_function_calling": true,
+    "server_required": false
+  },
+  "fair": {
+    "findable": {
+      "description": "All data is indexed at /api/families.json and /api/fractals.json",
+      "endpoints": [
+        "https://multilingualprogramming.github.io/fractales/api/fractals.json",
+        "https://multilingualprogramming.github.io/fractales/api/families.json",
+        "https://multilingualprogramming.github.io/fractales/api/palettes.json"
+      ]
+    },
+    "accessible": {
+      "description": "All resources served over HTTPS as static files, no authentication required",
+      "protocol": "HTTPS",
+      "authentication": "none"
+    },
+    "interoperable": {
+      "description": "Tools defined in MCP and OpenAI function-calling formats; schemas in JSON Schema draft 2020-12",
+      "formats": ["JSON", "JSON Schema", "MCP", "OpenAI-function-calling"]
+    },
+    "reusable": {
+      "description": "Source code in .multi (multilingual) and .py (Python transpiled) available at static URLs; fractal mathematics fully documented in API entries",
+      "source_access": "public"
+    }
+  },
+  "entry_points": {
+    "tools": "https://multilingualprogramming.github.io/fractales/tools.json",
+    "catalog": "https://multilingualprogramming.github.io/fractales/api/fractals.json",
+    "families": "https://multilingualprogramming.github.io/fractales/api/families.json",
+    "palettes": "https://multilingualprogramming.github.io/fractales/api/palettes.json",
+    "benchmark": "https://multilingualprogramming.github.io/fractales/benchmark.json",
+    "schemas": {
+      "fractal": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
+      "deeplink_params": "https://multilingualprogramming.github.io/fractales/schemas/deeplink-params.schema.json",
+      "tool_result": "https://multilingualprogramming.github.io/fractales/schemas/tool-result.schema.json"
+    },
+    "examples": {
+      "list_fractals": "https://multilingualprogramming.github.io/fractales/examples/list-fractals.json",
+      "get_fractal": "https://multilingualprogramming.github.io/fractales/examples/get-mandelbrot.json",
+      "construct_deeplink": "https://multilingualprogramming.github.io/fractales/examples/generate-deeplink.json",
+      "agent_workflow": "https://multilingualprogramming.github.io/fractales/examples/agent-workflow.json"
+    }
+  },
+  "fractal_stats": {
+    "total": 71,
+    "families": 8,
+    "render_modes": ["escape_time", "point_cloud", "line", "webgl_3d"],
+    "palettes": 9
+  },
+  "deeplink_format": {
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}",
+    "parameters": {
+      "f": "Fractal identifier (required)",
+      "x": "Center X in complex plane (required)",
+      "y": "Center Y in complex plane (required)",
+      "ps": "Pixel size — units per pixel, controls zoom (required)",
+      "r": "Rotation in radians (optional, default 0)",
+      "i": "Max iterations (optional, default 256)",
+      "p": "Palette identifier (optional, default aurora)"
+    }
+  },
+  "source_access": {
+    "description": "Each fractal is implemented in the multilingual programming language and transpiled to Python. Source files are served as static assets.",
+    "multilingual_pattern": "https://multilingualprogramming.github.io/fractales/{module}.multi",
+    "python_pattern": "https://multilingualprogramming.github.io/fractales/{module}.py",
+    "modules": [
+      "fractales_escape",
+      "fractales_variantes",
+      "fractales_dynamique",
+      "fractales_ifs",
+      "fractales_lsystem",
+      "fractales_magnetiques",
+      "fractales_lisse",
+      "fractales_orbitrap",
+      "fractales_export",
+      "fractales_navigation"
+    ]
+  },
+  "agent_guidance": {
+    "recommended_workflow": "1. Fetch /api/families.json to understand available categories. 2. Fetch /api/families/{id}.json or /api/fractals.json to find a specific fractal. 3. Call construct_deeplink to generate a viewer URL. 4. Optionally fetch the source code at the module URL.",
+    "no_server": "All operations are client-side. Tools that fetch data use GET requests to static JSON files. construct_deeplink requires no HTTP request at all.",
+    "deep_links_are_shareable": "Deep links encode the complete view state in the URL fragment. They open in any browser, load the correct fractal, and animate to the encoded position.",
+    "mcp_integration": "Register the tools from tools.json in any MCP-compatible client. The tools have no side effects and require no authentication."
+  }
+}

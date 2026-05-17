@@ -1,0 +1,82 @@
+{
+  "tool": "construct_deeplink",
+  "description": "Construct shareable viewer URLs for specific fractal views — no HTTP request required",
+  "examples": [
+    {
+      "name": "Default Mandelbrot view",
+      "description": "Open Mandelbrot at its default preset position",
+      "request": {
+        "fractal": "mandelbrot",
+        "centerX": -0.5,
+        "centerY": 0.0,
+        "pixelSize": 0.004375,
+        "maxIter": 256,
+        "palette": "aurora"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&ps=0.004375&r=0&i=256&p=aurora"
+    },
+    {
+      "name": "Deep zoom into Mandelbrot seahorse valley",
+      "description": "Zoom into a famous location at the boundary of the Mandelbrot set with high iteration count",
+      "request": {
+        "fractal": "mandelbrot",
+        "centerX": -0.7436447860,
+        "centerY": 0.1318252536,
+        "pixelSize": 1.5e-9,
+        "maxIter": 2048,
+        "palette": "ocean"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.7436447860&y=0.1318252536&ps=1.5e-9&r=0&i=2048&p=ocean"
+    },
+    {
+      "name": "Rotated Julia set",
+      "description": "Julia set rotated 30 degrees (π/6 radians) with neon palette",
+      "request": {
+        "fractal": "julia",
+        "centerX": 0.0,
+        "centerY": 0.0,
+        "pixelSize": 0.00375,
+        "rotation": 0.5235987756,
+        "maxIter": 512,
+        "palette": "neon"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=julia&x=0.0&y=0.0&ps=0.00375&r=0.5235987756&i=512&p=neon"
+    },
+    {
+      "name": "Barnsley fern (IFS point cloud)",
+      "description": "The classic botanical IFS fractal with the volcanic feu palette",
+      "request": {
+        "fractal": "barnsley",
+        "centerX": 0.0,
+        "centerY": 0.0,
+        "pixelSize": 0.005,
+        "palette": "feu"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=0.005&r=0&i=256&p=feu"
+    },
+    {
+      "name": "Koch snowflake (L-system line fractal)",
+      "description": "The Koch snowflake rendered as a recursive line curve",
+      "request": {
+        "fractal": "koch",
+        "centerX": 0.0,
+        "centerY": 0.0,
+        "pixelSize": 0.005,
+        "palette": "lagon"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=koch&x=0.0&y=0.0&ps=0.005&r=0&i=256&p=lagon"
+    }
+  ],
+  "url_format": {
+    "pattern": "BASE_URL/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}",
+    "base_url": "https://multilingualprogramming.github.io/fractales",
+    "notes": [
+      "No HTTP request needed — assemble the URL directly",
+      "The viewer reads parameters from window.location.hash on load",
+      "Navigation to an encoded position is animated using WASM cubic easing and logarithmic zoom interpolation",
+      "rotation defaults to 0 if omitted",
+      "maxIter defaults to 256 if omitted",
+      "palette defaults to aurora if omitted"
+    ]
+  }
+}

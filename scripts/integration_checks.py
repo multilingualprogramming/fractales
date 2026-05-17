@@ -261,6 +261,30 @@ def check_fractal_registration_consistency() -> None:
         fail(f"fractals registered in src/main.multi but missing from REQUIRED_EXPORTS: {missing_in_exports}")
 
 
+def check_api_files() -> None:
+    api = PUBLIC / "api"
+    require_file(api / "fractals.json")
+    require_file(api / "families.json")
+    require_file(api / "palettes.json")
+
+    families_dir = api / "families"
+    expected_families = {"evasion", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "classe"}
+    for fid in expected_families:
+        require_file(families_dir / f"{fid}.json")
+
+    require_file(PUBLIC / "tools.json")
+    require_file(PUBLIC / "ai-manifest.json")
+
+    try:
+        import json
+        data = json.loads((api / "fractals.json").read_text(encoding="utf-8"))
+        count = data.get("total", 0)
+        if count == 0:
+            fail("public/api/fractals.json has total=0 — generate_api.py produced no fractals")
+    except Exception as exc:
+        fail(f"cannot parse public/api/fractals.json: {exc}")
+
+
 def main() -> None:
     print("[integration] running checks...")
     require_file(PUBLIC / "main.multi")
@@ -273,6 +297,7 @@ def main() -> None:
     check_renderer_contract()
     check_source_keywords()
     check_fractal_registration_consistency()
+    check_api_files()
 
     print("[integration] all checks passed")
 

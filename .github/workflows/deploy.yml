@@ -73,6 +73,9 @@ jobs:
       - name: Compiler le source français vers WebAssembly
         run: python scripts/compile_wasm.py
 
+      - name: Générer l'API statique JSON
+        run: python scripts/generate_api.py
+
       - name: Exécuter les tests d'intégration
         run: python scripts/integration_checks.py
 

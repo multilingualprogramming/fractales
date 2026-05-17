@@ -1,0 +1,118 @@
+{
+  "title": "Agent Workflow — Discover, Select, and Navigate a Fractal",
+  "description": "A complete multi-step workflow showing how an AI agent discovers available fractals, selects one by mathematical category, and generates a shareable deep link for the user. All steps use static GET requests or pure URL construction — no server required.",
+  "steps": [
+    {
+      "step": 1,
+      "tool": "list_families",
+      "description": "Discover available fractal families to understand the mathematical categories",
+      "request": {},
+      "http": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/families.json"
+      },
+      "response_excerpt": {
+        "total_families": 8,
+        "total_fractals": 71,
+        "families": [
+          {"id": "evasion", "label": "Évasion", "count": 15, "description": "Escape-time fractals: color each point by how many iterations before divergence."},
+          {"id": "dynamique", "label": "Dynamique", "count": 17, "description": "Dynamic systems: Newton basins, attractors, Lyapunov, and chaotic maps."},
+          {"id": "ifs", "label": "IFS", "count": 8, "description": "Iterated Function Systems: self-similar structures from affine maps and random chaos."},
+          {"id": "lsystem", "label": "L-system", "count": 9, "description": "L-system curves: geometric fractals from string-rewriting (Lindenmayer systems)."},
+          {"id": "magnetique", "label": "Magnétique", "count": 8, "description": "Magnetic fractals: renormalization-group iterations from statistical physics."},
+          {"id": "lisse", "label": "Lisse", "count": 4, "description": "Smooth coloring variants: continuous iteration count eliminates discrete color bands."},
+          {"id": "orbitrap", "label": "Piège orbital", "count": 4, "description": "Orbit trap fractals: color by orbit proximity to a geometric shape."},
+          {"id": "classe", "label": "Classe", "count": 1, "description": "OOP compatibility demo via multilingual class."}
+        ]
+      },
+      "agent_decision": "User is interested in self-similar botanical shapes → select IFS family"
+    },
+    {
+      "step": 2,
+      "tool": "get_family",
+      "description": "Retrieve all IFS fractals with full metadata",
+      "request": {"family_id": "ifs"},
+      "http": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/families/ifs.json"
+      },
+      "response_excerpt": {
+        "id": "ifs",
+        "label": "IFS",
+        "count": 8,
+        "fractals": [
+          {"id": "barnsley", "label": "Barnsley", "description": "Barnsley fern: iterated function system (IFS) botanical fractal.", "render_mode": "point_cloud", "deep_link": "https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=5.0000e-03&i=256&p=aurora"},
+          {"id": "sierpinski", "label": "Sierpiński", "description": "Sierpiński triangle: self-similar IFS gasket.", "render_mode": "point_cloud"},
+          {"id": "tapis_sierpinski", "label": "Tapis de Sierpiński", "description": "Sierpiński carpet: square IFS analogue.", "render_mode": "point_cloud"},
+          {"id": "menger_sponge", "label": "Éponge de Menger", "description": "Menger sponge: 3D IFS analogue of the Sierpiński carpet.", "render_mode": "point_cloud"},
+          {"note": "...and 4 more — fetch /api/families/ifs.json for the full list"}
+        ]
+      },
+      "agent_decision": "Barnsley fern is the most visually botanical → select it; construct a deep zoom link"
+    },
+    {
+      "step": 3,
+      "tool": "construct_deeplink",
+      "description": "Generate a shareable deep link for the Barnsley fern with a dramatic volcanic palette",
+      "request": {
+        "fractal": "barnsley",
+        "centerX": 0.0,
+        "centerY": 0.0,
+        "pixelSize": 0.005,
+        "maxIter": 256,
+        "palette": "feu"
+      },
+      "http": {
+        "method": "NONE",
+        "note": "URL is assembled locally — no HTTP request"
+      },
+      "result": "https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=0.005&r=0&i=256&p=feu",
+      "agent_output_to_user": "Here is a shareable link to the Barnsley fern rendered in the volcanic 'feu' palette: https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=0.005&r=0&i=256&p=feu"
+    },
+    {
+      "step": 4,
+      "tool": "get_source",
+      "description": "Optionally retrieve the mathematical source code to explain the iteration",
+      "request": {"fractal_id": "barnsley", "language": "python"},
+      "http": [
+        {
+          "step": "4a",
+          "method": "GET",
+          "url": "https://multilingualprogramming.github.io/fractales/api/fractals.json",
+          "purpose": "Resolve barnsley → source.module = 'fractales_ifs'"
+        },
+        {
+          "step": "4b",
+          "method": "GET",
+          "url": "https://multilingualprogramming.github.io/fractales/fractales_ifs.py",
+          "purpose": "Fetch transpiled Python source"
+        }
+      ],
+      "agent_output_to_user": "The Barnsley fern is computed by randomly applying one of four affine transformations according to fixed probabilities, accumulating a cloud of points that converges to the fern shape. Source: https://multilingualprogramming.github.io/fractales/fractales_ifs.py"
+    }
+  ],
+  "summary": {
+    "total_http_requests": 3,
+    "total_url_constructions": 1,
+    "server_required": false,
+    "all_data_sources": "static GitHub Pages JSON files"
+  },
+  "alternative_workflows": [
+    {
+      "name": "Quick deep zoom link",
+      "steps": ["construct_deeplink with known coordinates → share URL immediately"]
+    },
+    {
+      "name": "Explore by render type",
+      "steps": ["list_fractals → filter by render_mode='webgl_3d' → get_fractal → construct_deeplink"]
+    },
+    {
+      "name": "Source code study",
+      "steps": ["get_fractal → read source.module → GET {module}.multi for multilingual source"]
+    },
+    {
+      "name": "Performance context",
+      "steps": ["get_benchmark → report WASM vs Python speedup to user"]
+    }
+  ]
+}

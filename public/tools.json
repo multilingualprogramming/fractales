@@ -1,0 +1,330 @@
+{
+  "schema_version": "1.0",
+  "title": "Fractales — AI Tool Definitions",
+  "description": "MCP and OpenAI-function-calling compatible tool definitions for the Fractales fractal explorer. All tools operate on static GitHub Pages resources — no server required.",
+  "base_url": "https://multilingualprogramming.github.io/fractales",
+  "compatibility": ["mcp", "openai-function-calling", "anthropic-tool-use"],
+  "tools": [
+    {
+      "name": "list_fractals",
+      "description": "Return the complete catalogue of all fractals available in the viewer. Each entry includes the fractal identifier, human-readable label, mathematical description, family, render mode, source module, default view preset, and a ready-to-use deep link. Use this as the first step to discover what is available before selecting a specific fractal.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/fractals.json"
+      },
+      "output_schema": {
+        "$ref": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json"
+      },
+      "examples": [
+        {
+          "description": "Retrieve the complete fractal catalogue",
+          "request": {},
+          "response_shape": {
+            "schema": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
+            "total": 71,
+            "fractals": [{"id": "mandelbrot", "label": "Mandelbrot", "...": "..."}]
+          }
+        }
+      ],
+      "failure_cases": [
+        {"condition": "Network unavailable", "action": "Use cached data or report unavailability to the user"}
+      ]
+    },
+    {
+      "name": "get_fractal",
+      "description": "Retrieve full metadata for a single fractal by its identifier. Returns the same structure as one entry from list_fractals, including render mode, source URL, default view preset, and deep link. Prefer this over list_fractals when you already know the fractal identifier.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "fractal_id": {
+            "type": "string",
+            "description": "Fractal identifier in snake_case, e.g. 'mandelbrot', 'julia', 'barnsley', 'koch'. Use list_fractals to discover valid identifiers."
+          }
+        },
+        "required": ["fractal_id"]
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/fractals.json",
+        "note": "Fetch the full catalog and filter client-side by id == fractal_id"
+      },
+      "examples": [
+        {
+          "description": "Get metadata for the Barnsley fern",
+          "request": {"fractal_id": "barnsley"},
+          "response_shape": {
+            "id": "barnsley",
+            "label": "Barnsley",
+            "description": "Barnsley fern: iterated function system (IFS) botanical fractal.",
+            "family": "ifs",
+            "render_mode": "point_cloud",
+            "source": {"module": "fractales_ifs", "url": "..."},
+            "deep_link": "https://multilingualprogramming.github.io/fractales/#f=barnsley&x=0.0&y=0.0&ps=5.0000e-03&i=256&p=aurora"
+          }
+        }
+      ],
+      "failure_cases": [
+        {"condition": "Unknown fractal_id", "action": "Return null; call list_fractals to enumerate valid identifiers"}
+      ]
+    },
+    {
+      "name": "list_families",
+      "description": "Return the index of fractal families. Each family groups fractals by mathematical type: evasion (escape-time), dynamique (dynamic systems and attractors), ifs (iterated function systems), lsystem (L-system curves), magnetique (magnetic renormalization), lisse (smooth coloring variants), orbitrap (orbit trap coloring), classe (OOP compatibility demo). Use this to let users browse by mathematical category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/families.json"
+      },
+      "examples": [
+        {
+          "description": "List all fractal families",
+          "request": {},
+          "response_shape": {
+            "total_families": 8,
+            "total_fractals": 71,
+            "families": [
+              {"id": "evasion", "label": "Évasion", "count": 15, "fractal_ids": ["mandelbrot", "julia", "..."]}
+            ]
+          }
+        }
+      ],
+      "failure_cases": []
+    },
+    {
+      "name": "get_family",
+      "description": "Return the full fractal list for a specific family, including complete metadata for each member. Valid family identifiers: evasion, dynamique, ifs, lsystem, magnetique, lisse, orbitrap, classe.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "enum": ["evasion", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "classe"],
+            "description": "Family identifier. Use list_families to discover available families and their descriptions."
+          }
+        },
+        "required": ["family_id"]
+      },
+      "endpoint": {
+        "method": "GET",
+        "url_template": "https://multilingualprogramming.github.io/fractales/api/families/{family_id}.json"
+      },
+      "examples": [
+        {
+          "description": "Get all IFS fractals",
+          "request": {"family_id": "ifs"},
+          "response_shape": {
+            "id": "ifs",
+            "label": "IFS",
+            "count": 8,
+            "fractals": [{"id": "barnsley", "...": "..."}, {"id": "sierpinski", "...": "..."}]
+          }
+        },
+        {
+          "description": "Get all smooth-coloring variants",
+          "request": {"family_id": "lisse"},
+          "response_shape": {
+            "id": "lisse",
+            "count": 4,
+            "fractals": [{"id": "mandelbrot_lisse"}, {"id": "julia_lisse"}, {"id": "burning_ship_lisse"}, {"id": "tricorn_lisse"}]
+          }
+        }
+      ],
+      "failure_cases": [
+        {"condition": "Unknown family_id", "action": "HTTP 404; use list_families to enumerate valid identifiers"}
+      ]
+    },
+    {
+      "name": "construct_deeplink",
+      "description": "Construct a deep link URL that opens the fractal viewer at a specific location, zoom level, rotation, and palette. No HTTP request is needed — the URL is assembled from the parameters. The viewer uses URL hash fragments so the link is shareable and bookmark-able. pixelSize controls zoom: smaller values zoom in (e.g. 1e-6 for deep zoom, 4e-3 for default). rotation is in radians (0 to 2π).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "fractal": {
+            "type": "string",
+            "description": "Fractal identifier, e.g. 'mandelbrot', 'julia', 'barnsley'"
+          },
+          "centerX": {
+            "type": "number",
+            "description": "Center X coordinate in the complex plane (real axis)"
+          },
+          "centerY": {
+            "type": "number",
+            "description": "Center Y coordinate in the complex plane (imaginary axis)"
+          },
+          "pixelSize": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Units of the complex plane per pixel. Controls zoom level. Default ~4e-3 (full view). Use 1e-6 or smaller for deep zoom."
+          },
+          "rotation": {
+            "type": "number",
+            "description": "Rotation angle in radians (0 to 2π). Default: 0.",
+            "default": 0
+          },
+          "maxIter": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 10000,
+            "description": "Maximum iterations for escape-time computation. Higher values reveal more detail but are slower. Default: 256.",
+            "default": 256
+          },
+          "palette": {
+            "type": "string",
+            "enum": ["aurora", "feu", "ocean", "braise", "lagon", "crepuscule", "neon", "infrared", "personnalisee"],
+            "description": "Color palette. Default: aurora.",
+            "default": "aurora"
+          }
+        },
+        "required": ["fractal", "centerX", "centerY", "pixelSize"]
+      },
+      "endpoint": {
+        "method": "NONE",
+        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}",
+        "note": "Assemble directly from parameters — no HTTP request required"
+      },
+      "examples": [
+        {
+          "description": "Deep zoom into the Mandelbrot seahorse valley",
+          "request": {
+            "fractal": "mandelbrot",
+            "centerX": -0.7436447860,
+            "centerY": 0.1318252536,
+            "pixelSize": 1.5e-9,
+            "maxIter": 1024,
+            "palette": "ocean"
+          },
+          "response": "https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.7436447860&y=0.1318252536&ps=1.5e-9&r=0&i=1024&p=ocean"
+        },
+        {
+          "description": "Julia set with default view",
+          "request": {
+            "fractal": "julia",
+            "centerX": 0.0,
+            "centerY": 0.0,
+            "pixelSize": 0.00375
+          },
+          "response": "https://multilingualprogramming.github.io/fractales/#f=julia&x=0.0&y=0.0&ps=0.00375&r=0&i=256&p=aurora"
+        }
+      ],
+      "failure_cases": [
+        {"condition": "pixelSize <= 0", "action": "Reject: pixelSize must be strictly positive"},
+        {"condition": "Unknown fractal identifier", "action": "The viewer will fall back to Mandelbrot; validate against list_fractals first"},
+        {"condition": "Unknown palette", "action": "The viewer will use aurora; validate against list_palettes first"}
+      ]
+    },
+    {
+      "name": "get_source",
+      "description": "Retrieve the source code of the fractal implementation. Source is written in the multilingual programming language (French-syntax language that compiles to WebAssembly). A transpiled Python version is also available. The source reveals the exact mathematical iteration used.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "fractal_id": {
+            "type": "string",
+            "description": "Fractal identifier. Use get_fractal to find the source module name."
+          },
+          "language": {
+            "type": "string",
+            "enum": ["multilingual", "python"],
+            "description": "Source language. 'multilingual' returns the French-syntax .multi source; 'python' returns the transpiled Python equivalent.",
+            "default": "multilingual"
+          }
+        },
+        "required": ["fractal_id"]
+      },
+      "endpoint": {
+        "method": "GET",
+        "url_template_multilingual": "https://multilingualprogramming.github.io/fractales/{module}.multi",
+        "url_template_python": "https://multilingualprogramming.github.io/fractales/{module}.py",
+        "note": "First call get_fractal to resolve fractal_id → source.module, then fetch the file"
+      },
+      "examples": [
+        {
+          "description": "Fetch Mandelbrot source in multilingual",
+          "request": {"fractal_id": "mandelbrot", "language": "multilingual"},
+          "steps": [
+            "1. GET /api/fractals.json → find fractal.source.module = 'fractales_escape'",
+            "2. GET /fractales_escape.multi → returns French-syntax source"
+          ]
+        },
+        {
+          "description": "Fetch Barnsley fern source in Python",
+          "request": {"fractal_id": "barnsley", "language": "python"},
+          "steps": [
+            "1. GET /api/fractals.json → find fractal.source.module = 'fractales_ifs'",
+            "2. GET /fractales_ifs.py → returns transpiled Python"
+          ]
+        }
+      ],
+      "failure_cases": [
+        {"condition": "Unknown fractal_id", "action": "Resolve via list_fractals first"},
+        {"condition": "Module file not found (HTTP 404)", "action": "The fractal may use a bundled module; check source.url field in the fractal entry"}
+      ]
+    },
+    {
+      "name": "get_benchmark",
+      "description": "Return the WebAssembly vs Python benchmark results measured during the last build. Includes execution time in milliseconds for both runtimes and the speedup factor. Useful for demonstrating the performance advantage of the multilingual → WASM compilation pipeline.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/benchmark.json"
+      },
+      "examples": [
+        {
+          "description": "Get benchmark results",
+          "request": {},
+          "response_shape": {
+            "python_ms": 142.3,
+            "wasm_ms": 4.1,
+            "speedup": 34.7,
+            "wasm_available": true,
+            "wasm_pipeline": "multilingual_official_wat2wasm"
+          }
+        }
+      ],
+      "failure_cases": [
+        {"condition": "python_ms or wasm_ms is null", "action": "Benchmark was not completed during this build; values are unavailable"}
+      ]
+    },
+    {
+      "name": "list_palettes",
+      "description": "Return the list of available color palettes with descriptions. Pass the palette identifier to construct_deeplink or include it in a viewer URL fragment as p={palette_id}.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/palettes.json"
+      },
+      "examples": [
+        {
+          "description": "List available palettes",
+          "request": {},
+          "response_shape": {
+            "total": 9,
+            "default": "aurora",
+            "palettes": [
+              {"id": "aurora", "description": "Synthwave aurora — electric void → neon teal → acid lime → gold. Default."},
+              {"id": "feu", "description": "Volcanic plasma — char-black → electric crimson → acid yellow → white-hot."}
+            ]
+          }
+        }
+      ],
+      "failure_cases": []
+    }
+  ]
+}

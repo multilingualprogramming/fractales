@@ -68,13 +68,21 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "renderer.js:etapeAttracteurHenon": {
         "backend_refs": ["attracteur_de_henon_etape_x", "attracteur_de_henon_etape_y"]
     },
-    "renderer.js:etapeLorenzAttractor": {"backend_refs": ["lorenz_attractor"]},
+    "renderer.js:etapeLorenzAttractor": {
+        "backend_refs": ["lorenz_attractor_etape_x", "lorenz_attractor_etape_y", "lorenz_attractor_etape_z"]
+    },
     "renderer.js:projeterLorenzAttractor": {"backend_refs": ["projeter_lorenz_x", "projeter_lorenz_y"]},
-    "renderer.js:etapeRosslerAttractor": {"backend_refs": ["rossler_attractor"]},
+    "renderer.js:etapeRosslerAttractor": {
+        "backend_refs": ["rossler_attractor_etape_x", "rossler_attractor_etape_y", "rossler_attractor_etape_z"]
+    },
     "renderer.js:projeterRosslerAttractor": {"backend_refs": ["projeter_rossler_x", "projeter_rossler_y"]},
-    "renderer.js:etapeAizawaAttractor": {"backend_refs": ["aizawa_attractor"]},
+    "renderer.js:etapeAizawaAttractor": {
+        "backend_refs": ["aizawa_attractor_etape_x", "aizawa_attractor_etape_y", "aizawa_attractor_etape_z"]
+    },
     "renderer.js:projeterAizawaAttractor": {"backend_refs": ["projeter_aizawa_x", "projeter_aizawa_y"]},
-    "renderer.js:etapeSprottAttractor": {"backend_refs": ["sprott_attractor"]},
+    "renderer.js:etapeSprottAttractor": {
+        "backend_refs": ["sprott_attractor_etape_x", "sprott_attractor_etape_y", "sprott_attractor_etape_z"]
+    },
     "renderer.js:projeterSprottAttractor": {"backend_refs": ["projeter_sprott_x", "projeter_sprott_y"]},
     "renderer.js:etapeDuffingAttractor": {
         "backend_refs": ["duffing_attractor_etape_x", "duffing_attractor_etape_y"]

@@ -1349,6 +1349,17 @@ function etapeAttracteurHenon(x, y) {
 }
 
 function etapeLorenzAttractor(x, y, z) {
+  if (
+    wasmExportFunctions.lorenz_attractor_etape_x &&
+    wasmExportFunctions.lorenz_attractor_etape_y &&
+    wasmExportFunctions.lorenz_attractor_etape_z
+  ) {
+    return [
+      wasmExportFunctions.lorenz_attractor_etape_x(x, y, z),
+      wasmExportFunctions.lorenz_attractor_etape_y(x, y, z),
+      wasmExportFunctions.lorenz_attractor_etape_z(x, y, z),
+    ];
+  }
   const sigma = 10.0;
   const rho = 28.0;
   const beta = 8.0 / 3.0;
@@ -1365,12 +1376,23 @@ function etapeLorenzAttractor(x, y, z) {
 
 function projeterLorenzAttractor(x, y, z) {
   return [
-    (x - y) * 0.12,
-    (z - 26.0) * 0.07 - (x + y) * 0.02,
+    wasmExportFunctions.projeter_lorenz_x ? wasmExportFunctions.projeter_lorenz_x(x, y, z) : (x - y) * 0.12,
+    wasmExportFunctions.projeter_lorenz_y ? wasmExportFunctions.projeter_lorenz_y(x, y, z) : (z - 26.0) * 0.07 - (x + y) * 0.02,
   ];
 }
 
 function etapeRosslerAttractor(x, y, z) {
+  if (
+    wasmExportFunctions.rossler_attractor_etape_x &&
+    wasmExportFunctions.rossler_attractor_etape_y &&
+    wasmExportFunctions.rossler_attractor_etape_z
+  ) {
+    return [
+      wasmExportFunctions.rossler_attractor_etape_x(x, y, z),
+      wasmExportFunctions.rossler_attractor_etape_y(x, y, z),
+      wasmExportFunctions.rossler_attractor_etape_z(x, y, z),
+    ];
+  }
   const a = 0.2;
   const b = 0.2;
   const c = 5.7;
@@ -1385,13 +1407,24 @@ function etapeRosslerAttractor(x, y, z) {
 function projeterRosslerAttractor(x, y, z) {
   const profondeur = Math.max(0, Math.min(1, 0.5 - z / 18.0));
   return [
-    x * 0.16 + z * 0.035,
-    y * 0.16 - z * 0.04,
+    wasmExportFunctions.projeter_rossler_x ? wasmExportFunctions.projeter_rossler_x(x, y, z) : x * 0.16 + z * 0.035,
+    wasmExportFunctions.projeter_rossler_y ? wasmExportFunctions.projeter_rossler_y(x, y, z) : y * 0.16 - z * 0.04,
     profondeur,
   ];
 }
 
 function etapeAizawaAttractor(x, y, z) {
+  if (
+    wasmExportFunctions.aizawa_attractor_etape_x &&
+    wasmExportFunctions.aizawa_attractor_etape_y &&
+    wasmExportFunctions.aizawa_attractor_etape_z
+  ) {
+    return [
+      wasmExportFunctions.aizawa_attractor_etape_x(x, y, z),
+      wasmExportFunctions.aizawa_attractor_etape_y(x, y, z),
+      wasmExportFunctions.aizawa_attractor_etape_z(x, y, z),
+    ];
+  }
   const a = 0.95;
   const b = 0.7;
   const c = 0.6;
@@ -1410,13 +1443,24 @@ function etapeAizawaAttractor(x, y, z) {
 function projeterAizawaAttractor(x, y, z) {
   const profondeur = Math.max(0, Math.min(1, 0.5 - z / 10.0));
   return [
-    x * 0.18 + z * 0.03,
-    y * 0.18 - z * 0.055,
+    wasmExportFunctions.projeter_aizawa_x ? wasmExportFunctions.projeter_aizawa_x(x, y, z) : x * 0.18 + z * 0.03,
+    wasmExportFunctions.projeter_aizawa_y ? wasmExportFunctions.projeter_aizawa_y(x, y, z) : y * 0.18 - z * 0.055,
     profondeur,
   ];
 }
 
 function etapeSprottAttractor(x, y, z) {
+  if (
+    wasmExportFunctions.sprott_attractor_etape_x &&
+    wasmExportFunctions.sprott_attractor_etape_y &&
+    wasmExportFunctions.sprott_attractor_etape_z
+  ) {
+    return [
+      wasmExportFunctions.sprott_attractor_etape_x(x, y, z),
+      wasmExportFunctions.sprott_attractor_etape_y(x, y, z),
+      wasmExportFunctions.sprott_attractor_etape_z(x, y, z),
+    ];
+  }
   const dt = 0.04;
   return [
     x + y * z * dt,
@@ -1428,8 +1472,8 @@ function etapeSprottAttractor(x, y, z) {
 function projeterSprottAttractor(x, y, z) {
   const profondeur = Math.max(0, Math.min(1, 0.5 - z / 12.0));
   return [
-    x * 0.19 + z * 0.045,
-    y * 0.18 - z * 0.03,
+    wasmExportFunctions.projeter_sprott_x ? wasmExportFunctions.projeter_sprott_x(x, y, z) : x * 0.19 + z * 0.045,
+    wasmExportFunctions.projeter_sprott_y ? wasmExportFunctions.projeter_sprott_y(x, y, z) : y * 0.18 - z * 0.03,
     profondeur,
   ];
 }
@@ -2650,6 +2694,26 @@ async function loadWasm() {
       attracteur_ikeda_etape_y: typeof exports.attracteur_ikeda_etape_y === "function" ? exports.attracteur_ikeda_etape_y : null,
       attracteur_de_henon_etape_x: typeof exports.attracteur_de_henon_etape_x === "function" ? exports.attracteur_de_henon_etape_x : null,
       attracteur_de_henon_etape_y: typeof exports.attracteur_de_henon_etape_y === "function" ? exports.attracteur_de_henon_etape_y : null,
+      lorenz_attractor_etape_x: typeof exports.lorenz_attractor_etape_x === "function" ? exports.lorenz_attractor_etape_x : null,
+      lorenz_attractor_etape_y: typeof exports.lorenz_attractor_etape_y === "function" ? exports.lorenz_attractor_etape_y : null,
+      lorenz_attractor_etape_z: typeof exports.lorenz_attractor_etape_z === "function" ? exports.lorenz_attractor_etape_z : null,
+      rossler_attractor_etape_x: typeof exports.rossler_attractor_etape_x === "function" ? exports.rossler_attractor_etape_x : null,
+      rossler_attractor_etape_y: typeof exports.rossler_attractor_etape_y === "function" ? exports.rossler_attractor_etape_y : null,
+      rossler_attractor_etape_z: typeof exports.rossler_attractor_etape_z === "function" ? exports.rossler_attractor_etape_z : null,
+      aizawa_attractor_etape_x: typeof exports.aizawa_attractor_etape_x === "function" ? exports.aizawa_attractor_etape_x : null,
+      aizawa_attractor_etape_y: typeof exports.aizawa_attractor_etape_y === "function" ? exports.aizawa_attractor_etape_y : null,
+      aizawa_attractor_etape_z: typeof exports.aizawa_attractor_etape_z === "function" ? exports.aizawa_attractor_etape_z : null,
+      sprott_attractor_etape_x: typeof exports.sprott_attractor_etape_x === "function" ? exports.sprott_attractor_etape_x : null,
+      sprott_attractor_etape_y: typeof exports.sprott_attractor_etape_y === "function" ? exports.sprott_attractor_etape_y : null,
+      sprott_attractor_etape_z: typeof exports.sprott_attractor_etape_z === "function" ? exports.sprott_attractor_etape_z : null,
+      projeter_lorenz_x: typeof exports.projeter_lorenz_x === "function" ? exports.projeter_lorenz_x : null,
+      projeter_lorenz_y: typeof exports.projeter_lorenz_y === "function" ? exports.projeter_lorenz_y : null,
+      projeter_rossler_x: typeof exports.projeter_rossler_x === "function" ? exports.projeter_rossler_x : null,
+      projeter_rossler_y: typeof exports.projeter_rossler_y === "function" ? exports.projeter_rossler_y : null,
+      projeter_aizawa_x: typeof exports.projeter_aizawa_x === "function" ? exports.projeter_aizawa_x : null,
+      projeter_aizawa_y: typeof exports.projeter_aizawa_y === "function" ? exports.projeter_aizawa_y : null,
+      projeter_sprott_x: typeof exports.projeter_sprott_x === "function" ? exports.projeter_sprott_x : null,
+      projeter_sprott_y: typeof exports.projeter_sprott_y === "function" ? exports.projeter_sprott_y : null,
       duffing_attractor_etape_x: typeof exports.duffing_attractor_etape_x === "function" ? exports.duffing_attractor_etape_x : null,
       duffing_attractor_etape_y: typeof exports.duffing_attractor_etape_y === "function" ? exports.duffing_attractor_etape_y : null,
       julia_quaternion_etape_x: typeof exports.julia_quaternion_etape_x === "function" ? exports.julia_quaternion_etape_x : null,

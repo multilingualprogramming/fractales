@@ -13,6 +13,7 @@ importer fractales_classes_compat
 importer fractales_lisse
 importer fractales_orbitrap
 importer fractales_navigation
+importer fractales_formule
 #
 # Module orienté objet (transpilation Python uniquement) :
 # Démontre : classe, héritage, soi (self), super().__init__

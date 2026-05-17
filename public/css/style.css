@@ -1204,6 +1204,11 @@ select:focus {
   border-color: var(--border-glow);
 }
 
+option {
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* Boutons */
 .btn {
   display: inline-flex;

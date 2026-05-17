@@ -58,6 +58,12 @@ export function encoderEtat(view, params) {
     p.set("ct", params.coordTransform);
     if (params.coordTransform === "mobius" && params.mobiusPreset) p.set("mp", params.mobiusPreset);
   }
+  if (params.formulePropositionActive) {
+    p.set("fpa", "1");
+    p.set("ffi", params.formuleIteration ?? "z*z+c");
+    p.set("ffe", String(params.formuleEscapeRadius ?? 2));
+    p.set("ffm", params.formuleMode ?? "mandelbrot");
+  }
   return "#" + p.toString();
 }
 
@@ -102,6 +108,10 @@ export function decoderEtat(hash) {
     lsystemRules: p.get("lr") ?? undefined,
     coordTransform: p.get("ct") ?? "aucune",
     mobiusPreset: p.get("mp") ?? "inversion_cercle",
+    formulePropositionActive: p.get("fpa") === "1",
+    formuleIteration: p.get("ffi") ?? undefined,
+    formuleEscapeRadius: num("ffe"),
+    formuleMode: p.get("ffm") ?? undefined,
   };
 
   if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;

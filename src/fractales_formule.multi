@@ -1,0 +1,175 @@
+# Arithmétique complexe et formules d'itération personnalisées
+#
+# Chaque nombre complexe z = x + iy est représenté par deux flottants (re, im).
+# Ces primitives sont utilisées par les preréglages compilés en WASM.
+# Les formules définies par l'utilisateur sont évaluées côté JS via compilerFormule().
+
+# ---------- Normalisation d'angle (pour sin/cos) ----------
+
+déf normaliser_angle_formule(a):
+    tantque a > 3.141592653589793:
+        a = a - 6.283185307179586
+    tantque a < -3.141592653589793:
+        a = a + 6.283185307179586
+    retour a
+
+# ---------- Fonctions trigonométriques réelles (séries de Taylor) ----------
+
+déf sinus_formule(a):
+    soit x = normaliser_angle_formule(a)
+    soit x2 = x * x
+    retour x * (1.0 - x2 / 6.0 * (1.0 - x2 / 20.0 * (1.0 - x2 / 42.0)))
+
+déf cosinus_formule(a):
+    soit x = normaliser_angle_formule(a)
+    soit x2 = x * x
+    retour 1.0 - x2 / 2.0 * (1.0 - x2 / 12.0 * (1.0 - x2 / 30.0))
+
+# ---------- Arithmétique complexe (partie réelle et imaginaire séparées) ----------
+
+déf formule_add_re(ax, ay, bx, by):
+    retour ax + bx
+
+déf formule_add_im(ax, ay, bx, by):
+    retour ay + by
+
+déf formule_sub_re(ax, ay, bx, by):
+    retour ax - bx
+
+déf formule_sub_im(ax, ay, bx, by):
+    retour ay - by
+
+déf formule_mul_re(ax, ay, bx, by):
+    retour ax * bx - ay * by
+
+déf formule_mul_im(ax, ay, bx, by):
+    retour ax * by + ay * bx
+
+déf formule_div_re(ax, ay, bx, by):
+    soit d = bx * bx + by * by
+    si d < 1e-30:
+        retour 0.0
+    retour (ax * bx + ay * by) / d
+
+déf formule_div_im(ax, ay, bx, by):
+    soit d = bx * bx + by * by
+    si d < 1e-30:
+        retour 0.0
+    retour (ay * bx - ax * by) / d
+
+# ---------- Puissance complexe entière z^n ----------
+
+déf formule_pow_re(x, y, n):
+    soit r = 1.0
+    soit m = 0.0
+    soit k = 0.0
+    tantque k < n:
+        soit t = r * x - m * y
+        m = r * y + m * x
+        r = t
+        k = k + 1.0
+    retour r
+
+déf formule_pow_im(x, y, n):
+    soit r = 1.0
+    soit m = 0.0
+    soit k = 0.0
+    tantque k < n:
+        soit t = r * x - m * y
+        m = r * y + m * x
+        r = t
+        k = k + 1.0
+    retour m
+
+# ---------- Module (valeur absolue complexe) ----------
+
+déf formule_abs_re(x, y):
+    soit r2 = x * x + y * y
+    soit r = r2
+    # Approximation de sqrt par méthode de Newton (3 itérations)
+    si r > 0.0:
+        soit g = r2 / 2.0 + 0.5
+        g = (g + r2 / g) / 2.0
+        g = (g + r2 / g) / 2.0
+        r = (g + r2 / g) / 2.0
+    retour r
+
+# ---------- Sinus complexe : sin(x+iy) = sin(x)cosh(y) + i·cos(x)sinh(y) ----------
+
+déf formule_sin_re(x, y):
+    soit ey = 2.718281828459045 ^ y
+    soit cosh_y = (ey + 1.0 / ey) / 2.0
+    retour sinus_formule(x) * cosh_y
+
+déf formule_sin_im(x, y):
+    soit ey = 2.718281828459045 ^ y
+    soit sinh_y = (ey - 1.0 / ey) / 2.0
+    retour cosinus_formule(x) * sinh_y
+
+# ---------- Cosinus complexe : cos(x+iy) = cos(x)cosh(y) - i·sin(x)sinh(y) ----------
+
+déf formule_cos_re(x, y):
+    soit ey = 2.718281828459045 ^ y
+    soit cosh_y = (ey + 1.0 / ey) / 2.0
+    retour cosinus_formule(x) * cosh_y
+
+déf formule_cos_im(x, y):
+    soit ey = 2.718281828459045 ^ y
+    soit sinh_y = (ey - 1.0 / ey) / 2.0
+    retour -sinus_formule(x) * sinh_y
+
+# ---------- Preréglages compilés en WASM ----------
+# Ces fonctions correspondent aux preréglages de l'Atelier formule.
+# Pour les formules personnalisées, voir compilerFormule() dans renderer.js.
+
+déf formule_z2c(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 4.0:
+            retour iter
+        soit xtemp = x * x - y * y + cx
+        y = 2.0 * x * y + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_julia_z2c(zx, zy, cx, cy, max_iter):
+    soit x = zx
+    soit y = zy
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 4.0:
+            retour iter
+        soit xtemp = x * x - y * y + cx
+        y = 2.0 * x * y + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_z3c(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 4.0:
+            retour iter
+        soit xtemp = formule_pow_re(x, y, 3.0) + cx
+        y = formule_pow_im(x, y, 3.0) + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_sinc(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 4.0:
+            retour iter
+        soit xtemp = formule_sin_re(x, y) + cx
+        y = formule_sin_im(x, y) + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter

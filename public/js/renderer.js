@@ -69,6 +69,10 @@ const params = {
   lsystemRules: "F=F+F--F+F",
   lsystemAngle: 60,
   lsystemGenerations: 4,
+  formulePropositionActive: false,
+  formuleIteration: "z*z+c",
+  formuleEscapeRadius: 2,
+  formuleMode: "mandelbrot",
   coordTransform: "aucune",
   mobiusPreset: "inversion_cercle",
 };
@@ -179,6 +183,7 @@ let renderToken = 0;
 /** ImageData réutilisable */
 let imageDataBuffer = null;
 let explorationModes = null;
+let formuleFnCompilee = null;
 
 // ============================================================
 // ÉLÉMENTS DOM
@@ -278,6 +283,7 @@ const explorationViews = [...document.querySelectorAll(".exploration-view")];
 const parameterMapCanvas = document.getElementById("parameter-map-canvas");
 const parameterMapReadout = document.getElementById("parameter-map-readout");
 const lsystemProposalCanvas = document.getElementById("lsystem-proposal-canvas");
+const formuleProposalCanvas = document.getElementById("formule-proposal-canvas");
 
 let familySelectCompact = null;
 let fractalSelectCompact = null;
@@ -955,6 +961,10 @@ function capturerVueCourante() {
     lsystemRules: params.lsystemRules,
     lsystemAngle: params.lsystemAngle,
     lsystemGenerations: params.lsystemGenerations,
+    formulePropositionActive: params.formulePropositionActive,
+    formuleIteration: params.formuleIteration,
+    formuleEscapeRadius: params.formuleEscapeRadius,
+    formuleMode: params.formuleMode,
   };
   if (fractaleActiveEst3D()) {
     return {
@@ -1655,6 +1665,93 @@ function effacerPropositionLSysteme() {
   render();
   mettreAJourHash(view, params);
   updateStatusBar("Retour au L-système canonique", true);
+}
+
+// ============================================================
+// FORMULE D'ITÉRATION PERSONNALISÉE
+// ============================================================
+
+// Compile "z^2+c" → fonction JS rapide via new Function().
+// Variables : z (itéré), c (paramètre), i (unité imaginaire).
+// Fonctions : sin cos abs conj exp log pow.
+function compilerFormule(s) {
+  const raw = s.match(/\d+\.?\d*|[a-z]+|[+\-*/^()]/gi) ?? [];
+  const tok = [];
+  raw.forEach((v, j) => {
+    tok.push(v);
+    const n = raw[j + 1];
+    if (n && (/\d$/.test(v) || v === ")") && (n === "(" || /^[a-z]/.test(n))) tok.push("*");
+  });
+  let i = 0;
+  const p = () => tok[i], nx = () => tok[i++];
+  function E() { let a=T(); while(p()==="+"||p()==="-"){const o=nx();a=o==="+"?`A(${a},${T()})`:`S(${a},${T()})`;} return a; }
+  function T() { let a=W(); while(p()==="*"||p()==="/"){const o=nx();a=o==="*"?`M(${a},${W()})`:`D(${a},${W()})`;} return a; }
+  function W() { const b=U(); return p()==="^"?(nx(),`P(${b},${W()})`):b; }
+  function U() { return p()==="-"?(nx(),`N(${B()})`):B(); }
+  function B() {
+    const v = p(); if (!v) return "[0,0]";
+    if (v === "(") { nx(); const r=E(); p()===")"&&nx(); return r; }
+    if (/^[a-z]/i.test(v)) {
+      nx();
+      if (p() === "(") { nx(); const a=E(); p()===")"&&nx(); return `${v}(${a})`; }
+      if (v==="z") return "[zr,zi]"; if (v==="c") return "[cr,ci]";
+      if (v==="i") return "[0,1]"; if (v==="e") return `[${Math.E},0]`; if (v==="pi") return `[${Math.PI},0]`;
+      return "[0,0]";
+    }
+    if (/\d/.test(v)) { nx(); return `[${v},0]`; }
+    nx(); return "[0,0]";
+  }
+  let expr; try { expr = E(); } catch (err) { return { fn: null, error: err.message }; }
+  const h = "function exp(a){const e=Math.exp(a[0]);return[e*Math.cos(a[1]),e*Math.sin(a[1])];}"
+    + "function log(a){return[Math.log(Math.hypot(a[0],a[1])||1e-30),Math.atan2(a[1],a[0])];}"
+    + "function A(a,b){return[a[0]+b[0],a[1]+b[1]];} function S(a,b){return[a[0]-b[0],a[1]-b[1]];}"
+    + "function M(a,b){return[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}"
+    + "function D(a,b){const d=b[0]*b[0]+b[1]*b[1];return d<1e-30?[0,0]:[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}"
+    + "function N(a){return[-a[0],-a[1]];}"
+    + "function P(a,b){if(!b[1]&&Number.isInteger(b[0])&&b[0]>=0){let r=1,m=0,x=a[0],y=a[1],n=b[0];while(n>0){if(n&1){const t=r*x-m*y;m=r*y+m*x;r=t;}const t=x*x-y*y;y=2*x*y;x=t;n>>=1;}return[r,m];}return exp(M(b,log(a)));}"
+    + "function sin(a){return[Math.sin(a[0])*Math.cosh(a[1]),Math.cos(a[0])*Math.sinh(a[1])];}"
+    + "function cos(a){return[Math.cos(a[0])*Math.cosh(a[1]),-Math.sin(a[0])*Math.sinh(a[1])];}"
+    + "function abs(a){return[Math.hypot(a[0],a[1]),0];} function conj(a){return[a[0],-a[1]];}";
+  try { const fn=new Function("zr","zi","cr","ci",h+"return "+expr); fn(0,0,0,0); return{fn}; }
+  catch (err) { return { fn: null, error: err.message }; }
+}
+
+function appliquerFormuleProposition(config) {
+  const formuleTxt = String(config.formule || "z*z+c").slice(0, 200);
+  const compiled = compilerFormule(formuleTxt);
+  if (!compiled.fn) {
+    updateStatusBar(`Formule invalide : ${compiled.error}`, true);
+    return;
+  }
+  formuleFnCompilee = compiled.fn;
+  params.formulePropositionActive = true;
+  params.formuleIteration = formuleTxt;
+  params.formuleEscapeRadius = Math.max(1, Math.min(100, Number(config.rayon) || 2));
+  params.formuleMode = config.mode === "julia" ? "julia" : "mandelbrot";
+  if (POINT_FRACTALS.has(params.fractal) || LINE_FRACTALS.has(params.fractal)) {
+    params.fractal = "mandelbrot";
+    syncSelectors(params.fractal);
+    loadSources(params.fractal);
+  }
+  view.centerX = VIEW_PRESETS[params.fractal]?.centerX ?? -0.5;
+  view.centerY = VIEW_PRESETS[params.fractal]?.centerY ?? 0.0;
+  view.pixelSize = (VIEW_PRESETS[params.fractal]?.span ?? 3.5) / Math.max(canvas.width, 1);
+  view.rotation = 0.0;
+  mettreAJourOptionsSpecifiques();
+  explorationModes?.syncFromParams();
+  render();
+  mettreAJourHash(view, params);
+  updateStatusBar(`Formule appliquée : ${formuleTxt}`, true);
+}
+
+function effacerFormuleProposition() {
+  params.formulePropositionActive = false;
+  formuleFnCompilee = null;
+  mettreAJourOptionsSpecifiques();
+  explorationModes?.syncFromParams();
+  render();
+  mettreAJourHash(view, params);
+  updateStatusBar("Retour à la fractale canonique", true);
 }
 
 function kochGenerate(iterations) {
@@ -2599,6 +2696,33 @@ async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
     dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams);
     return;
   }
+  if (renduParams.formulePropositionActive && formuleFnCompilee) {
+    const modeJulia = renduParams.formuleMode === "julia";
+    const R2 = (renduParams.formuleEscapeRadius || 2) ** 2;
+    const fFn = formuleFnCompilee;
+    const cx0f = vueCible.centerX - (w / 2) * vueCible.pixelSize;
+    const cy0f = vueCible.centerY - (h / 2) * vueCible.pixelSize;
+    const psf = vueCible.pixelSize;
+    const imgF = ctxCible.createImageData(w, h);
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const qx = cx0f + px * psf, qy = cy0f + py * psf;
+        let zr = modeJulia ? qx : 0, zi = modeJulia ? qy : 0;
+        const cr = modeJulia ? renduParams.juliaCre : qx, ci = modeJulia ? renduParams.juliaCim : qy;
+        let iter = renduParams.maxIter;
+        for (let n = 0; n < renduParams.maxIter; n++) {
+          const r = fFn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+          if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
+        }
+        const c = getColor(iter, renduParams.maxIter, renduParams);
+        const ii = (py * w + px) * 4;
+        imgF.data[ii] = c[0]; imgF.data[ii + 1] = c[1]; imgF.data[ii + 2] = c[2]; imgF.data[ii + 3] = 255;
+      }
+      if (py % 12 === 0) await attendre(0);
+    }
+    ctxCible.putImageData(imgF, 0, 0);
+    return;
+  }
   const image = ctxCible.createImageData(w, h);
   const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
   const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
@@ -2886,6 +3010,46 @@ function render() {
 
   if (LINE_FRACTALS.has(params.fractal)) {
     renderLineFractal(w, h);
+    return;
+  }
+
+  if (params.formulePropositionActive && formuleFnCompilee) {
+    const modeJulia = params.formuleMode === "julia";
+    const R2 = (params.formuleEscapeRadius || 2) ** 2;
+    const fFn = formuleFnCompilee;
+    let row = 0;
+    function stepFormule() {
+      if (token !== renderToken) return;
+      const endRow = Math.min(row + 4, h);
+      for (let py = row; py < endRow; py++) {
+        const dy = (py - h * 0.5) * ps;
+        const base = py * w * 4;
+        for (let px = 0; px < w; px++) {
+          const dx = (px - w * 0.5) * ps;
+          const qx = view.centerX + dx * cosR - dy * sinR;
+          const qy = view.centerY + dx * sinR + dy * cosR;
+          let zr = modeJulia ? qx : 0, zi = modeJulia ? qy : 0;
+          const cr = modeJulia ? params.juliaCre : qx, ci = modeJulia ? params.juliaCim : qy;
+          let iter = max;
+          for (let n = 0; n < max; n++) {
+            const r = fFn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+            if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
+          }
+          const couleur = getColor(iter, max, pal);
+          const ii = base + px * 4;
+          data[ii] = couleur[0]; data[ii + 1] = couleur[1]; data[ii + 2] = couleur[2]; data[ii + 3] = 255;
+        }
+      }
+      ctx.putImageData(imageDataBuffer, 0, 0, 0, row, w, endRow - row);
+      row = endRow;
+      if (row < h) { requestAnimationFrame(stepFormule); return; }
+      if (token !== renderToken) return;
+      rendering = false;
+      canvas.parentElement.classList.remove("rendering");
+      updateStatusBar(`Formule JS — ${(performance.now() - renderStart).toFixed(0)} ms`, true);
+      explorationModes?.afterRender();
+    }
+    requestAnimationFrame(stepFormule);
     return;
   }
 
@@ -3688,6 +3852,11 @@ async function appliquerSignet(signet) {
   params.lsystemRules = signet.lsystemRules ?? params.lsystemRules;
   params.lsystemAngle = signet.lsystemAngle ?? params.lsystemAngle;
   params.lsystemGenerations = signet.lsystemGenerations ?? params.lsystemGenerations;
+  params.formulePropositionActive = signet.formulePropositionActive ?? params.formulePropositionActive;
+  if (signet.formuleIteration !== undefined) params.formuleIteration = signet.formuleIteration;
+  if (signet.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = signet.formuleEscapeRadius;
+  if (signet.formuleMode !== undefined) params.formuleMode = signet.formuleMode;
+  if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
   params.palette = signet.palette;
   params.paletteBackground = signet.paletteBackground;
   params.paletteInterior = signet.paletteInterior;
@@ -3767,6 +3936,7 @@ explorationModes = initialiserExploration({
     parameterCanvas: parameterMapCanvas,
     parameterReadout: parameterMapReadout,
     lsystemCanvas: lsystemProposalCanvas,
+    formuleCanvas: formuleProposalCanvas,
   },
   dependencies: {
     getView: () => view,
@@ -3800,6 +3970,9 @@ explorationModes = initialiserExploration({
     get3DView: obtenirVue3DActive,
     applyLSystemProposal: appliquerPropositionLSysteme,
     clearLSystemProposal: effacerPropositionLSysteme,
+    applyFormuleProposal: appliquerFormuleProposition,
+    clearFormuleProposal: effacerFormuleProposition,
+    compilerFormule,
     lineFractals: LINE_FRACTALS,
   },
 });
@@ -3842,6 +4015,11 @@ async function init() {
     params.lsystemAngle = etatHash.lsystemAngle ?? params.lsystemAngle;
     params.lsystemGenerations = etatHash.lsystemGenerations ?? params.lsystemGenerations;
     if (params.lsystemProposalActive && !LINE_FRACTALS.has(params.fractal)) params.fractal = "koch";
+    params.formulePropositionActive = etatHash.formulePropositionActive ?? params.formulePropositionActive;
+    if (etatHash.formuleIteration !== undefined) params.formuleIteration = etatHash.formuleIteration;
+    if (etatHash.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = etatHash.formuleEscapeRadius;
+    if (etatHash.formuleMode !== undefined) params.formuleMode = etatHash.formuleMode;
+    if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
   }
 
   syncSelectors(params.fractal);

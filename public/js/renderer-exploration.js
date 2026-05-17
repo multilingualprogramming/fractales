@@ -7,9 +7,31 @@ const TITRES_MODES = {
   abysses: ["Mode Abysses", "Zoom profond et précision"],
   studio3d: ["Studio 3D", "Caméra, matière et profondeur"],
   lsysteme: ["Atelier L-système", "Générations, préréglages et grammaires locales"],
+  formule: ["Atelier formule", "Définir votre propre fonction d'itération complexe"],
   meteo: ["Météo mathématique", "Surcouches d'analyse visuelle"],
   transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
 };
+
+const FORMULE_PRESETS = {
+  mandelbrot: { formule: "z*z+c",            rayon: 2,  mode: "mandelbrot" },
+  julia:      { formule: "z*z+c",            rayon: 2,  mode: "julia"      },
+  cubique:    { formule: "z^3+c",            rayon: 2,  mode: "mandelbrot" },
+  sinus:      { formule: "sin(z)+c",         rayon: 2,  mode: "mandelbrot" },
+  cosinus:    { formule: "cos(z)+c",         rayon: 4,  mode: "mandelbrot" },
+  biomorphe:  { formule: "z^2+z/c",          rayon: 4,  mode: "mandelbrot" },
+  tricorne:   { formule: "conj(z)*conj(z)+c", rayon: 2, mode: "mandelbrot" },
+};
+
+const STORAGE_FORMULE_SAVES = "fractales_formule_sauvegardes";
+
+function lireSauvegardeFormule() {
+  try { const v = JSON.parse(localStorage.getItem(STORAGE_FORMULE_SAVES) || "[]"); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+}
+
+function ecrireSauvegardeFormule(items) {
+  try { localStorage.setItem(STORAGE_FORMULE_SAVES, JSON.stringify(items.slice(0, 20))); } catch {}
+}
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
 const STORAGE_JOURNEYS = "fractales_carnet_voyage";
@@ -255,6 +277,7 @@ export function initialiserExploration({
     parameterCanvas,
     parameterReadout,
     lsystemCanvas,
+    formuleCanvas,
   } = elements;
 
   const {
@@ -276,6 +299,9 @@ export function initialiserExploration({
     get3DView,
     applyLSystemProposal,
     clearLSystemProposal,
+    applyFormuleProposal,
+    clearFormuleProposal,
+    compilerFormule,
     lineFractals,
   } = dependencies;
 
@@ -425,6 +451,7 @@ export function initialiserExploration({
       subtitle.textContent = modeSubtitle;
       if (activeMode === "parametres") drawParameterMap();
       if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
+      if (activeMode === "formule") { updateFormuleProposal(); updateFormuleSaveList(); }
       if (activeMode === "transforms") updateTransformReadout();
     }
   }
@@ -504,6 +531,69 @@ export function initialiserExploration({
         <span class="lsystem-save-item-name" title="${item.nom}">${item.nom}</span>
         <button class="btn btn-secondary" type="button" data-ls-load="${idx}">Charger</button>
         <button class="btn btn-secondary" type="button" data-ls-delete="${idx}">✕</button>
+      </div>
+    `).join("");
+  }
+
+  function lirePropositionFormule() {
+    return {
+      formule: document.getElementById("formule-iteration-input")?.value.trim() || "z*z+c",
+      rayon: parseFloat(document.getElementById("formule-escape-radius-input")?.value || "2"),
+      mode: document.getElementById("formule-mode-select")?.value || "mandelbrot",
+    };
+  }
+
+  function updateFormuleProposal() {
+    if (!formuleCanvas) return;
+    const prop = lirePropositionFormule();
+    const compiled = compilerFormule?.(prop.formule);
+    const ctx = formuleCanvas.getContext("2d");
+    const w = formuleCanvas.width, h = formuleCanvas.height;
+    ctx.fillStyle = "rgba(2,4,10,0.96)";
+    ctx.fillRect(0, 0, w, h);
+    if (!compiled?.fn) {
+      ctx.fillStyle = "rgba(255,100,80,0.9)";
+      ctx.font = "11px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(compiled?.error ?? "Formule invalide", w / 2, h / 2);
+      return;
+    }
+    const fn = compiled.fn, R2 = prop.rayon ** 2, maxIt = 32;
+    const params = getParams();
+    const img = ctx.createImageData(w, h);
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const qx = -2.0 + px / w * 4.0, qy = 1.5 - py / h * 3.0;
+        let zr = prop.mode === "julia" ? qx : 0, zi = prop.mode === "julia" ? qy : 0;
+        const cr = prop.mode === "julia" ? params.juliaCre : qx, ci = prop.mode === "julia" ? params.juliaCim : qy;
+        let iter = maxIt;
+        for (let n = 0; n < maxIt; n++) {
+          const r = fn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+          if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
+        }
+        const c = getPaletteColor(iter, maxIt, params);
+        const ii = (py * w + px) * 4;
+        img.data[ii] = c[0]; img.data[ii + 1] = c[1]; img.data[ii + 2] = c[2]; img.data[ii + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const readout = document.getElementById("formule-proposal-readout");
+    if (readout) {
+      const active = getParams().formulePropositionActive ? "appliquée" : "locale";
+      readout.textContent = `Proposition ${active} · ${prop.formule} · rayon ${prop.rayon} · mode ${prop.mode}`;
+    }
+  }
+
+  function updateFormuleSaveList() {
+    const list = document.getElementById("formule-save-list");
+    if (!list) return;
+    const items = lireSauvegardeFormule();
+    if (items.length === 0) { list.innerHTML = ""; return; }
+    list.innerHTML = items.map((item, idx) => `
+      <div class="lsystem-save-item">
+        <span class="lsystem-save-item-name" title="${item.nom}">${item.nom}</span>
+        <button class="btn btn-secondary" type="button" data-ff-load="${idx}">Charger</button>
+        <button class="btn btn-secondary" type="button" data-ff-delete="${idx}">✕</button>
       </div>
     `).join("");
   }
@@ -722,6 +812,80 @@ export function initialiserExploration({
     updateLSystemProposal();
   });
 
+  // ── Atelier formule ──────────────────────────────────────────
+
+  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", updateFormuleProposal);
+  });
+
+  document.getElementById("formule-preset-select")?.addEventListener("change", (event) => {
+    const preset = FORMULE_PRESETS[event.target.value];
+    if (!preset) { event.target.value = ""; return; }
+    const fi = document.getElementById("formule-iteration-input");
+    const fr = document.getElementById("formule-escape-radius-input");
+    const fm = document.getElementById("formule-mode-select");
+    if (fi) fi.value = preset.formule;
+    if (fr) fr.value = String(preset.rayon);
+    if (fm) fm.value = preset.mode;
+    event.target.value = "";
+    updateFormuleProposal();
+  });
+
+  document.getElementById("btn-formule-apply")?.addEventListener("click", () => {
+    const prop = lirePropositionFormule();
+    applyFormuleProposal?.(prop);
+    updateFormuleProposal();
+  });
+
+  document.getElementById("btn-formule-share")?.addEventListener("click", () => {
+    const prop = lirePropositionFormule();
+    applyFormuleProposal?.(prop);
+    updateHash();
+    setTimeout(() => {
+      try { navigator.clipboard.writeText(window.location.href); updateStatusBar("Lien avec la formule copié", true); }
+      catch { updateStatusBar("Impossible de copier : autorisez le presse-papiers", true); }
+    }, 60);
+  });
+
+  document.getElementById("btn-formule-clear")?.addEventListener("click", () => {
+    clearFormuleProposal?.();
+    updateFormuleProposal();
+  });
+
+  document.getElementById("btn-formule-save")?.addEventListener("click", () => {
+    const nom = document.getElementById("formule-save-name")?.value.trim();
+    if (!nom) { updateStatusBar("Entrez un nom avant de sauvegarder", true); return; }
+    const items = lireSauvegardeFormule();
+    items.unshift({ nom, ...lirePropositionFormule() });
+    ecrireSauvegardeFormule(items);
+    updateFormuleSaveList();
+    const nameInput = document.getElementById("formule-save-name");
+    if (nameInput) nameInput.value = "";
+    updateStatusBar(`Formule « ${nom} » sauvegardée`, true);
+  });
+
+  document.getElementById("formule-save-list")?.addEventListener("click", (event) => {
+    const loadBtn = event.target.closest("[data-ff-load]");
+    if (loadBtn) {
+      const item = lireSauvegardeFormule()[parseInt(loadBtn.dataset.ffLoad, 10)];
+      if (!item) return;
+      const fi = document.getElementById("formule-iteration-input");
+      const fr = document.getElementById("formule-escape-radius-input");
+      const fm = document.getElementById("formule-mode-select");
+      if (fi) fi.value = item.formule || "z*z+c";
+      if (fr) fr.value = String(item.rayon ?? 2);
+      if (fm) fm.value = item.mode || "mandelbrot";
+      updateFormuleProposal();
+    }
+    const deleteBtn = event.target.closest("[data-ff-delete]");
+    if (deleteBtn) {
+      const items = lireSauvegardeFormule();
+      items.splice(parseInt(deleteBtn.dataset.ffDelete, 10), 1);
+      ecrireSauvegardeFormule(items);
+      updateFormuleSaveList();
+    }
+  });
+
   document.querySelectorAll(".weather-toggle").forEach((input) => {
     input.addEventListener("change", () => {
       const values = [...document.querySelectorAll(".weather-toggle")]
@@ -868,6 +1032,12 @@ export function initialiserExploration({
     if (lsystemAngle) lsystemAngle.value = String(params.lsystemAngle ?? 60);
     if (lsystemAxiom) lsystemAxiom.value = params.lsystemAxiom || "F";
     if (lsystemRules) lsystemRules.value = params.lsystemRules || "F=F+F--F+F";
+    const formuleIter = document.getElementById("formule-iteration-input");
+    const formuleRadius = document.getElementById("formule-escape-radius-input");
+    const formuleMode = document.getElementById("formule-mode-select");
+    if (formuleIter) formuleIter.value = params.formuleIteration || "z*z+c";
+    if (formuleRadius) formuleRadius.value = String(params.formuleEscapeRadius ?? 2);
+    if (formuleMode) formuleMode.value = params.formuleMode || "mandelbrot";
     const overlays = activeWeather();
     document.querySelectorAll(".weather-toggle").forEach((input) => {
       input.checked = overlays.has(input.value);
@@ -883,6 +1053,7 @@ export function initialiserExploration({
     updateDeepZoomReadout();
     if (activeMode === "parametres") drawParameterMap();
     if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
+    if (activeMode === "formule") { updateFormuleProposal(); updateFormuleSaveList(); }
     if (activeMode === "transforms") updateTransformReadout();
     drawWeather();
   }

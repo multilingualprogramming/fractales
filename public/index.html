@@ -190,6 +190,8 @@
             title="Atelier L-système">⌁</button>
           <button class="exploration-mode-btn" type="button" data-mode="meteo" aria-label="Météo mathématique"
             title="Météo mathématique">☷</button>
+          <button class="exploration-mode-btn" type="button" data-mode="transforms" aria-label="Transformations du plan"
+            title="Transformations du plan">◈</button>
         </nav>
 
         <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
@@ -283,6 +285,24 @@
             </section>
 
             <section class="exploration-view hidden" data-view="lsysteme">
+              <label class="exploration-field" for="lsystem-preset-select">
+                <span>Préréglage</span>
+                <select id="lsystem-preset-select">
+                  <option value="">— choisir un préréglage —</option>
+                  <option value="koch">Flocon de Koch</option>
+                  <option value="dragon">Dragon de Heighway</option>
+                  <option value="levy">Courbe de Lévy C</option>
+                  <option value="gosper">Courbe de Gosper</option>
+                  <option value="sierpinski">Triangle de Sierpiński</option>
+                  <option value="hilbert">Courbe de Hilbert</option>
+                  <option value="peano">Courbe de Peano</option>
+                  <option value="arbre_simple">Arbre simple</option>
+                  <option value="arbre_touffu">Arbre touffu</option>
+                  <option value="flocon_carre">Flocon carré</option>
+                  <option value="cristal">Cristal</option>
+                  <option value="pentigree">Pentigree</option>
+                </select>
+              </label>
               <label class="exploration-field" for="lsystem-generation-slider">
                 <span>Génération</span>
                 <input id="lsystem-generation-slider" type="range" min="1" max="8" step="1" value="4" />
@@ -301,12 +321,36 @@
                 <span>Règles proposées</span>
                 <textarea id="lsystem-rules-input" rows="3">F=F+F--F+F</textarea>
               </label>
+              <details class="lsystem-legend">
+                <summary>Symboles disponibles</summary>
+                <div class="lsystem-legend-grid">
+                  <code>F</code><span>Avancer et tracer</span>
+                  <code>G</code><span>Avancer sans tracer</span>
+                  <code>+</code><span>Tourner à gauche</span>
+                  <code>-</code><span>Tourner à droite</span>
+                  <code>[</code><span>Empiler la position</span>
+                  <code>]</code><span>Dépiler la position</span>
+                  <code>X Y</code><span>Variables libres (non tracées)</span>
+                </div>
+              </details>
               <canvas id="lsystem-proposal-canvas" width="280" height="180"
                 aria-label="Aperçu d'une proposition L-système"></canvas>
               <div id="lsystem-proposal-readout" class="exploration-readout">Proposition locale : non ajoutée au catalogue canonique.</div>
+              <details id="lsystem-string-details" class="lsystem-legend">
+                <summary>Chaîne de la génération</summary>
+                <div id="lsystem-string-preview" class="lsystem-string-preview"></div>
+              </details>
               <div class="exploration-actions">
                 <button id="btn-lsystem-apply" class="btn" type="button">Appliquer</button>
+                <button id="btn-lsystem-share" class="btn btn-secondary" type="button">Copier le lien</button>
                 <button id="btn-lsystem-clear" class="btn btn-secondary" type="button">Revenir au canonique</button>
+              </div>
+              <div class="lsystem-save-section">
+                <div class="exploration-grid-2">
+                  <input id="lsystem-save-name" class="lsystem-save-input" type="text" placeholder="Nom de la grammaire" maxlength="40" />
+                  <button id="btn-lsystem-save" class="btn btn-secondary" type="button">Sauvegarder</button>
+                </div>
+                <div id="lsystem-save-list" class="lsystem-save-list"></div>
               </div>
             </section>
 
@@ -325,8 +369,36 @@
               </label>
               <div class="exploration-actions">
                 <button id="btn-capture-orbit" class="btn" type="button">Capturer une orbite</button>
+                <button id="btn-replay-orbit" class="btn btn-secondary" type="button" style="display:none">Rejouer</button>
               </div>
               <div id="weather-readout" class="exploration-readout">Aucune orbite capturée.</div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="transforms">
+              <label class="exploration-field" for="transform-select">
+                <span>Transformation</span>
+                <select id="transform-select">
+                  <option value="aucune">Aucune (plan complexe standard)</option>
+                  <option value="log_polaire">Log-polaire  z → ln|z| + i·arg(z)</option>
+                  <option value="inversion">Inversion  z → 1/z̄</option>
+                  <option value="pli_x">Pli axe X  z → |Re(z)| + i·Im(z)</option>
+                  <option value="pli_y">Pli axe Y  z → Re(z) + i·|Im(z)|</option>
+                  <option value="pli_xy">Pli double  z → |Re(z)| + i·|Im(z)|</option>
+                  <option value="mobius">Möbius (préréglage)</option>
+                </select>
+              </label>
+              <label class="exploration-field hidden" id="mobius-preset-group" for="mobius-preset-select">
+                <span>Préréglage Möbius</span>
+                <select id="mobius-preset-select">
+                  <option value="inversion_cercle">Inversion du cercle  z → 1/z</option>
+                  <option value="cayley">Cayley  z → (z−1)/(z+1)</option>
+                  <option value="joukowski">Joukowski  z → (z + 1/z)/2</option>
+                </select>
+              </label>
+              <div id="transform-readout" class="exploration-readout transform-readout">Plan standard actif.</div>
+              <div class="exploration-actions">
+                <button id="btn-transform-reset" class="btn btn-secondary" type="button">Désactiver</button>
+              </div>
             </section>
           </div>
         </section>

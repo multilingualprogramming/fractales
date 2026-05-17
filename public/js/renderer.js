@@ -69,6 +69,8 @@ const params = {
   lsystemRules: "F=F+F--F+F",
   lsystemAngle: 60,
   lsystemGenerations: 4,
+  coordTransform: "aucune",
+  mobiusPreset: "inversion_cercle",
 };
 
 const VIEW_PRESETS = {
@@ -2351,6 +2353,45 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams, tampon.lumieres);
 }
 
+function appliquerTransforme(x, y, renduParams) {
+  const ct = renduParams.coordTransform;
+  if (!ct || ct === "aucune") return [x, y];
+  if (ct === "log_polaire") {
+    const r2 = x * x + y * y;
+    if (r2 < 1e-20) return [x, y];
+    return [0.5 * Math.log(r2), Math.atan2(y, x)];
+  }
+  if (ct === "inversion") {
+    const r2 = x * x + y * y;
+    if (r2 < 1e-20) return [x, y];
+    return [x / r2, -y / r2];
+  }
+  if (ct === "pli_x") return [Math.abs(x), y];
+  if (ct === "pli_y") return [x, Math.abs(y)];
+  if (ct === "pli_xy") return [Math.abs(x), Math.abs(y)];
+  if (ct === "mobius") {
+    const mp = renduParams.mobiusPreset || "inversion_cercle";
+    if (mp === "inversion_cercle") {
+      const r2 = x * x + y * y;
+      if (r2 < 1e-20) return [x, y];
+      return [x / r2, -y / r2];
+    }
+    if (mp === "cayley") {
+      // z → (z−1)/(z+1)
+      const denRe = x + 1, denIm = y;
+      const den2 = denRe * denRe + denIm * denIm;
+      if (den2 < 1e-20) return [x, y];
+      return [((x - 1) * denRe + y * denIm) / den2, (y * denRe - (x - 1) * denIm) / den2];
+    }
+    if (mp === "joukowski") {
+      const r2 = x * x + y * y;
+      if (r2 < 1e-20) return [x, y];
+      return [(x + x / r2) * 0.5, (y - y / r2) * 0.5];
+    }
+  }
+  return [x, y];
+}
+
 async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
   const fn = wasmFunctions[renduParams.fractal];
   if (!fn) {
@@ -2369,11 +2410,14 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
   const estFractaleOrbitrap = renduParams.fractal === "mandelbrot_piege_cercle" || renduParams.fractal === "mandelbrot_piege_croix" || renduParams.fractal === "mandelbrot_piege_ligne" || renduParams.fractal === "julia_piege_cercle";
   const estFractaleLisse = renduParams.fractal === "mandelbrot_lisse" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "burning_ship_lisse" || renduParams.fractal === "tricorn_lisse";
 
+  const useTransform = renduParams.coordTransform && renduParams.coordTransform !== "aucune";
   for (let py = 0; py < h; py++) {
-    const cy = cy0 + py * ps;
+    const rawCy = cy0 + py * ps;
     const base = py * w * 4;
     for (let px = 0; px < w; px++) {
-      const cx = cx0 + px * ps;
+      const rawCx = cx0 + px * ps;
+      let cx = rawCx, cy = rawCy;
+      if (useTransform) { [cx, cy] = appliquerTransforme(rawCx, rawCy, renduParams); }
       let iterValue;
       if (renduParams.fractal === "julia" || renduParams.fractal === "burning_julia" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "julia_piege_cercle") {
         iterValue = fn(cx, cy, renduParams.juliaCre, renduParams.juliaCim, renduParams.maxIter);

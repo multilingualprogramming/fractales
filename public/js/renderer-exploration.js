@@ -6,12 +6,29 @@ const TITRES_MODES = {
   palette: ["Physique de palette", "Nouveaux modes de coloration"],
   abysses: ["Mode Abysses", "Zoom profond et précision"],
   studio3d: ["Studio 3D", "Caméra, matière et profondeur"],
-  lsysteme: ["Atelier L-système", "Générations et propositions locales"],
+  lsysteme: ["Atelier L-système", "Générations, préréglages et grammaires locales"],
   meteo: ["Météo mathématique", "Surcouches d'analyse visuelle"],
+  transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
 };
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
 const STORAGE_JOURNEYS = "fractales_carnet_voyage";
+const STORAGE_LSYSTEM_SAVES = "fractales_lsystem_sauvegardes";
+
+const LSYSTEM_PRESETS = {
+  koch:         { axiome: "F--F--F",  regles: "F=F+F--F+F",                                          angle: 60,  gen: 4 },
+  dragon:       { axiome: "FX",       regles: "X=X+YF+\nY=-FX-Y",                                    angle: 90,  gen: 11 },
+  levy:         { axiome: "F",        regles: "F=+F--F+",                                             angle: 45,  gen: 10 },
+  gosper:       { axiome: "F",        regles: "F=F-G--G+F++FF+G-\nG=+F-GG--G-F++F+G",               angle: 60,  gen: 4 },
+  sierpinski:   { axiome: "F-G-G",    regles: "F=F-G+F+G-F\nG=GG",                                   angle: 120, gen: 6 },
+  hilbert:      { axiome: "L",        regles: "L=+RF-LFL-FR+\nR=-LF+RFR+FL-",                        angle: 90,  gen: 5 },
+  peano:        { axiome: "X",        regles: "X=XFYFX+F+YFXFY-F-XFYFX\nY=YFXFY-F-XFYFX+F+YFXFY", angle: 90,  gen: 3 },
+  arbre_simple: { axiome: "F",        regles: "F=F[+F]F[-F]F",                                        angle: 26,  gen: 5 },
+  arbre_touffu: { axiome: "X",        regles: "X=F-[[X]+X]+F[+FX]-X\nF=FF",                          angle: 25,  gen: 6 },
+  flocon_carre: { axiome: "F+F+F+F",  regles: "F=F-F+F+FF-F-F+F",                                   angle: 90,  gen: 4 },
+  cristal:      { axiome: "F+F+F+F",  regles: "F=FF+F++F+F",                                         angle: 90,  gen: 4 },
+  pentigree:    { axiome: "F-F-F-F-F", regles: "F=F-F++F+F-F-F",                                     angle: 72,  gen: 4 },
+};
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -59,24 +76,95 @@ function iterationMandelbrot(cx, cy, maxIter) {
   return maxIter;
 }
 
+const ORBIT_POINT_FRACTALS = new Set([
+  "barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb",
+  "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal",
+  "lichtenberg_figures", "attracteur_de_clifford", "attracteur_de_peter_de_jong",
+  "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "rossler_attractor",
+  "aizawa_attractor", "sprott_attractor", "feigenbaum_tree", "duffing_attractor", "buddhabrot",
+]);
+const ORBIT_LINE_FRACTALS = new Set([
+  "koch", "dragon_heighway", "courbe_levy_c", "gosper_curve", "cantor_set",
+  "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal",
+  "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore",
+]);
+
 function calculerOrbite(fractal, point, params) {
+  const max = Math.min(320, Math.max(32, params.maxIter | 0));
   const points = [];
+
+  if (ORBIT_POINT_FRACTALS.has(fractal) || ORBIT_LINE_FRACTALS.has(fractal)) {
+    return { points, escaped: false, unsupported: true };
+  }
+
+  if (fractal === "newton" || fractal === "bassin_newton_generalise") {
+    let x = point.re, y = point.im;
+    for (let i = 0; i < max; i++) {
+      points.push({ re: x, im: y });
+      const x2 = x * x - y * y, y2 = 2 * x * y;
+      const x3 = x2 * x - y2 * y, y3 = x2 * y + y2 * x;
+      const numRe = 2 * x3 + 1, numIm = 2 * y3;
+      const denRe = 3 * x2, denIm = 3 * y2;
+      const den2 = denRe * denRe + denIm * denIm;
+      if (den2 < 1e-14) break;
+      x = (numRe * denRe + numIm * denIm) / den2;
+      y = (numIm * denRe - numRe * denIm) / den2;
+      if (!isFinite(x + y)) { return { points, escaped: true }; }
+      const roots = [[1, 0], [-0.5, 0.8660254], [-0.5, -0.8660254]];
+      if (roots.some(([rx, ry]) => (x - rx) * (x - rx) + (y - ry) * (y - ry) < 1e-8)) break;
+    }
+    return { points, escaped: false };
+  }
+
+  if (fractal === "phoenix") {
+    let x = point.re, y = point.im, px = 0, py = 0;
+    const cx = params.juliaCre ?? -0.5, cy = params.juliaCim ?? 0.0;
+    for (let i = 0; i < max; i++) {
+      points.push({ re: x, im: y });
+      const nx = x * x - y * y + cx + 0.5667 * px;
+      const ny = 2 * x * y + cy + 0.5667 * py;
+      px = x; py = y; x = nx; y = ny;
+      if (x * x + y * y > 16) return { points, escaped: true };
+    }
+    return { points, escaped: false };
+  }
+
   let x = JULIA_FRACTALS.has(fractal) ? point.re : 0.0;
   let y = JULIA_FRACTALS.has(fractal) ? point.im : 0.0;
   const cx = JULIA_FRACTALS.has(fractal) ? params.juliaCre : point.re;
   const cy = JULIA_FRACTALS.has(fractal) ? params.juliaCim : point.im;
-  const max = Math.min(320, Math.max(32, params.maxIter | 0));
+
+  const isBurning = fractal === "burning_ship" || fractal === "burning_julia" || fractal === "burning_ship_lisse";
+  const isBuffalo = fractal === "buffalo";
+  const isCeltic = fractal === "celtic" || fractal === "perpendicular_celtic";
+  const isHeart = fractal === "heart";
+  const isTricorn = fractal === "tricorn" || fractal === "tricorn_lisse";
+  const isDuck = fractal === "duck";
+  const isPerpY = fractal === "perpendicular_burning_ship" || fractal === "perpendicular_mandelbrot" || fractal === "perpendicular_celtic";
+
   for (let i = 0; i < max; i++) {
     points.push({ re: x, im: y });
-    const absX = fractal === "burning_ship" || fractal === "burning_julia" ? Math.abs(x) : x;
-    const absY = fractal === "burning_ship" || fractal === "burning_julia" ? Math.abs(y) : y;
-    const nx = absX * absX - absY * absY + cx;
-    const ny = 2.0 * absX * absY + cy;
+    const ax = (isBurning || isBuffalo) ? Math.abs(x) : x;
+    const ay = isBurning ? Math.abs(y) : y;
+    let nx, ny;
+    if (isCeltic) {
+      nx = Math.abs(ax * ax - ay * ay) + cx;
+      ny = 2 * ax * ay + cy;
+    } else if (isHeart) {
+      nx = ax * ax - ay * ay + cx;
+      ny = Math.abs(2 * ax * ay) + cy;
+    } else if (isDuck) {
+      nx = ax * ax - ay * ay + Math.abs(cx);
+      ny = 2 * ax * ay + cy;
+    } else {
+      nx = ax * ax - ay * ay + cx;
+      ny = 2 * ax * ay + cy;
+    }
     x = nx;
-    y = fractal === "tricorn" ? -ny : ny;
-    if (x * x + y * y > 16.0) break;
+    y = isTricorn ? -ny : (isPerpY ? Math.abs(ny) : ny);
+    if (x * x + y * y > 16) return { points, escaped: true };
   }
-  return points;
+  return { points, escaped: false };
 }
 
 function coordToPixel(point, canvas, view) {
@@ -153,6 +241,17 @@ function lirePropositionLSysteme() {
   };
 }
 
+function lireSauvegardeLSystem() {
+  try {
+    const v = JSON.parse(localStorage.getItem(STORAGE_LSYSTEM_SAVES) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch { return []; }
+}
+
+function ecrireSauvegardeLSystem(items) {
+  try { localStorage.setItem(STORAGE_LSYSTEM_SAVES, JSON.stringify(items.slice(0, 20))); } catch {}
+}
+
 export function initialiserExploration({
   elements,
   dependencies,
@@ -194,6 +293,9 @@ export function initialiserExploration({
 
   let activeMode = null;
   let capturedOrbit = [];
+  let orbitEscaped = false;
+  let orbitRevealIndex = 0;
+  let orbitAnimId = null;
   let captureOrbitPending = false;
 
   function resizeOverlay() {
@@ -245,18 +347,34 @@ export function initialiserExploration({
       }
     }
     if (overlays.has("orbite") && capturedOrbit.length > 1) {
-      ctx.strokeStyle = "rgba(255, 244, 180, 0.9)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      capturedOrbit.forEach((point, index) => {
-        const p = coordToPixel(point, overlayCanvas, view);
-        if (index === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
-      ctx.stroke();
+      const n = capturedOrbit.length;
+      const visible = capturedOrbit.slice(0, Math.max(1, orbitRevealIndex));
+      for (let i = 1; i < visible.length; i++) {
+        const t = i / Math.max(1, n - 1);
+        let r, g, b;
+        if (t < 0.5) { r = Math.round(510 * t); g = 230; b = 0; }
+        else { r = 230; g = Math.round(230 * (1 - (t - 0.5) * 2)); b = 0; }
+        ctx.strokeStyle = `rgba(${r},${g},${b},0.88)`;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        const p0 = coordToPixel(visible[i - 1], overlayCanvas, view);
+        const p1 = coordToPixel(visible[i], overlayCanvas, view);
+        ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+      for (let i = 1; i < visible.length - 1; i++) {
+        const p = coordToPixel(visible[i], overlayCanvas, view);
+        ctx.fillStyle = "rgba(255, 255, 200, 0.55)";
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+      }
       const first = coordToPixel(capturedOrbit[0], overlayCanvas, view);
       ctx.fillStyle = "#00ff9f";
-      ctx.beginPath(); ctx.arc(first.x, first.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(first.x, first.y, 4, 0, Math.PI * 2); ctx.fill();
+      if (orbitRevealIndex >= n && visible.length > 1) {
+        const last = coordToPixel(capturedOrbit[n - 1], overlayCanvas, view);
+        ctx.fillStyle = orbitEscaped ? "#ff4444" : "#4488ff";
+        ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.fill();
+      }
     }
   }
 
@@ -308,7 +426,8 @@ export function initialiserExploration({
       title.textContent = modeTitle;
       subtitle.textContent = modeSubtitle;
       if (activeMode === "parametres") drawParameterMap();
-      if (activeMode === "lsysteme") updateLSystemProposal();
+      if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
+      if (activeMode === "transforms") updateTransformReadout();
     }
   }
 
@@ -359,6 +478,36 @@ export function initialiserExploration({
       const active = getParams().lsystemProposalActive ? "appliquée" : "locale";
       readout.textContent = `Proposition ${active} · ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}° · non canonique`;
     }
+    const stringPreview = document.getElementById("lsystem-string-preview");
+    if (stringPreview) {
+      const rules = new Map();
+      proposition.rules.split(/\n|;/).forEach((line) => {
+        const [key, value] = line.split("=");
+        if (key && value) rules.set(key.trim()[0], value.trim());
+      });
+      let seq = proposition.axiom || "F";
+      for (let i = 0; i < clamp(proposition.generations, 0, 8); i++) {
+        let next = "";
+        for (const ch of seq) next += rules.get(ch) ?? ch;
+        seq = next.slice(0, 14000);
+      }
+      const display = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles)` : seq + ` (${seq.length} symboles)`;
+      stringPreview.textContent = display;
+    }
+  }
+
+  function updateLSystemSaveList() {
+    const list = document.getElementById("lsystem-save-list");
+    if (!list) return;
+    const items = lireSauvegardeLSystem();
+    if (items.length === 0) { list.innerHTML = ""; return; }
+    list.innerHTML = items.map((item, idx) => `
+      <div class="lsystem-save-item">
+        <span class="lsystem-save-item-name" title="${item.nom}">${item.nom}</span>
+        <button class="btn btn-secondary" type="button" data-ls-load="${idx}">Charger</button>
+        <button class="btn btn-secondary" type="button" data-ls-delete="${idx}">✕</button>
+      </div>
+    `).join("");
   }
 
   dock.addEventListener("click", (event) => {
@@ -497,10 +646,77 @@ export function initialiserExploration({
     document.getElementById(id)?.addEventListener("input", updateLSystemProposal);
   });
 
+  document.getElementById("lsystem-preset-select")?.addEventListener("change", (event) => {
+    const key = event.target.value;
+    if (!key || !LSYSTEM_PRESETS[key]) { event.target.value = ""; return; }
+    const preset = LSYSTEM_PRESETS[key];
+    const axiomInput = document.getElementById("lsystem-axiom-input");
+    const rulesInput = document.getElementById("lsystem-rules-input");
+    const angleInput = document.getElementById("lsystem-angle-input");
+    const genSlider = document.getElementById("lsystem-generation-slider");
+    if (axiomInput) axiomInput.value = preset.axiome;
+    if (rulesInput) rulesInput.value = preset.regles;
+    if (angleInput) angleInput.value = String(preset.angle);
+    if (genSlider) genSlider.value = String(preset.gen);
+    event.target.value = "";
+    updateLSystemProposal();
+  });
+
   document.getElementById("btn-lsystem-apply")?.addEventListener("click", () => {
     const proposition = lirePropositionLSysteme();
     applyLSystemProposal?.(proposition);
     updateLSystemProposal();
+  });
+
+  document.getElementById("btn-lsystem-share")?.addEventListener("click", () => {
+    const proposition = lirePropositionLSysteme();
+    applyLSystemProposal?.(proposition);
+    updateHash();
+    setTimeout(() => {
+      try {
+        navigator.clipboard.writeText(window.location.href);
+        updateStatusBar("Lien avec la grammaire L-système copié", true);
+      } catch {
+        updateStatusBar("Impossible de copier : autorisez le presse-papiers", true);
+      }
+    }, 60);
+  });
+
+  document.getElementById("btn-lsystem-save")?.addEventListener("click", () => {
+    const nom = document.getElementById("lsystem-save-name")?.value.trim();
+    if (!nom) { updateStatusBar("Entrez un nom avant de sauvegarder", true); return; }
+    const items = lireSauvegardeLSystem();
+    const proposition = lirePropositionLSysteme();
+    items.unshift({ nom, ...proposition });
+    ecrireSauvegardeLSystem(items);
+    updateLSystemSaveList();
+    const nameInput = document.getElementById("lsystem-save-name");
+    if (nameInput) nameInput.value = "";
+    updateStatusBar(`Grammaire « ${nom} » sauvegardée`, true);
+  });
+
+  document.getElementById("lsystem-save-list")?.addEventListener("click", (event) => {
+    const loadBtn = event.target.closest("[data-ls-load]");
+    if (loadBtn) {
+      const item = lireSauvegardeLSystem()[parseInt(loadBtn.dataset.lsLoad, 10)];
+      if (!item) return;
+      const axiomInput = document.getElementById("lsystem-axiom-input");
+      const rulesInput = document.getElementById("lsystem-rules-input");
+      const angleInput = document.getElementById("lsystem-angle-input");
+      const genSlider = document.getElementById("lsystem-generation-slider");
+      if (axiomInput) axiomInput.value = item.axiom || "F";
+      if (rulesInput) rulesInput.value = item.rules || "F=F+F--F+F";
+      if (angleInput) angleInput.value = String(item.angle ?? 60);
+      if (genSlider) genSlider.value = String(item.generations ?? 4);
+      updateLSystemProposal();
+    }
+    const deleteBtn = event.target.closest("[data-ls-delete]");
+    if (deleteBtn) {
+      const items = lireSauvegardeLSystem();
+      items.splice(parseInt(deleteBtn.dataset.lsDelete, 10), 1);
+      ecrireSauvegardeLSystem(items);
+      updateLSystemSaveList();
+    }
   });
 
   document.getElementById("btn-lsystem-clear")?.addEventListener("click", () => {
@@ -519,9 +735,51 @@ export function initialiserExploration({
     });
   });
 
+  function startOrbitAnimation() {
+    if (orbitAnimId) cancelAnimationFrame(orbitAnimId);
+    orbitRevealIndex = 0;
+    const btnReplay = document.getElementById("btn-replay-orbit");
+    if (btnReplay) btnReplay.style.display = "inline-flex";
+    function step() {
+      orbitRevealIndex = Math.min(orbitRevealIndex + 4, capturedOrbit.length);
+      drawWeather();
+      if (orbitRevealIndex < capturedOrbit.length) {
+        orbitAnimId = requestAnimationFrame(step);
+      } else {
+        orbitAnimId = null;
+      }
+    }
+    orbitAnimId = requestAnimationFrame(step);
+  }
+
+  function captureOrbitAt(point) {
+    const result = calculerOrbite(getParams().fractal, point, getParams());
+    if (result.unsupported) {
+      updateStatusBar("Orbite non disponible pour ce type de fractale", true);
+      return;
+    }
+    capturedOrbit = result.points;
+    orbitEscaped = result.escaped;
+    const values = new Set(activeWeather());
+    values.add("orbite");
+    setParamsPatch({ weatherOverlays: [...values].join(",") });
+    document.querySelectorAll(".weather-toggle").forEach((input) => {
+      input.checked = values.has(input.value);
+    });
+    const readout = document.getElementById("weather-readout");
+    const label = orbitEscaped ? "échappe" : "bornée";
+    if (readout) readout.textContent = `${capturedOrbit.length} pts · ${label} · départ ${formatNombre(point.re, 5)} ${point.im >= 0 ? "+" : "-"} ${formatNombre(Math.abs(point.im), 5)}i`;
+    startOrbitAnimation();
+    updateHash();
+  }
+
   document.getElementById("btn-capture-orbit")?.addEventListener("click", () => {
     captureOrbitPending = true;
     updateStatusBar("Cliquez un point du canvas pour capturer son orbite", true);
+  });
+
+  document.getElementById("btn-replay-orbit")?.addEventListener("click", () => {
+    if (capturedOrbit.length > 0) startOrbitAnimation();
   });
 
   getActiveCanvas().addEventListener("click", (event) => {
@@ -531,18 +789,62 @@ export function initialiserExploration({
     captureOrbitPending = false;
     const canvas = getActiveCanvas();
     const point = canvasToComplexLocal(event.offsetX, event.offsetY, canvas, getView());
-    capturedOrbit = calculerOrbite(getParams().fractal, point, getParams());
-    const values = new Set(activeWeather());
-    values.add("orbite");
-    setParamsPatch({ weatherOverlays: [...values].join(",") });
-    document.querySelectorAll(".weather-toggle").forEach((input) => {
-      input.checked = values.has(input.value);
-    });
-    const readout = document.getElementById("weather-readout");
-    if (readout) readout.textContent = `${capturedOrbit.length} points · départ ${formatNombre(point.re, 5)} ${point.im >= 0 ? "+" : "-"} ${formatNombre(Math.abs(point.im), 5)}i`;
-    drawWeather();
-    updateHash();
+    captureOrbitAt(point);
   }, true);
+
+  const TRANSFORM_READOUTS = {
+    aucune:       "Plan standard actif.",
+    log_polaire:  "z → ln|z| + i·arg(z) — zoom devient translation",
+    inversion:    "z → x/(x²+y²) − i·y/(x²+y²) — intérieur/extérieur inversés",
+    pli_x:        "z → |Re(z)| + i·Im(z) — symétrie axe réel",
+    pli_y:        "z → Re(z) + i·|Im(z)| — symétrie axe imaginaire",
+    pli_xy:       "z → |Re(z)| + i·|Im(z)| — double pli",
+    mobius:       null,
+  };
+  const MOBIUS_READOUTS = {
+    inversion_cercle: "z → 1/z — inversion du cercle unité",
+    cayley:           "z → (z−1)/(z+1) — transformation de Cayley",
+    joukowski:        "z → (z + 1/z)/2 — aile de Joukowski",
+  };
+
+  function updateTransformReadout() {
+    const readout = document.getElementById("transform-readout");
+    if (!readout) return;
+    const ct = getParams().coordTransform || "aucune";
+    const mp = getParams().mobiusPreset || "inversion_cercle";
+    const text = ct === "mobius"
+      ? (MOBIUS_READOUTS[mp] ?? "Möbius actif")
+      : (TRANSFORM_READOUTS[ct] ?? "Plan standard actif.");
+    readout.textContent = text;
+  }
+
+  document.getElementById("transform-select")?.addEventListener("change", (event) => {
+    const val = event.target.value;
+    const group = document.getElementById("mobius-preset-group");
+    if (group) group.classList.toggle("hidden", val !== "mobius");
+    setParamsPatch({ coordTransform: val });
+    updateTransformReadout();
+    render();
+    updateHash();
+  });
+
+  document.getElementById("mobius-preset-select")?.addEventListener("change", (event) => {
+    setParamsPatch({ mobiusPreset: event.target.value });
+    updateTransformReadout();
+    render();
+    updateHash();
+  });
+
+  document.getElementById("btn-transform-reset")?.addEventListener("click", () => {
+    setParamsPatch({ coordTransform: "aucune" });
+    const sel = document.getElementById("transform-select");
+    if (sel) sel.value = "aucune";
+    const group = document.getElementById("mobius-preset-group");
+    if (group) group.classList.add("hidden");
+    updateTransformReadout();
+    render();
+    updateHash();
+  });
 
   function syncFromParams() {
     const params = getParams();
@@ -572,10 +874,18 @@ export function initialiserExploration({
     document.querySelectorAll(".weather-toggle").forEach((input) => {
       input.checked = overlays.has(input.value);
     });
+    const transformSel = document.getElementById("transform-select");
+    const mobiusPresetSel = document.getElementById("mobius-preset-select");
+    const mobiusGroup = document.getElementById("mobius-preset-group");
+    if (transformSel) transformSel.value = params.coordTransform || "aucune";
+    if (mobiusPresetSel) mobiusPresetSel.value = params.mobiusPreset || "inversion_cercle";
+    if (mobiusGroup) mobiusGroup.classList.toggle("hidden", (params.coordTransform || "aucune") !== "mobius");
     updateJourneyList();
+    updateLSystemSaveList();
     updateDeepZoomReadout();
     if (activeMode === "parametres") drawParameterMap();
-    if (activeMode === "lsysteme") updateLSystemProposal();
+    if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
+    if (activeMode === "transforms") updateTransformReadout();
     drawWeather();
   }
 

@@ -1770,3 +1770,142 @@ select:focus {
 #julia-c-controls input[type="range"] {
   width: 100px;
 }
+
+/* ============================================================
+   L-SYSTÈME — légende, sauvegarde, chaîne
+   ============================================================ */
+
+.lsystem-legend {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.lsystem-legend summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 500;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lsystem-legend summary::before {
+  content: "▸";
+  font-size: 10px;
+  color: var(--cyan-dim);
+  transition: transform var(--transition);
+}
+
+.lsystem-legend[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.lsystem-legend-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin-top: 8px;
+}
+
+.lsystem-legend-grid code {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+
+.lsystem-string-preview {
+  margin-top: 6px;
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--cyan-dim);
+  word-break: break-all;
+  line-height: 1.6;
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+.lsystem-save-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.lsystem-save-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.lsystem-save-input:focus {
+  outline: none;
+  border-color: var(--border-glow);
+}
+
+.lsystem-save-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.lsystem-save-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.lsystem-save-item-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lsystem-save-item .btn {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+/* ============================================================
+   TRANSFORMATIONS DU PLAN
+   ============================================================ */
+
+.transform-readout {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--cyan);
+}
+
+.transform-active-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.18);
+  color: var(--cyan);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}

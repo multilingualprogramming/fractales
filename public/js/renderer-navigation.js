@@ -54,6 +54,10 @@ export function encoderEtat(view, params) {
     p.set("lax", params.lsystemAxiom ?? "F");
     p.set("lr", params.lsystemRules ?? "F=F+F--F+F");
   }
+  if (params.coordTransform && params.coordTransform !== "aucune") {
+    p.set("ct", params.coordTransform);
+    if (params.coordTransform === "mobius" && params.mobiusPreset) p.set("mp", params.mobiusPreset);
+  }
   return "#" + p.toString();
 }
 
@@ -96,6 +100,8 @@ export function decoderEtat(hash) {
     lsystemAngle: num("la"),
     lsystemAxiom: p.get("lax") ?? undefined,
     lsystemRules: p.get("lr") ?? undefined,
+    coordTransform: p.get("ct") ?? "aucune",
+    mobiusPreset: p.get("mp") ?? "inversion_cercle",
   };
 
   if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;

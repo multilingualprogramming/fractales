@@ -83,7 +83,13 @@ jobs:
         run: python scripts/ui_smoke_checks.py
 
       - name: Vérifier la syntaxe JavaScript (Node)
-        run: node --check public/js/renderer.js
+        run: |
+          node --check public/js/renderer.js
+          node --check public/js/renderer-navigation.js
+          node --check public/js/renderer-source-panel.js
+          node --check public/js/renderer-bookmarks.js
+          node --check public/js/renderer-export.js
+          node --check public/js/renderer3d.js
 
       - name: Vérifier l'instanciation WASM (Node)
         run: |

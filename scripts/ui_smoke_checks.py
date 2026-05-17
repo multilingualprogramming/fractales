@@ -37,6 +37,9 @@ def main() -> None:
         "btn-pan-right",
         "btn-zoom-in",
         "btn-zoom-out",
+        "btn-rotate-left",
+        "btn-rotate-right",
+        "btn-partager",
         "family-select",
         "fractal-select",
         "btn-toggle-pan",
@@ -72,6 +75,8 @@ def main() -> None:
         "btnPanRight",
         "btnZoomIn",
         "btnZoomOut",
+        "btnRotateLeft",
+        "btnRotateRight",
         "btnReset",
         "familySelect",
         "fractalSelect",
@@ -106,12 +111,30 @@ def main() -> None:
         "btnPanRight": r'attacherActionControle\(btnPanRight,\s*\(\)\s*=>\s*\{\s*deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
         "btnZoomIn": r'attacherActionControle\(btnZoomIn,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1\.5\);',
         "btnZoomOut": r'attacherActionControle\(btnZoomOut,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1 / 1\.5\);',
+        "btnRotateLeft": r'attacherActionControle\(btnRotateLeft,\s*\(\)\s*=>\s*\{\s*if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation -= Math\.PI / 36;',
+        "btnRotateRight": r'attacherActionControle\(btnRotateRight,\s*\(\)\s*=>\s*\{\s*if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation \+= Math\.PI / 36;',
         "btnReset": r'btnReset\.addEventListener\("click",\s*resetView\);',
         "familySelect": r'familySelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*const fractale = populateFractalSelect\(familySelect\.value,\s*null\);\s*setActiveFractal\(fractale\);',
         "fractalSelect": r'fractalSelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setActiveFractal\(fractalSelect\.value\);',
     }
     for name, pattern in button_expectations.items():
         require(pattern, js, f"missing expected event wiring for {name}")
+
+    require(
+        r"initialiserPartage\(\{\s*getView:\s*\(\)\s*=>\s*view,\s*getParams:\s*\(\)\s*=>\s*params,\s*updateStatusBar\s*\}\);",
+        js,
+        "missing share button initialization",
+    )
+    require(
+        r'from "\./renderer-navigation\.js\?v=',
+        js,
+        "renderer-navigation.js import must be cache-busted for GitHub Pages",
+    )
+    require(
+        r'<script type="module" src="js/renderer\.js\?v=',
+        html,
+        "renderer.js script tag must be cache-busted for GitHub Pages",
+    )
 
     require(
         r"let renderToken = 0;",

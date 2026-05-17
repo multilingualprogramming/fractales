@@ -37,7 +37,8 @@ When adding or changing a fractal, update all relevant places together:
    - fractal-specific settings in the dedicated `Options spécifiques` UI group when needed
    - syntax highlighting lists when needed
    - and update the relevant extracted browser helper module in `public/js/` if the change affects source-panel loading, benchmark UI, bookmarks, export flows, or another split UI concern
-6. If the change affects documented capabilities, update `README.md`.
+6. Add an entry for the fractal in `FRACTAL_DESCRIPTIONS` in `scripts/generate_api.py`. This dict drives the AI-readable static JSON API; every fractal must have a one-line English description of its iteration formula or construction method.
+7. If the change affects documented capabilities, update `README.md`.
 
 ## Rendering Guidance
 
@@ -154,15 +155,20 @@ Run these checks after meaningful changes:
 
 ```powershell
 node --check public\js\renderer.js
+node --check public\js\renderer-navigation.js
 node --check public\js\renderer-source-panel.js
 node --check public\js\renderer-bookmarks.js
 node --check public\js\renderer-export.js
 python scripts\compile_wasm.py
+python scripts\generate_api.py
 python scripts\integration_checks.py
 python scripts\ui_smoke_checks.py
 ```
 
-Rebuild order matters: `compile_wasm.py` regenerates `public/main_wasm_bundle.multi` from `src/*.multi`, overwriting any manual edits to the bundle. Always edit `src/fractales_ifs.multi` (and sibling modules), never `public/main_wasm_bundle.multi` directly.
+Rebuild order matters:
+- `compile_wasm.py` must run before `generate_api.py` and `integration_checks.py`.
+- `compile_wasm.py` regenerates `public/main_wasm_bundle.multi` from `src/*.multi`, overwriting any manual edits to the bundle. Always edit `src/fractales_*.multi`, never `public/main_wasm_bundle.multi` directly.
+- `generate_api.py` reads `public/js/renderer.js` (FRACTAL_FAMILIES, VIEW_PRESETS, FRACTAL_SOURCE_MAP) and writes `public/api/` (gitignored — CI artifact). It must be re-run whenever fractal registries in `renderer.js` change.
 
 ## Integration check contract
 
@@ -175,10 +181,38 @@ Rebuild order matters: `compile_wasm.py` regenerates `public/main_wasm_bundle.mu
 - `wasmFunctions` mapping (the `typeof exports.x === "function"` pattern) in `renderer.js`
 - Classified for rendering: either in `POINT_FRACTALS`, `LINE_FRACTALS`, or in `wasmFunctions`
 
+It also verifies the AI interface layer (`check_api_files`):
+- `public/api/fractals.json` exists and has `total > 0`
+- `public/api/families.json` and all 8 per-family files exist
+- `public/tools.json` and `public/ai-manifest.json` exist
+
 The integration checks intentionally read those registries from `renderer.js`, so keep the
 canonical fractal metadata there even if related UI behavior is extracted into sibling modules.
 
 POINT_FRACTALS still need a `wasmFunctions` entry (the WASM function is compiled for language-showcase purposes even if rendering uses JS step functions).
+
+## Navigation module — `fractales_navigation.multi`
+
+`src/fractales_navigation.multi` exports three mathematical primitives used by the animated deep-link navigation system:
+
+- `easer_cubique(t)` — Hermite smoothstep `t²(3−2t)`
+- `interpoler_pixelsize_nav(ps_dep, ps_arr, t)` — logarithmic zoom interpolation `ps_dep × (ps_arr/ps_dep)^t`
+- `interpoler_angle_nav(a, b, t)` — shortest-path angular interpolation (normalises diff to [−π, π])
+
+Do not add fractal definitions to this module. Only add a function here if it is a new mathematical primitive needed by the browser-side navigation/animation system and cannot live in an existing module.
+
+## AI interface files
+
+The following files expose the application as a machine-readable instrument for AI agents. They are committed source (not gitignored) and must be updated manually when capabilities change:
+
+- `public/tools.json` — 8 tool definitions in MCP + OpenAI function-calling format
+- `public/ai-manifest.json` — FAIR discovery manifest; entry point for AI agents
+- `public/schemas/` — JSON Schema 2020-12 for fractal entries, deeplink params, tool results
+- `public/examples/` — example calls and 4-step agent workflow
+
+`public/api/` is **generated** by `scripts/generate_api.py` at CI build time and is gitignored. Do not commit it.
+
+When a new fractal is added or a capability is changed, update `tools.json` and `ai-manifest.json` by hand if the change affects the tool definitions or the manifest’s `fractal_stats` field.
 
 ## Editing Notes
 

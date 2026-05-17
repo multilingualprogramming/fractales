@@ -1,6 +1,6 @@
 ﻿# Explorateur de Fractales
 
-Application GitHub Pages qui rend **70 fractales** en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend **71 fractales** en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -36,6 +36,7 @@ françaises** dans `src/*.multi`.
 | Magnétiques (8) | Magnet I, Magnet II, Magnet III, Lambda (logistique complexe), Lambda cubique, Magnet cosinus, Magnet sinus, Nova magnétique |
 | Lisse / Smooth (4) | Mandelbrot lisse, Julia lisse, Burning Ship lisse, Tricorn lisse |
 | Pièges orbitaux (4) | Piège cercle, Piège croix, Piège ligne, Julia piège cercle |
+| Classe (1) | Mandelbrot (démo OOP classe/soi/super, Python uniquement) |
 
 ---
 
@@ -63,6 +64,15 @@ src/
         ├─ [3]  Transpilation Python → public/mandelbrot_transpiled.py
         ├─ [4]  WAT + WASM           → public/main.wat + public/mandelbrot.wasm
         └─ [6]  Benchmark            → public/benchmark.json
+
+public/mandelbrot.wasm + public/js/renderer.js
+        │
+        │  python scripts/generate_api.py  (GitHub Actions)
+        │
+        ├─ public/api/fractals.json         (catalogue complet — 71 fractales)
+        ├─ public/api/families.json         (index des 8 familles)
+        ├─ public/api/families/{id}.json    (détail par famille)
+        └─ public/api/palettes.json         (9 palettes)
 ```
 
 À l'exécution dans le navigateur : **aucun Python, aucun wasmtime** —
@@ -212,21 +222,26 @@ index.html
         │                  mandelbrot_piege_cercle / mandelbrot_piege_croix /
         │                  mandelbrot_piege_ligne / julia_piege_cercle /
         │                  duffing_attractor / … / nova_magnetique /
-        │                  interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export
+        │                  interpoler_lineaire / interpoler_logarithmique / ajuster_iterations_export /
+        │                  easer_cubique / interpoler_pixelsize_nav / interpoler_angle_nav
         ├── Rendu progressif par tranches (requestAnimationFrame)
         ├── Métadonnées fractales conservées dans renderer.js :
         │     VIEW_PRESETS / FRACTAL_FAMILIES / FRACTAL_SOURCE_MAP / wasmFunctions
+        ├── renderer-navigation.js
+        │     ├── encoderEtat / decoderEtat → URL hash (#f=&x=&y=&ps=&r=&i=&p=)
+        │     ├── animerVersVue → zoom/pan/rotation animés (easing et interpolation via WASM)
+        │     └── initialiserPartage → bouton Partager + copie dans le presse-papiers
         ├── renderer-source-panel.js
         │     ├── loadSources(fractal) → fetch("{module}.multi" + "{module}.py")
         │     └── fetch("benchmark.json") → badge de performance
         ├── renderer-bookmarks.js → signets (localStorage) + restauration de vue
         ├── renderer-export.js → PNG courant / PNG HD / vidéo WebM / SVG (L-système)
         ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / éditeur personnalisé complet (fond, intérieur, stops)
-        ├── Zoom/pan : clic, molette, pincement tactile
+        ├── Zoom/pan/rotation : clic, molette, pincement tactile, touches [ ]
         ├── Couplage Julia/Mandelbrot : aperçu Julia 200×200 en temps réel au survol
         ├── Options spécifiques : bloc dynamique configurable pour les paramètres par fractale
         ├── Julia c et puissance Multibrot : exemples de réglages dédiés
-        ├── Raccourcis clavier : r (réinitialiser), e (export), b (signet), Échap
+        ├── Raccourcis clavier : r (réinitialiser), e (export), b (signet), [ / ] (rotation), Échap
         └── renderer3d.js → backend WebGL dédié aux vues 3D
 ```
 
@@ -252,22 +267,33 @@ index.html
 │   └── fractales_classes.multi       # ★ Hiérarchie OOP (classe/soi/super) — Python uniquement
 ├── scripts/
 │   ├── compile_wasm.multi            # Pipeline de build (source multilingual)
-│   ├── compile_wasm.py            # Lanceur Python du pipeline
-│   └── integration_checks.py      # Tests d'intégration CI
+│   ├── compile_wasm.py               # Lanceur Python du pipeline
+│   ├── generate_api.py               # Génère public/api/ depuis renderer.js (CI artifact)
+│   ├── integration_checks.py         # Tests d'intégration CI
+│   └── ui_smoke_checks.py            # Smoke tests UI
 ├── public/                        # Racine statique déployée sur GitHub Pages
 │   ├── index.html
 │   ├── js/renderer.js             # Orchestrateur UI + registres fractales + rendu principal
+│   ├── js/renderer-navigation.js  # URL hash, deep links, animation zoom/pan/rotation
 │   ├── js/renderer-source-panel.js # Code source contextuel + benchmark
 │   ├── js/renderer-bookmarks.js   # Signets navigateur
 │   ├── js/renderer-export.js      # Export PNG / WebM / SVG
 │   ├── js/renderer3d.js           # Backend WebGL des fractales 3D
 │   ├── css/style.css
+│   ├── tools.json                 # Définitions d'outils MCP + OpenAI (8 outils)
+│   ├── ai-manifest.json           # Manifeste de découverte FAIR pour agents IA
+│   ├── schemas/                   # JSON Schema 2020-12 (fractal, deeplink-params, tool-result)
+│   ├── examples/                  # Exemples d'appels et workflow agent (4 fichiers)
 │   ├── mandelbrot.wasm            # ← généré (binaire WebAssembly)
 │   ├── main.multi / main_wasm_bundle.multi
 │   ├── fractales_*.multi          # ← copies des sources (affichage contextuel)
 │   ├── fractales_*.py             # ← transpilations individuelles (affichage contextuel)
 │   ├── mandelbrot_transpiled.py   # ← transpilation du bundle complet
-│   └── benchmark.json
+│   ├── benchmark.json             # ← généré (résultats de benchmark)
+│   └── api/                       # ← généré par generate_api.py (gitignore)
+│       ├── fractals.json          #   catalogue complet (71 fractales)
+│       ├── families.json          #   index des 8 familles
+│       └── families/{id}.json     #   détail par famille
 └── README.md
 ```
 
@@ -291,9 +317,11 @@ Outils recommandés pour le développement local :
 
 ```bash
 python scripts/compile_wasm.py
+python scripts/generate_api.py
 python scripts/integration_checks.py
 python scripts/ui_smoke_checks.py
 node --check public/js/renderer.js
+node --check public/js/renderer-navigation.js
 node --check public/js/renderer-source-panel.js
 node --check public/js/renderer-bookmarks.js
 node --check public/js/renderer-export.js
@@ -426,7 +454,58 @@ le bouton `Signet ★` ou le raccourci `b`.
 | `r` | Réinitialiser la vue au preset par défaut |
 | `e` | Ouvrir le panneau d'export |
 | `b` | Ajouter un signet pour la vue actuelle |
+| `[` / `]` | Tourner la vue de ±5° (non disponible pour les fractales 3D) |
 | `Échap` | Fermer les panneaux ouverts |
+
+---
+
+## URL partageable et navigation animée
+
+Chaque vue est encodée dans le fragment d'URL (`#`) et mise à jour en temps réel :
+
+```
+https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&ps=4.375e-3&r=0&i=256&p=aurora
+```
+
+| Paramètre | Rôle | Exemple |
+|---|---|---|
+| `f` | Identifiant de la fractale | `mandelbrot`, `julia`, `barnsley` |
+| `x`, `y` | Centre dans le plan complexe | `-0.7436`, `0.1318` |
+| `ps` | Taille d'un pixel (contrôle le zoom) | `1.5e-9` pour un zoom profond |
+| `r` | Rotation en radians | `0.523` (≈ 30°) |
+| `i` | Nombre maximal d'itérations | `1024` |
+| `p` | Palette de couleurs | `ocean`, `neon`, `feu` |
+
+Le bouton **Partager** copie l'URL courante dans le presse-papiers. Ouvrir un lien partagé charge la fractale et anime le zoom vers la position encodée grâce aux fonctions WASM de `fractales_navigation.multi` :
+
+- `easer_cubique(t)` — lissage cubique Hermite
+- `interpoler_pixelsize_nav(ps_dep, ps_arr, t)` — interpolation logarithmique du zoom
+- `interpoler_angle_nav(a, b, t)` — interpolation angulaire par le chemin le plus court
+
+---
+
+## Interface pour agents IA
+
+L'application expose une couche machine-readable statique, sans serveur, compatible MCP et OpenAI function-calling :
+
+| Fichier | Contenu |
+|---|---|
+| `tools.json` | 8 outils : `list_fractals`, `get_fractal`, `list_families`, `get_family`, `construct_deeplink`, `get_source`, `get_benchmark`, `list_palettes` |
+| `ai-manifest.json` | Manifeste de découverte FAIR — point d'entrée pour les agents IA |
+| `schemas/` | JSON Schema 2020-12 pour les entrées de fractale, les paramètres deeplink, les résultats d'outils |
+| `examples/` | Exemples d'appels et workflow agent en 4 étapes |
+| `api/fractals.json` | Catalogue complet des 71 fractales (généré par CI) |
+| `api/families.json` | Index des 8 familles (généré par CI) |
+| `api/palettes.json` | 9 palettes disponibles (généré par CI) |
+
+`public/api/` est généré à chaque build par `scripts/generate_api.py` (lecture de `renderer.js`) et n'est pas versionné dans git.
+
+Workflow typique d'un agent IA :
+
+1. `GET /api/families.json` — découvrir les catégories mathématiques
+2. `GET /api/families/{id}.json` — lister les fractales d'une famille
+3. Construire un deep link : `#f=barnsley&x=0.0&y=0.0&ps=5e-3&r=0&i=256&p=feu`
+4. Optionnel : `GET /fractales_ifs.multi` — lire le code source de l'implémentation
 
 ---
 
@@ -452,10 +531,10 @@ La séparation des rôles reste volontaire :
 git push origin main
 ```
 
-Le workflow Actions installe Python 3.12 et la version epinglee dans
-`requirements-build.txt`,
-exécute `python scripts/compile_wasm.py`, les tests d'intégration, et déploie
-`public/` sur GitHub Pages.
+Le workflow Actions installe Python 3.12 et la version epinglée dans
+`requirements-build.txt`, exécute `python scripts/compile_wasm.py`, puis
+`python scripts/generate_api.py` (qui génère `public/api/`), les tests d'intégration,
+et déploie `public/` sur GitHub Pages.
 
 Un workflow planifie surveille aussi la compatibilite avec la version epinglee,
 la derniere version publiee et la branche `main` du depot amont

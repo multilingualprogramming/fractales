@@ -166,11 +166,7 @@ const POINT_FRACTALS = new Set(["barnsley", "sierpinski", "tapis_sierpinski", "m
 const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "courbe_levy_c", "gosper_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore"]);
 
 /** Fonctions fractales exportées par WASM */
-// Les fractales 3D en JS pur (julia_quaternion, mandelbox) sont toujours disponibles.
-let wasmFunctions = {
-  julia_quaternion: juliaQuaternionJS,
-  mandelbox: mandelboxJS,
-};
+let wasmFunctions = {};
 let wasmExportFunctions = {};
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
@@ -1190,6 +1186,17 @@ function projeterTetraedre(x, y, z) {
 // Boîte de Mandel — orbite 3D avec c lentement variable (même approche que Mandelbulb).
 // Avec scale=2 et |c| ≈ 0.2 l'orbite reste bornée et révèle la structure 3D du fractal.
 function etapeMandelbox(x, y, z, cx, cy) {
+  if (
+    wasmExportFunctions.mandelbox_etape_x &&
+    wasmExportFunctions.mandelbox_etape_y &&
+    wasmExportFunctions.mandelbox_etape_z
+  ) {
+    return [
+      wasmExportFunctions.mandelbox_etape_x(x, y, z, cx),
+      wasmExportFunctions.mandelbox_etape_y(x, y, z, cy),
+      wasmExportFunctions.mandelbox_etape_z(x, y, z),
+    ];
+  }
   // pli de boîte
   if (x > 1.0) x = 2.0 - x; else if (x < -1.0) x = -2.0 - x;
   if (y > 1.0) y = 2.0 - y; else if (y < -1.0) y = -2.0 - y;
@@ -1207,6 +1214,17 @@ function projeterMandelbox(x, y, z) {
 }
 
 function etapeJuliaQuaternion(x, y, z) {
+  if (
+    wasmExportFunctions.julia_quaternion_etape_x &&
+    wasmExportFunctions.julia_quaternion_etape_y &&
+    wasmExportFunctions.julia_quaternion_etape_z
+  ) {
+    return [
+      wasmExportFunctions.julia_quaternion_etape_x(x, y, z),
+      wasmExportFunctions.julia_quaternion_etape_y(x, y, z),
+      wasmExportFunctions.julia_quaternion_etape_z(x, y, z),
+    ];
+  }
   const cX = -0.06;
   const cY = 0.06;
   const cZ = 0.2;
@@ -1251,44 +1269,16 @@ function projeterFractalePonctuelle(nom, x, y, z, iter, largeur) {
   return { x, y, proximite: 0.0, rayon: 0 };
 }
 
-// Julia quaternionique en JS pur (coupe w=0 de z²+c dans ℝ⁴)
-// C_Z ≠ 0 est indispensable : avec C_Z=0 et z₀=0, nz=2xz+0=0 partout
-// → dégénérescence en Julia complexe classique 2D.
-function juliaQuaternionJS(cx, cy, max) {
-  let x = cx, y = cy, z = 0.0;
-  const C_X = -0.06, C_Y = 0.06, C_Z = 0.2;
-  for (let i = 0; i < max; i++) {
-    const nx = x * x - y * y - z * z + C_X;
-    const ny = 2.0 * x * y + C_Y;
-    const nz = 2.0 * x * z + C_Z;
-    x = nx; y = ny; z = nz;
-    if (x * x + y * y + z * z > 16.0) return i;
-  }
-  return max;
-}
-
-// Boîte de Mandel en JS pur (coupe z=0, échelle 2)
-function mandelboxJS(cx, cy, max) {
-  let x = 0.0, y = 0.0, z = 0.0;
-  for (let i = 0; i < max; i++) {
-    // pli de boîte
-    if (x > 1.0) x = 2.0 - x; else if (x < -1.0) x = -2.0 - x;
-    if (y > 1.0) y = 2.0 - y; else if (y < -1.0) y = -2.0 - y;
-    if (z > 1.0) z = 2.0 - z; else if (z < -1.0) z = -2.0 - z;
-    // pli de sphère
-    const r2 = x * x + y * y + z * z;
-    if (r2 < 0.25) { x *= 4.0; y *= 4.0; z *= 4.0; }
-    else if (r2 < 1.0) { x /= r2; y /= r2; z /= r2; }
-    // échelle 2 + translation par c
-    x = 2.0 * x + cx;
-    y = 2.0 * y + cy;
-    z = 2.0 * z;
-    if (x * x + y * y + z * z > 64.0) return i;
-  }
-  return max;
-}
-
 function etapeAttracteurClifford(x, y) {
+  if (
+    wasmExportFunctions.attracteur_de_clifford_etape_x &&
+    wasmExportFunctions.attracteur_de_clifford_etape_y
+  ) {
+    return [
+      wasmExportFunctions.attracteur_de_clifford_etape_x(x, y),
+      wasmExportFunctions.attracteur_de_clifford_etape_y(x, y),
+    ];
+  }
   const a = -1.4;
   const b = 1.7;
   const c = 1.0;
@@ -1300,6 +1290,15 @@ function etapeAttracteurClifford(x, y) {
 }
 
 function etapeAttracteurPeterDeJong(x, y) {
+  if (
+    wasmExportFunctions.attracteur_de_peter_de_jong_etape_x &&
+    wasmExportFunctions.attracteur_de_peter_de_jong_etape_y
+  ) {
+    return [
+      wasmExportFunctions.attracteur_de_peter_de_jong_etape_x(x, y),
+      wasmExportFunctions.attracteur_de_peter_de_jong_etape_y(x, y),
+    ];
+  }
   const a = 1.4;
   const b = -2.3;
   const c = 2.4;
@@ -1311,6 +1310,15 @@ function etapeAttracteurPeterDeJong(x, y) {
 }
 
 function etapeAttracteurIkeda(x, y) {
+  if (
+    wasmExportFunctions.attracteur_ikeda_etape_x &&
+    wasmExportFunctions.attracteur_ikeda_etape_y
+  ) {
+    return [
+      wasmExportFunctions.attracteur_ikeda_etape_x(x, y),
+      wasmExportFunctions.attracteur_ikeda_etape_y(x, y),
+    ];
+  }
   const u = 0.9;
   const rayon = x * x + y * y;
   const angle = 0.4 - 6.0 / (1.0 + rayon);
@@ -1323,6 +1331,15 @@ function etapeAttracteurIkeda(x, y) {
 }
 
 function etapeAttracteurHenon(x, y) {
+  if (
+    wasmExportFunctions.attracteur_de_henon_etape_x &&
+    wasmExportFunctions.attracteur_de_henon_etape_y
+  ) {
+    return [
+      wasmExportFunctions.attracteur_de_henon_etape_x(x, y),
+      wasmExportFunctions.attracteur_de_henon_etape_y(x, y),
+    ];
+  }
   const a = 1.4;
   const b = 0.3;
   return [
@@ -1418,6 +1435,15 @@ function projeterSprottAttractor(x, y, z) {
 }
 
 function etapeDuffingAttractor(x, y) {
+  if (
+    wasmExportFunctions.duffing_attractor_etape_x &&
+    wasmExportFunctions.duffing_attractor_etape_y
+  ) {
+    return [
+      wasmExportFunctions.duffing_attractor_etape_x(x, y),
+      wasmExportFunctions.duffing_attractor_etape_y(x, y),
+    ];
+  }
   const a = 2.75;
   const b = 0.2;
   return [y, -b * x + a * y - y * y * y];
@@ -2575,8 +2601,8 @@ async function loadWasm() {
       vicsek_fractal: typeof exports.vicsek_fractal === "function" ? exports.vicsek_fractal : null,
       lichtenberg_figures: typeof exports.lichtenberg_figures === "function" ? exports.lichtenberg_figures : null,
       tetraedre_sierpinski: typeof exports.tetraedre_sierpinski === "function" ? exports.tetraedre_sierpinski : null,
-      julia_quaternion: typeof exports.julia_quaternion === "function" ? exports.julia_quaternion : juliaQuaternionJS,
-      mandelbox: typeof exports.mandelbox === "function" ? exports.mandelbox : mandelboxJS,
+      julia_quaternion: typeof exports.julia_quaternion === "function" ? exports.julia_quaternion : null,
+      mandelbox: typeof exports.mandelbox === "function" ? exports.mandelbox : null,
       koch: typeof exports.koch === "function" ? exports.koch : null,
       dragon_heighway: typeof exports.dragon_heighway === "function" ? exports.dragon_heighway : null,
       courbe_levy_c: typeof exports.courbe_levy_c === "function" ? exports.courbe_levy_c : null,
@@ -2616,6 +2642,22 @@ async function loadWasm() {
       easer_cubique: typeof exports.easer_cubique === "function" ? exports.easer_cubique : null,
       interpoler_pixelsize_nav: typeof exports.interpoler_pixelsize_nav === "function" ? exports.interpoler_pixelsize_nav : null,
       interpoler_angle_nav: typeof exports.interpoler_angle_nav === "function" ? exports.interpoler_angle_nav : null,
+      attracteur_de_clifford_etape_x: typeof exports.attracteur_de_clifford_etape_x === "function" ? exports.attracteur_de_clifford_etape_x : null,
+      attracteur_de_clifford_etape_y: typeof exports.attracteur_de_clifford_etape_y === "function" ? exports.attracteur_de_clifford_etape_y : null,
+      attracteur_de_peter_de_jong_etape_x: typeof exports.attracteur_de_peter_de_jong_etape_x === "function" ? exports.attracteur_de_peter_de_jong_etape_x : null,
+      attracteur_de_peter_de_jong_etape_y: typeof exports.attracteur_de_peter_de_jong_etape_y === "function" ? exports.attracteur_de_peter_de_jong_etape_y : null,
+      attracteur_ikeda_etape_x: typeof exports.attracteur_ikeda_etape_x === "function" ? exports.attracteur_ikeda_etape_x : null,
+      attracteur_ikeda_etape_y: typeof exports.attracteur_ikeda_etape_y === "function" ? exports.attracteur_ikeda_etape_y : null,
+      attracteur_de_henon_etape_x: typeof exports.attracteur_de_henon_etape_x === "function" ? exports.attracteur_de_henon_etape_x : null,
+      attracteur_de_henon_etape_y: typeof exports.attracteur_de_henon_etape_y === "function" ? exports.attracteur_de_henon_etape_y : null,
+      duffing_attractor_etape_x: typeof exports.duffing_attractor_etape_x === "function" ? exports.duffing_attractor_etape_x : null,
+      duffing_attractor_etape_y: typeof exports.duffing_attractor_etape_y === "function" ? exports.duffing_attractor_etape_y : null,
+      julia_quaternion_etape_x: typeof exports.julia_quaternion_etape_x === "function" ? exports.julia_quaternion_etape_x : null,
+      julia_quaternion_etape_y: typeof exports.julia_quaternion_etape_y === "function" ? exports.julia_quaternion_etape_y : null,
+      julia_quaternion_etape_z: typeof exports.julia_quaternion_etape_z === "function" ? exports.julia_quaternion_etape_z : null,
+      mandelbox_etape_x: typeof exports.mandelbox_etape_x === "function" ? exports.mandelbox_etape_x : null,
+      mandelbox_etape_y: typeof exports.mandelbox_etape_y === "function" ? exports.mandelbox_etape_y : null,
+      mandelbox_etape_z: typeof exports.mandelbox_etape_z === "function" ? exports.mandelbox_etape_z : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");

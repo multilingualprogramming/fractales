@@ -390,6 +390,15 @@ déf julia_quaternion(cx, cy, max_iter):
 
     retour iter
 
+déf julia_quaternion_etape_x(x, y, z):
+    retour x * x - y * y - z * z - 0.06
+
+déf julia_quaternion_etape_y(x, y, z):
+    retour 2.0 * x * y + 0.06
+
+déf julia_quaternion_etape_z(x, y, z):
+    retour 2.0 * x * z + 0.2
+
 # Boîte de Mandel : z_{n+1} = échelle · plier_sphère(plier_boîte(z_n)) + c
 # avec échelle = 2 et rayon minimal = 0.5, rayon de sphère = 1.
 # Coupe z=0 du fractal 3D projeté sur le plan complexe.
@@ -400,6 +409,39 @@ déf plier_boite(v):
     sinonsi v < -1.0:
         retour -2.0 - v
     retour v
+
+déf mandelbox_etape_x(x, y, z, cx):
+    soit px = plier_boite(x)
+    soit py = plier_boite(y)
+    soit pz = plier_boite(z)
+    soit r2 = px * px + py * py + pz * pz
+    si r2 < 0.25:
+        px = px * 4.0
+    sinonsi r2 < 1.0:
+        px = px / r2
+    retour 2.0 * px + cx
+
+déf mandelbox_etape_y(x, y, z, cy):
+    soit px = plier_boite(x)
+    soit py = plier_boite(y)
+    soit pz = plier_boite(z)
+    soit r2 = px * px + py * py + pz * pz
+    si r2 < 0.25:
+        py = py * 4.0
+    sinonsi r2 < 1.0:
+        py = py / r2
+    retour 2.0 * py + cy
+
+déf mandelbox_etape_z(x, y, z):
+    soit px = plier_boite(x)
+    soit py = plier_boite(y)
+    soit pz = plier_boite(z)
+    soit r2 = px * px + py * py + pz * pz
+    si r2 < 0.25:
+        pz = pz * 4.0
+    sinonsi r2 < 1.0:
+        pz = pz / r2
+    retour 2.0 * pz + 0.1
 
 déf mandelbox(cx, cy, max_iter):
     soit x = 0.0

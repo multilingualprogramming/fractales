@@ -312,6 +312,12 @@ déf attracteur_de_clifford(cx, cy, max_iter):
         retour max_iter
     retour score
 
+déf attracteur_de_clifford_etape_x(x, y):
+    retour sinus_dynamique(-1.4 * y) + cosinus_dynamique(-1.4 * x)
+
+déf attracteur_de_clifford_etape_y(x, y):
+    retour sinus_dynamique(1.7 * x) + 0.7 * cosinus_dynamique(1.7 * y)
+
 déf attracteur_de_peter_de_jong(cx, cy, max_iter):
     soit a = 1.4
     soit b = -2.3
@@ -344,6 +350,12 @@ déf attracteur_de_peter_de_jong(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf attracteur_de_peter_de_jong_etape_x(x, y):
+    retour sinus_dynamique(1.4 * y) - cosinus_dynamique(-2.3 * x)
+
+déf attracteur_de_peter_de_jong_etape_y(x, y):
+    retour sinus_dynamique(2.4 * x) - cosinus_dynamique(-2.1 * y)
 
 déf attracteur_ikeda(cx, cy, max_iter):
     soit u = 0.9
@@ -379,6 +391,22 @@ déf attracteur_ikeda(cx, cy, max_iter):
         retour max_iter
     retour score
 
+déf attracteur_ikeda_etape_x(x, y):
+    soit u = 0.9
+    soit rayon = x * x + y * y
+    soit angle = 0.4 - 6.0 / (1.0 + rayon)
+    soit cos_t = cosinus_dynamique(angle)
+    soit sin_t = sinus_dynamique(angle)
+    retour 1.0 + u * (x * cos_t - y * sin_t)
+
+déf attracteur_ikeda_etape_y(x, y):
+    soit u = 0.9
+    soit rayon = x * x + y * y
+    soit angle = 0.4 - 6.0 / (1.0 + rayon)
+    soit cos_t = cosinus_dynamique(angle)
+    soit sin_t = sinus_dynamique(angle)
+    retour u * (x * sin_t + y * cos_t)
+
 déf attracteur_de_henon(cx, cy, max_iter):
     soit a = 1.4
     soit b = 0.3
@@ -409,6 +437,12 @@ déf attracteur_de_henon(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf attracteur_de_henon_etape_x(x, y):
+    retour 1.0 - 1.4 * x * x + y
+
+déf attracteur_de_henon_etape_y(x, y):
+    retour 0.3 * x
 
 déf projeter_lorenz_x(x, y, z):
     retour (x - y) * 0.12
@@ -650,3 +684,9 @@ déf duffing_attractor(cx, cy, max_iter):
     si score > max_iter:
         retour max_iter
     retour score
+
+déf duffing_attractor_etape_x(x, y):
+    retour y
+
+déf duffing_attractor_etape_y(x, y):
+    retour -0.2 * x + 2.75 * y - y * y * y

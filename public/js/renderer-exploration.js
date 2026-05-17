@@ -64,18 +64,6 @@ function ecrireCarnet(items) {
   } catch {}
 }
 
-function iterationMandelbrot(cx, cy, maxIter) {
-  let x = 0.0;
-  let y = 0.0;
-  for (let i = 0; i < maxIter; i++) {
-    const x2 = x * x - y * y + cx;
-    y = 2.0 * x * y + cy;
-    x = x2;
-    if (x * x + y * y > 4.0) return i;
-  }
-  return maxIter;
-}
-
 const ORBIT_POINT_FRACTALS = new Set([
   "barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb",
   "tetraedre_sierpinski", "julia_quaternion", "mandelbox", "vicsek_fractal",
@@ -383,16 +371,26 @@ export function initialiserExploration({
     const ctx = parameterCanvas.getContext("2d");
     const w = parameterCanvas.width;
     const h = parameterCanvas.height;
-    const image = ctx.createImageData(w, h);
     const wasm = getWasmFunctions();
     const fn = wasm?.julia;
+    if (!fn) {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(2, 4, 10, 0.96)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(220, 234, 255, 0.74)";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Carte disponible après chargement WASM", w / 2, h / 2);
+      return;
+    }
+    const image = ctx.createImageData(w, h);
     const params = getParams();
     const max = 72;
     for (let y = 0; y < h; y++) {
       const ci = 1.4 - y / Math.max(1, h - 1) * 2.8;
       for (let x = 0; x < w; x++) {
         const cr = -2.0 + x / Math.max(1, w - 1) * 4.0;
-        const iter = fn ? fn(0, 0, cr, ci, max) : iterationMandelbrot(cr, ci, max);
+        const iter = fn(0, 0, cr, ci, max);
         const color = getPaletteColor(iter, max, params);
         const index = (y * w + x) * 4;
         image.data[index] = color[0];

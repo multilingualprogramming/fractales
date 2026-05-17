@@ -31,19 +31,27 @@ FORMULA_FUNCTION_RE = re.compile(
 # fractal formula. Entries with browser_only are explicit drawing/orchestration
 # exceptions that should not become canonical fractal definitions.
 JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
-    "renderer.js:barnsleyStep": {"backend_refs": ["barnsley_etape"]},
-    "renderer.js:sierpinskiStep": {"backend_refs": ["sierpinski_etape"]},
-    "renderer.js:etapeTapisSierpinski": {"backend_refs": ["tapis_sierpinski"]},
-    "renderer.js:etapeMengerSponge": {"backend_refs": ["menger_etape"]},
+    "renderer.js:barnsleyStep": {"backend_refs": ["barnsley_etape_x", "barnsley_etape_y"]},
+    "renderer.js:sierpinskiStep": {"backend_refs": ["sierpinski_etape_x", "sierpinski_etape_y"]},
+    "renderer.js:etapeTapisSierpinski": {
+        "backend_refs": ["tapis_sierpinski_etape_x", "tapis_sierpinski_etape_y"]
+    },
+    "renderer.js:etapeMengerSponge": {
+        "backend_refs": ["menger_etape_x", "menger_etape_y", "menger_etape_z"]
+    },
     "renderer.js:projeterMengerSponge": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
-    "renderer.js:etapeVicsekFractal": {"backend_refs": ["vicsek_etape"]},
+    "renderer.js:etapeVicsekFractal": {"backend_refs": ["vicsek_etape_x", "vicsek_etape_y"]},
     "renderer.js:etapeLichtenberg": {"backend_refs": ["lichtenberg_figures"]},
-    "renderer.js:etapeMandelbulb": {"backend_refs": ["mandelbulb"]},
+    "renderer.js:etapeMandelbulb": {
+        "backend_refs": ["mandelbulb_etape_x", "mandelbulb_etape_y", "mandelbulb_etape_z"]
+    },
     "renderer.js:projeterPoint3D": {
         "browser_only": "view projection combines renderer camera settings and depth shading"
     },
     "renderer.js:projeterMandelbulb": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
-    "renderer.js:etapeTetraedre": {"backend_refs": ["tetraedre_etape"]},
+    "renderer.js:etapeTetraedre": {
+        "backend_refs": ["tetraedre_etape_x", "tetraedre_etape_y", "tetraedre_etape_z"]
+    },
     "renderer.js:projeterTetraedre": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
     "renderer.js:etapeMandelbox": {"backend_refs": ["mandelbox"]},
     "renderer.js:projeterMandelbox": {

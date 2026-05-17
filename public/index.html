@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/style.css" />
 
     <!-- Préchargement des ressources critiques -->
-    <link rel="preload" href="mandelbrot.wasm" as="fetch" crossorigin />
+    <link rel="preload" href="mandelbrot.wasm?v=app" as="fetch" crossorigin />
     <link rel="preload" href="benchmark.json" as="fetch" crossorigin />
   </head>
 
@@ -559,7 +559,7 @@
     <!-- ============================================================
      SCRIPT PRINCIPAL (module ES)
      ============================================================ -->
-    <script type="module" src="js/renderer.js"></script>
+    <script type="module" src="js/renderer.js?v=app"></script>
 
   </body>
 

@@ -11,25 +11,25 @@
 
 import {
   initialiserExports,
-} from "./renderer-export.js";
+} from "./renderer-export.js?v=app";
 import {
   initialiserSignets,
-} from "./renderer-bookmarks.js";
+} from "./renderer-bookmarks.js?v=app";
 import {
   initialiserPanneauSource,
-} from "./renderer-source-panel.js";
+} from "./renderer-source-panel.js?v=app";
 import {
   animerVersVue,
   decoderEtat,
   encoderEtat,
   initialiserPartage,
   mettreAJourHash,
-} from "./renderer-navigation.js";
+} from "./renderer-navigation.js?v=app";
 import {
   initialiserExploration,
-} from "./renderer-exploration.js";
+} from "./renderer-exploration.js?v=app";
 
-const WASM_URL = "mandelbrot.wasm";
+const WASM_URL = "mandelbrot.wasm?v=app";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -561,7 +561,7 @@ import {
   reinitialiserVue3DActive,
   zoomerVue3D,
   deplacerVue3D,
-} from "./renderer3d.js";
+} from "./renderer3d.js?v=app";
 
 /**
  * Retourne la couleur [r, g, b] pour une valeur d'itération.

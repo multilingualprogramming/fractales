@@ -1731,6 +1731,10 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   // est3D : orbite 3D projetée isométriquement — pondération par profondeur activée.
   const est3D = estMenger || estMandelbulb || estTetraedre || estJuliaQuaternion || estMandelbox || estRossler || estAizawa || estSprott;
   const tampon = creerTamponPonctuel(w, h);
+  const cosR = Math.cos(view.rotation);
+  const sinR = Math.sin(view.rotation);
+  const centerX = view.centerX;
+  const centerY = view.centerY;
 
   const putPoint = (px, py, poids = 1, rayon = 0, lumiere = 0) => {
     ajouterPointPonctuel(tampon, px, py, poids, rayon, lumiere);
@@ -1769,8 +1773,10 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
           continue;
         }
         for (const [ox, oy] of trajectoire) {
-          const px = ((ox - cx0) / ps) | 0;
-          const py = ((oy - cy0) / ps) | 0;
+          const ddx = ox - centerX;
+          const ddy = oy - centerY;
+          const px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
+          const py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
           putPoint(px, py);
         }
         emitted += 1;
@@ -1855,8 +1861,16 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
         }
         const rx = projection.x;
         const ry = projection.y;
-        const px = ((rx - cx0) / ps) | 0;
-        const py = ((ry - cy0) / ps) | 0;
+        let px, py;
+        if (est3D) {
+          px = ((rx - cx0) / ps) | 0;
+          py = ((ry - cy0) / ps) | 0;
+        } else {
+          const ddx = rx - centerX;
+          const ddy = ry - centerY;
+          px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
+          py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
+        }
         const poids = est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1;
         const lumiere = est3D ? Math.round(120 + projection.proximite * 880) : 0;
         putPoint(px, py, poids, projection.rayon || 0, lumiere);
@@ -1994,6 +2008,10 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   let emitted = 0;
   let iter = 0;
   const tampon = creerTamponPonctuel(w, h);
+  const cosR = Math.cos(renduParams.rotation ?? 0);
+  const sinR = Math.sin(renduParams.rotation ?? 0);
+  const centerX = cx0 + (w / 2) * ps;
+  const centerY = cy0 + (h / 2) * ps;
 
   const pointsParBloc = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum || estDuffing) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000)));
   while (emitted < pointsTarget) {
@@ -2020,8 +2038,10 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
         }
         if (echappe && trajectoire.length >= 12) {
           for (const [ox, oy] of trajectoire) {
-            const px = ((ox - cx0) / ps) | 0;
-            const py = ((oy - cy0) / ps) | 0;
+            const ddx = ox - centerX;
+            const ddy = oy - centerY;
+            const px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
+            const py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
             ajouterPointPonctuel(tampon, px, py, 1, 0, 0);
           }
         }
@@ -2109,8 +2129,16 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
       }
       const rx = projection.x;
       const ry = projection.y;
-      const px = ((rx - cx0) / ps) | 0;
-      const py = ((ry - cy0) / ps) | 0;
+      let px, py;
+      if (est3D) {
+        px = ((rx - cx0) / ps) | 0;
+        py = ((ry - cy0) / ps) | 0;
+      } else {
+        const ddx = rx - centerX;
+        const ddy = ry - centerY;
+        px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
+        py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
+      }
       const poids = est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1;
       const lumiere = est3D ? Math.round(120 + projection.proximite * 880) : 0;
       ajouterPointPonctuel(tampon, px, py, poids, projection.rayon || 0, lumiere);

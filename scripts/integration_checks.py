@@ -86,6 +86,9 @@ REQUIRED_EXPORTS = {
     "interpoler_lineaire",
     "interpoler_logarithmique",
     "ajuster_iterations_export",
+    "easer_cubique",
+    "interpoler_pixelsize_nav",
+    "interpoler_angle_nav",
 }
 
 
@@ -201,6 +204,9 @@ def check_renderer_contract() -> None:
         "interpoler_lineaire",
         "interpoler_logarithmique",
         "ajuster_iterations_export",
+        "easer_cubique",
+        "interpoler_pixelsize_nav",
+        "interpoler_angle_nav",
         "mandelbrot_classe",
     }
     registered_fractals = REQUIRED_EXPORTS - special_non_fractal_exports

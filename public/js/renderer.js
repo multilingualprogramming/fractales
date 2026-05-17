@@ -18,8 +18,15 @@ import {
 import {
   initialiserPanneauSource,
 } from "./renderer-source-panel.js";
+import {
+  animerVersVue,
+  decoderEtat,
+  encoderEtat,
+  initialiserPartage,
+  mettreAJourHash,
+} from "./renderer-navigation.js";
 
-const WASM_URL = "mandelbrot.wasm?v=20260228r10";
+const WASM_URL = "mandelbrot.wasm?v=20260517r1";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -31,6 +38,8 @@ const view = {
   centerY: 0.0,
   /** unités mathématiques par pixel */
   pixelSize: 4.0 / Math.min(window.innerWidth - 380, 800),
+  /** angle de rotation du plan complexe (radians) */
+  rotation: 0.0,
 };
 
 /** Paramètres de rendu */
@@ -198,6 +207,8 @@ const btnPanRight = document.getElementById("btn-pan-right");
 const btnPanDown = document.getElementById("btn-pan-down");
 const btnZoomIn = document.getElementById("btn-zoom-in");
 const btnZoomOut = document.getElementById("btn-zoom-out");
+const btnRotateLeft = document.getElementById("btn-rotate-left");
+const btnRotateRight = document.getElementById("btn-rotate-right");
 const btnTogglePan = document.getElementById("btn-toggle-pan");
 const btnToggle = document.getElementById("btn-toggle-sidebar");
 const btnCloseSidebar = document.getElementById("btn-close-sidebar");
@@ -901,6 +912,7 @@ function capturerVueCourante() {
     centerX: view.centerX,
     centerY: view.centerY,
     pixelSize: view.pixelSize,
+    rotation: view.rotation,
     fractal: params.fractal,
     maxIter: params.maxIter,
     palette: params.palette,
@@ -1401,6 +1413,7 @@ function setActiveFractal(fractalName) {
   resetView();
   mettreAJourOptionsSpecifiques();
   loadSources(params.fractal);
+  mettreAJourHash(view, params);
 }
 
 function kochGenerate(iterations) {
@@ -1868,17 +1881,27 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
 }
 
 function renderLineFractal(w, h) {
-  dessinerFractaleLineaire(ctx, w, h, view, params);
+  const fond = getPaletteBackground(params);
+  ctx.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
+  ctx.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-view.rotation);
+  ctx.translate(-w / 2, -h / 2);
+  dessinerFractaleLineaire(ctx, w, h, view, params, true);
+  ctx.restore();
   const elapsed = (performance.now() - renderStart).toFixed(0);
   rendering = false;
   canvas.parentElement.classList.remove("rendering");
   updateStatusBar("Mode géométrique - " + elapsed + " ms", true);
 }
 
-function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams) {
-  const fond = getPaletteBackground(renduParams);
-  ctxCible.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
-  ctxCible.fillRect(0, 0, w, h);
+function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams, skipBackground = false) {
+  if (!skipBackground) {
+    const fond = getPaletteBackground(renduParams);
+    ctxCible.fillStyle = "rgb(" + fond[0] + ", " + fond[1] + ", " + fond[2] + ")";
+    ctxCible.fillRect(0, 0, w, h);
+  }
 
   const stroke = getColor(Math.min(renduParams.maxIter * 0.6, renduParams.maxIter - 1), renduParams.maxIter, renduParams);
   ctxCible.strokeStyle = "rgb(" + stroke[0] + ", " + stroke[1] + ", " + stroke[2] + ")";
@@ -2322,6 +2345,9 @@ async function loadWasm() {
       interpoler_lineaire: typeof exports.interpoler_lineaire === "function" ? exports.interpoler_lineaire : null,
       interpoler_logarithmique: typeof exports.interpoler_logarithmique === "function" ? exports.interpoler_logarithmique : null,
       ajuster_iterations_export: typeof exports.ajuster_iterations_export === "function" ? exports.ajuster_iterations_export : null,
+      easer_cubique: typeof exports.easer_cubique === "function" ? exports.easer_cubique : null,
+      interpoler_pixelsize_nav: typeof exports.interpoler_pixelsize_nav === "function" ? exports.interpoler_pixelsize_nav : null,
+      interpoler_angle_nav: typeof exports.interpoler_angle_nav === "function" ? exports.interpoler_angle_nav : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
@@ -2385,6 +2411,8 @@ function render() {
   const ps = view.pixelSize;
   const max = params.maxIter;
   const pal = params;
+  const cosR = Math.cos(view.rotation);
+  const sinR = Math.sin(view.rotation);
 
   rendering = true;
   renderStart = performance.now();
@@ -2431,10 +2459,12 @@ function render() {
     if (token !== renderToken) return;
     const endRow = Math.min(row + ROWS_PER_FRAME, h);
     for (let py = row; py < endRow; py++) {
-      const cy = cy0 + py * ps;
+      const dy = (py - h * 0.5) * ps;
       const base = py * w * 4;
       for (let px = 0; px < w; px++) {
-        const cx = cx0 + px * ps;
+        const dx = (px - w * 0.5) * ps;
+        const cx = view.centerX + dx * cosR - dy * sinR;
+        const cy = view.centerY + dx * sinR + dy * cosR;
         let iter;
         if (params.fractal === "julia" || params.fractal === "burning_julia" || params.fractal === "julia_lisse" || params.fractal === "julia_piege_cercle") {
           iter = fn(cx, cy, params.juliaCre, params.juliaCim, max);
@@ -2504,11 +2534,15 @@ function render() {
 // INTERACTION (ZOOM / PAN)
 // ============================================================
 
-/** Convertit les coordonnées canvas ? coordonnées du plan complexe. */
+/** Convertit les coordonnées canvas → coordonnées du plan complexe (rotation incluse). */
 function canvasToComplex(px, py) {
+  const dx = (px - canvas.width / 2) * view.pixelSize;
+  const dy = (py - canvas.height / 2) * view.pixelSize;
+  const cr = Math.cos(view.rotation);
+  const sr = Math.sin(view.rotation);
   return {
-    re: view.centerX + (px - canvas.width / 2) * view.pixelSize,
-    im: view.centerY + (py - canvas.height / 2) * view.pixelSize,
+    re: view.centerX + dx * cr - dy * sr,
+    im: view.centerY + dx * sr + dy * cr,
   };
 }
 
@@ -2535,6 +2569,7 @@ function zoomAt(px, py, factor) {
   view.centerY = im + (view.centerY - im) / factor;
   view.pixelSize /= factor;
   render();
+  mettreAJourHash(view, params);
 }
 
 function deplacerVue(deltaX, deltaY) {
@@ -2545,6 +2580,7 @@ function deplacerVue(deltaX, deltaY) {
   view.centerX += deltaX;
   view.centerY += deltaY;
   render();
+  mettreAJourHash(view, params);
 }
 
 function zoomerCentre(factor) {
@@ -2579,7 +2615,9 @@ function resetView() {
   view.centerX = preset.centerX;
   view.centerY = preset.centerY;
   view.pixelSize = preset.span / Math.max(canvas.width, 1);
+  view.rotation = 0.0;
   render();
+  mettreAJourHash(view, params);
 }
 
 // --- Clic simple : zoom ×2 ---
@@ -2769,6 +2807,7 @@ paletteSelect.addEventListener("change", () => {
   }
   synchroniserControlePalette();
   render();
+  mettreAJourHash(view, params);
 });
 
 if (paletteSelectCompact) {
@@ -2867,6 +2906,26 @@ attacherActionControle(btnZoomOut, () => {
   zoomerCentre(1 / 1.5);
 });
 
+if (btnRotateLeft) {
+  attacherActionControle(btnRotateLeft, () => {
+    if (!fractaleActiveEst3D()) {
+      view.rotation -= Math.PI / 36;
+      render();
+      mettreAJourHash(view, params);
+    }
+  });
+}
+
+if (btnRotateRight) {
+  attacherActionControle(btnRotateRight, () => {
+    if (!fractaleActiveEst3D()) {
+      view.rotation += Math.PI / 36;
+      render();
+      mettreAJourHash(view, params);
+    }
+  });
+}
+
 btnTogglePan.addEventListener("click", () => {
   const masque = panControls.classList.toggle("collapsed");
   btnTogglePan.textContent = masque ? "+" : "−";
@@ -2914,6 +2973,20 @@ window.addEventListener("keydown", (event) => {
   } else if (fractaleActiveEst3D() && (event.key === "s" || event.key === "S")) {
     event.preventDefault();
     deplacerVue3D(0, -18);
+  } else if (event.key === "[" || event.key === "BracketLeft") {
+    if (!fractaleActiveEst3D()) {
+      event.preventDefault();
+      view.rotation -= Math.PI / 36;
+      render();
+      mettreAJourHash(view, params);
+    }
+  } else if (event.key === "]" || event.key === "BracketRight") {
+    if (!fractaleActiveEst3D()) {
+      event.preventDefault();
+      view.rotation += Math.PI / 36;
+      render();
+      mettreAJourHash(view, params);
+    }
   } else if (event.key === "r" || event.key === "R") {
     event.preventDefault();
     resetView();
@@ -3062,7 +3135,7 @@ function mettreAJourAideInteraction() {
   } else if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
     zoomHint.textContent = "Glisser : déplacement · Toucher : zoom ×2 · Double toucher : dézoom · Pincer : zoom libre";
   } else {
-    zoomHint.textContent = "Glisser : déplacement · Clic : zoom ×2 · Double-clic : dézoom · Molette : zoom libre";
+    zoomHint.textContent = "Glisser : déplacement · Clic : zoom ×2 · Double-clic : dézoom · Molette : zoom libre · [ ] : rotation";
   }
 }
 
@@ -3087,7 +3160,10 @@ if (juliaCReSlider) {
   juliaCReSlider.addEventListener("input", () => {
     params.juliaCre = parseFloat(juliaCReSlider.value);
     if (juliaCReValue) juliaCReValue.textContent = params.juliaCre.toFixed(3);
-    if (["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal)) render();
+    if (["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal)) {
+      render();
+      mettreAJourHash(view, params);
+    }
   });
 }
 
@@ -3095,7 +3171,10 @@ if (juliaCImSlider) {
   juliaCImSlider.addEventListener("input", () => {
     params.juliaCim = parseFloat(juliaCImSlider.value);
     if (juliaCImValue) juliaCImValue.textContent = params.juliaCim.toFixed(3);
-    if (["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal)) render();
+    if (["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal)) {
+      render();
+      mettreAJourHash(view, params);
+    }
   });
 }
 
@@ -3105,9 +3184,18 @@ async function appliquerSignet(signet) {
   if (signet.vue3d) {
     definirVue3DActive(signet.fractal, signet.vue3d);
   } else {
-    view.centerX = signet.centerX;
-    view.centerY = signet.centerY;
-    view.pixelSize = signet.pixelSize;
+    const cible = {
+      centerX: signet.centerX,
+      centerY: signet.centerY,
+      pixelSize: signet.pixelSize,
+      rotation: signet.rotation ?? 0,
+    };
+    animerVersVue(cible, {
+      view,
+      wasmNav: wasmExportFunctions,
+      render,
+      onComplete: () => mettreAJourHash(view, params),
+    });
   }
   params.maxIter = signet.maxIter;
   iterSlider.value = signet.maxIter;
@@ -3203,6 +3291,18 @@ async function init() {
     obtenirPalette: () => getPaletteComplete(params),
     obtenirMaxIter: () => params.maxIter,
   });
+
+  // Lire l'état depuis le hash URL (lien partagé)
+  const etatHash = decoderEtat(location.hash);
+  if (etatHash) {
+    params.fractal = etatHash.fractal;
+    if (etatHash.maxIter !== undefined) params.maxIter = etatHash.maxIter;
+    if (etatHash.palette) params.palette = etatHash.palette;
+    if (etatHash.multibrotPower !== undefined) params.multibrotPower = etatHash.multibrotPower;
+    if (etatHash.juliaCre !== undefined) params.juliaCre = etatHash.juliaCre;
+    if (etatHash.juliaCim !== undefined) params.juliaCim = etatHash.juliaCim;
+  }
+
   syncSelectors(params.fractal);
   synchroniserControlesJulia();
   synchroniserControlePalette();
@@ -3211,11 +3311,12 @@ async function init() {
   mettreAJourOptionsSpecifiques();
   chargerEtatControles();
 
-  // Vue initiale : preset de la fractale sélectionnée
+  // Vue initiale : preset de la fractale (point de départ de l'animation)
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;
   view.centerX = preset.centerX;
   view.centerY = preset.centerY;
   view.pixelSize = preset.span / Math.max(canvas.width, 1);
+  view.rotation = 0.0;
 
   // Lancer un premier rendu JS pendant le chargement WASM
   updateStatusBar("Initialisation…");
@@ -3224,11 +3325,19 @@ async function init() {
   // Charger WASM (peut prendre 100–500 ms)
   await loadWasm();
 
-  // Re-rendre avec WASM si disponible
+  // Re-rendre avec WASM si disponible, puis animer vers la vue du lien partagé
   render();
+  if (etatHash && etatHash.centerX !== undefined && etatHash.pixelSize !== undefined) {
+    animerVersVue(
+      { centerX: etatHash.centerX, centerY: etatHash.centerY, pixelSize: etatHash.pixelSize, rotation: etatHash.rotation ?? 0 },
+      { view, wasmNav: wasmExportFunctions, render, onComplete: () => mettreAJourHash(view, params) }
+    );
+  }
 
   // Charger sources et benchmark en parallèle
   await Promise.all([loadSources(params.fractal), loadBenchmark()]);
+
+  initialiserPartage({ getView: () => view, getParams: () => params, updateStatusBar });
 
   mettreAJourAideInteraction();
 

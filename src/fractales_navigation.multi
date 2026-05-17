@@ -1,0 +1,23 @@
+# Fonctions mathématiques pour la navigation animée et le partage de vues
+# Easing cubique, interpolation logarithmique du pixelSize, interpolation d'angle
+# Utilisées par renderer-navigation.js via les exports WASM
+
+déf easer_cubique(t):
+    retour t * t * (3.0 - 2.0 * t)
+
+déf interpoler_pixelsize_nav(ps_dep, ps_arr, t):
+    si ps_dep <= 0.0:
+        retour ps_arr
+    si ps_arr <= 0.0:
+        retour ps_dep
+    soit rapport = ps_arr / ps_dep
+    retour ps_dep * (rapport ** t)
+
+déf interpoler_angle_nav(a, b, t):
+    soit diff = b - a
+    soit deux_pi = 6.283185307179586
+    tantque diff > 3.141592653589793:
+        diff = diff - deux_pi
+    tantque diff < -3.141592653589793:
+        diff = diff + deux_pi
+    retour a + diff * t

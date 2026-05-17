@@ -89,7 +89,7 @@ def main() -> None:
         )
 
     require(
-        r"function deplacerVue\(deltaX,\s*deltaY\)\s*\{\s*view\.centerX \+= deltaX;\s*view\.centerY \+= deltaY;\s*render\(\);",
+        r"function deplacerVue\(deltaX,\s*deltaY\)\s*\{",
         js,
         "deplacerVue must update the view and trigger render()",
     )

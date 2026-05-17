@@ -2605,8 +2605,15 @@ function deplacerVue(deltaX, deltaY) {
     deplacerVue3D(deltaX * 0.12, deltaY * 0.12);
     return;
   }
-  view.centerX += deltaX;
-  view.centerY += deltaY;
+  if (LINE_FRACTALS.has(params.fractal) && view.rotation !== 0) {
+    const cosR = Math.cos(view.rotation);
+    const sinR = Math.sin(view.rotation);
+    view.centerX += deltaX * cosR - deltaY * sinR;
+    view.centerY += deltaX * sinR + deltaY * cosR;
+  } else {
+    view.centerX += deltaX;
+    view.centerY += deltaY;
+  }
   render();
   mettreAJourHash(view, params);
 }

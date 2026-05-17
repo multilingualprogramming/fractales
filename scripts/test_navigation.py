@@ -241,9 +241,29 @@ def check_pan(js: str) -> None:
     print("  pan...")
 
     require(
-        r"function deplacerVue\(deltaX,\s*deltaY\)\s*\{(?:(?!function).)*?view\.centerX \+= deltaX;\s*view\.centerY \+= deltaY;\s*render\(\);\s*mettreAJourHash\(view,\s*params\);",
+        r"function deplacerVue\(deltaX,\s*deltaY\)\s*\{",
         js,
-        "deplacerVue must update centerX, centerY, render, and update hash",
+        "deplacerVue function must exist",
+    )
+    require(
+        r"view\.centerX \+= deltaX;\s*view\.centerY \+= deltaY;",
+        js,
+        "deplacerVue must update centerX and centerY directly when no rotation correction applies",
+    )
+    require(
+        r"LINE_FRACTALS\.has\(params\.fractal\) && view\.rotation !== 0",
+        js,
+        "deplacerVue must apply rotation-corrected pan for LINE_FRACTALS with non-zero rotation",
+    )
+    require(
+        r"view\.centerX \+= deltaX \* cosR - deltaY \* sinR;\s*view\.centerY \+= deltaX \* sinR \+ deltaY \* cosR;",
+        js,
+        "deplacerVue LINE_FRACTAL branch must rotate the delta by view.rotation to align pan with screen axes",
+    )
+    require(
+        r"(?:function deplacerVue[\s\S]*?)render\(\);\s*mettreAJourHash\(view,\s*params\);",
+        js,
+        "deplacerVue must call render() and mettreAJourHash after updating the view",
     )
     require(
         r'attacherActionControle\(btnPanUp,\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\)',

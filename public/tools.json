@@ -182,13 +182,47 @@
             "enum": ["aurora", "feu", "ocean", "braise", "lagon", "crepuscule", "neon", "infrared", "personnalisee"],
             "description": "Color palette. Default: aurora.",
             "default": "aurora"
+          },
+          "juliaCre": {
+            "type": "number",
+            "description": "Optional Julia-family parameter c real part, encoded as jr."
+          },
+          "juliaCim": {
+            "type": "number",
+            "description": "Optional Julia-family parameter c imaginary part, encoded as ji."
+          },
+          "coloringMode": {
+            "type": "string",
+            "enum": ["standard", "histogramme", "phase", "contours", "potentiel"],
+            "description": "Optional Palette Physics coloring mode, encoded as cm.",
+            "default": "standard"
+          },
+          "palettePhase": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Optional palette phase, encoded as ph."
+          },
+          "weatherOverlays": {
+            "type": "string",
+            "description": "Optional comma-separated mathematical weather overlays, encoded as ov. Supported values: grille, contours, orbite."
+          },
+          "lsystemProposal": {
+            "type": "object",
+            "description": "Optional applied Atelier L-system proposal. Encoded as lp/lg/la/lax/lr and rendered temporarily through the line-fractal pipeline without adding an official catalogue fractal.",
+            "properties": {
+              "generations": {"type": "integer", "minimum": 0, "maximum": 8},
+              "angle": {"type": "number", "minimum": 1, "maximum": 179},
+              "axiom": {"type": "string"},
+              "rules": {"type": "string"}
+            }
           }
         },
         "required": ["fractal", "centerX", "centerY", "pixelSize"]
       },
       "endpoint": {
         "method": "NONE",
-        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}",
+        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}",
         "note": "Assemble directly from parameters — no HTTP request required"
       },
       "examples": [
@@ -300,7 +334,7 @@
     },
     {
       "name": "list_palettes",
-      "description": "Return the list of available color palettes with descriptions. Pass the palette identifier to construct_deeplink or include it in a viewer URL fragment as p={palette_id}.",
+      "description": "Return the list of available color palettes, palette physics coloring modes, and descriptions. Pass the palette identifier to construct_deeplink or include it in a viewer URL fragment as p={palette_id}.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -320,6 +354,33 @@
             "palettes": [
               {"id": "aurora", "description": "Synthwave aurora — electric void → neon teal → acid lime → gold. Default."},
               {"id": "feu", "description": "Volcanic plasma — char-black → electric crimson → acid yellow → white-hot."}
+            ]
+          }
+        }
+      ],
+      "failure_cases": []
+    },
+    {
+      "name": "list_exploration_modes",
+      "description": "Return the advanced non-AI exploration modes exposed by the viewer: parameter maps, journey keyframes, palette physics, deep zoom, 3D studio controls, L-system proposal workbench, and mathematical weather overlays. Includes the URL hash fields used to preserve mode state in shareable links.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "https://multilingualprogramming.github.io/fractales/api/exploration-modes.json"
+      },
+      "examples": [
+        {
+          "description": "List advanced exploration modes",
+          "request": {},
+          "response_shape": {
+            "total": 7,
+            "modes": [
+              {"id": "parametres", "label": "Carte des paramètres", "deeplink_fields": ["jr", "ji"]},
+              {"id": "meteo", "label": "Météo mathématique", "deeplink_fields": ["ov"]}
             ]
           }
         }

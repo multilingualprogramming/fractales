@@ -73,6 +73,39 @@ describe("share: encoderEtat", () => {
     const hash = encoderEtat(defaultView, params);
     assert.ok(hash.includes("pr=3"), "multibrot power must appear");
   });
+
+  test("includes advanced exploration mode state", () => {
+    const params = {
+      ...defaultParams,
+      coloringMode: "phase",
+      palettePhase: 0.35,
+      paletteContours: true,
+      deepZoomAutoIterations: true,
+      deepZoomQuality: "fine",
+      studio3dMaterial: "xray",
+      studio3dFog: 0.4,
+      weatherOverlays: "grille,contours",
+      lsystemProposalActive: true,
+      lsystemGenerations: 4,
+      lsystemAngle: 60,
+      lsystemAxiom: "F",
+      lsystemRules: "F=F+F--F+F",
+    };
+    const hash = encoderEtat(defaultView, params);
+    assert.ok(hash.includes("cm=phase"), "coloring mode");
+    assert.ok(hash.includes("ph=0.350"), "palette phase");
+    assert.ok(hash.includes("pc=1"), "palette contours");
+    assert.ok(hash.includes("azi=1"), "auto iterations");
+    assert.ok(hash.includes("q=fine"), "deep zoom quality");
+    assert.ok(hash.includes("mat=xray"), "3D material");
+    assert.ok(hash.includes("fog=0.40"), "3D fog");
+    assert.ok(hash.includes("ov=grille%2Ccontours"), "weather overlays");
+    assert.ok(hash.includes("lp=1"), "L-system proposal flag");
+    assert.ok(hash.includes("lg=4"), "L-system generations");
+    assert.ok(hash.includes("la=60"), "L-system angle");
+    assert.ok(hash.includes("lax=F"), "L-system axiom");
+    assert.ok(hash.includes("lr=F%3DF%2BF--F%2BF"), "L-system rules");
+  });
 });
 
 // ============================================================
@@ -145,6 +178,23 @@ describe("share: decoderEtat", () => {
     const result = decoderEtat("#f=julia&x=0&y=0&ps=0.003&i=256&jr=-0.7&ji=0.27");
     assert.ok(Math.abs(result.juliaCre - (-0.7)) < 1e-5, "juliaCre parsed");
     assert.ok(Math.abs(result.juliaCim - 0.27) < 1e-5, "juliaCim parsed");
+  });
+
+  test("parses advanced exploration mode state", () => {
+    const result = decoderEtat("#f=mandelbrot&x=0&y=0&ps=0.003&i=256&cm=contours&ph=0.2&pc=1&azi=1&q=extreme&mat=contours&fog=0.5&ov=grille,orbite&lp=1&lg=5&la=45&lax=FX&lr=F%3DFF");
+    assert.equal(result.coloringMode, "contours");
+    assert.equal(result.palettePhase, 0.2);
+    assert.equal(result.paletteContours, true);
+    assert.equal(result.deepZoomAutoIterations, true);
+    assert.equal(result.deepZoomQuality, "extreme");
+    assert.equal(result.studio3dMaterial, "contours");
+    assert.equal(result.studio3dFog, 0.5);
+    assert.equal(result.weatherOverlays, "grille,orbite");
+    assert.equal(result.lsystemProposalActive, true);
+    assert.equal(result.lsystemGenerations, 5);
+    assert.equal(result.lsystemAngle, 45);
+    assert.equal(result.lsystemAxiom, "FX");
+    assert.equal(result.lsystemRules, "F=FF");
   });
 });
 

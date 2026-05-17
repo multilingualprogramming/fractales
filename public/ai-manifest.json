@@ -15,6 +15,11 @@
     "deep_links": true,
     "animated_navigation": true,
     "rotation_support": true,
+    "exploration_modes": true,
+    "parameter_maps": true,
+    "palette_physics": true,
+    "deep_zoom_mode": true,
+    "mathematical_overlays": true,
     "source_code_access": true,
     "benchmark_data": true,
     "mcp_tools": true,
@@ -27,7 +32,8 @@
       "endpoints": [
         "https://multilingualprogramming.github.io/fractales/api/fractals.json",
         "https://multilingualprogramming.github.io/fractales/api/families.json",
-        "https://multilingualprogramming.github.io/fractales/api/palettes.json"
+        "https://multilingualprogramming.github.io/fractales/api/palettes.json",
+        "https://multilingualprogramming.github.io/fractales/api/exploration-modes.json"
       ]
     },
     "accessible": {
@@ -49,6 +55,7 @@
     "catalog": "https://multilingualprogramming.github.io/fractales/api/fractals.json",
     "families": "https://multilingualprogramming.github.io/fractales/api/families.json",
     "palettes": "https://multilingualprogramming.github.io/fractales/api/palettes.json",
+    "exploration_modes": "https://multilingualprogramming.github.io/fractales/api/exploration-modes.json",
     "benchmark": "https://multilingualprogramming.github.io/fractales/benchmark.json",
     "schemas": {
       "fractal": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
@@ -67,9 +74,11 @@
     "families": 8,
     "render_modes": ["escape_time", "point_cloud", "line", "webgl_3d"],
     "palettes": 9
+    ,
+    "exploration_modes": 7
   },
   "deeplink_format": {
-    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}",
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}",
     "parameters": {
       "f": "Fractal identifier (required)",
       "x": "Center X in complex plane (required)",
@@ -77,7 +86,22 @@
       "ps": "Pixel size — units per pixel, controls zoom (required)",
       "r": "Rotation in radians (optional, default 0)",
       "i": "Max iterations (optional, default 256)",
-      "p": "Palette identifier (optional, default aurora)"
+      "p": "Palette identifier (optional, default aurora)",
+      "jr": "Julia parameter c real part for Julia-family fractals (optional)",
+      "ji": "Julia parameter c imaginary part for Julia-family fractals (optional)",
+      "cm": "Palette Physics coloring mode (optional)",
+      "ph": "Palette phase offset (optional)",
+      "pc": "Palette contour enhancement flag, 1 when enabled (optional)",
+      "azi": "Mode Abysses automatic iteration flag, 1 when enabled (optional)",
+      "q": "Mode Abysses quality level: standard, fine, extreme (optional)",
+      "mat": "Studio 3D material hint (optional)",
+      "fog": "Studio 3D depth fog amount from 0 to 1 (optional)",
+      "ov": "Comma-separated mathematical weather overlays: grille, contours, orbite (optional)",
+      "lp": "Applied Atelier L-system proposal flag, 1 when enabled (optional)",
+      "lg": "Applied L-system proposal generation count (optional)",
+      "la": "Applied L-system proposal angle in degrees (optional)",
+      "lax": "Applied L-system proposal axiom (optional)",
+      "lr": "Applied L-system proposal rewrite rules (optional)"
     }
   },
   "source_access": {

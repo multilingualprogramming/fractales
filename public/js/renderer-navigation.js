@@ -39,6 +39,21 @@ export function encoderEtat(view, params) {
     p.set("jr", params.juliaCre.toFixed(6));
     p.set("ji", params.juliaCim.toFixed(6));
   }
+  if (params.coloringMode && params.coloringMode !== "standard") p.set("cm", params.coloringMode);
+  if (params.palettePhase) p.set("ph", Number(params.palettePhase).toFixed(3));
+  if (params.paletteContours) p.set("pc", "1");
+  if (params.deepZoomAutoIterations) p.set("azi", "1");
+  if (params.deepZoomQuality && params.deepZoomQuality !== "standard") p.set("q", params.deepZoomQuality);
+  if (params.studio3dMaterial && params.studio3dMaterial !== "lumineux") p.set("mat", params.studio3dMaterial);
+  if (params.studio3dFog) p.set("fog", Number(params.studio3dFog).toFixed(2));
+  if (params.weatherOverlays) p.set("ov", params.weatherOverlays);
+  if (params.lsystemProposalActive) {
+    p.set("lp", "1");
+    p.set("lg", String(params.lsystemGenerations ?? 4));
+    p.set("la", String(params.lsystemAngle ?? 60));
+    p.set("lax", params.lsystemAxiom ?? "F");
+    p.set("lr", params.lsystemRules ?? "F=F+F--F+F");
+  }
   return "#" + p.toString();
 }
 
@@ -68,6 +83,19 @@ export function decoderEtat(hash) {
     multibrotPower: ent("pr"),
     juliaCre: num("jr"),
     juliaCim: num("ji"),
+    coloringMode: p.get("cm") ?? "standard",
+    palettePhase: num("ph") ?? 0,
+    paletteContours: p.get("pc") === "1",
+    deepZoomAutoIterations: p.get("azi") === "1",
+    deepZoomQuality: p.get("q") ?? "standard",
+    studio3dMaterial: p.get("mat") ?? "lumineux",
+    studio3dFog: num("fog") ?? 0,
+    weatherOverlays: p.get("ov") ?? "",
+    lsystemProposalActive: p.get("lp") === "1",
+    lsystemGenerations: ent("lg"),
+    lsystemAngle: num("la"),
+    lsystemAxiom: p.get("lax") ?? undefined,
+    lsystemRules: p.get("lr") ?? undefined,
   };
 
   if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;

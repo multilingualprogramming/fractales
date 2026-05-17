@@ -124,6 +124,58 @@ PALETTE_DESCRIPTIONS: dict[str, str] = {
     "personnalisee": "Custom palette: user-defined gradient stops via the palette editor.",
 }
 
+EXPLORATION_MODES: list[dict] = [
+    {
+        "id": "parametres",
+        "label": "Carte des paramètres",
+        "description": "Interactive parameter-plane canvas for Julia-type fractals; clicking sets juliaCre/juliaCim and is encoded in the deep link as jr/ji.",
+        "deeplink_fields": ["jr", "ji"],
+        "applies_to": sorted(JULIA_FRACTALS),
+    },
+    {
+        "id": "temps",
+        "label": "Carnet de voyage",
+        "description": "Local keyframe notebook for composing and replaying fractal journeys from captured view states.",
+        "storage": "localStorage:fractales_carnet_voyage",
+    },
+    {
+        "id": "palette",
+        "label": "Physique de palette",
+        "description": "Additional coloring modes layered on top of existing palettes: histogram, phase, contours, and potential smoothing.",
+        "deeplink_fields": ["cm", "ph", "pc"],
+        "coloring_modes": ["standard", "histogramme", "phase", "contours", "potentiel"],
+    },
+    {
+        "id": "abysses",
+        "label": "Mode Abysses",
+        "description": "Deep-zoom assistance with zoom exponent readout, precision warning, and optional automatic iteration scaling.",
+        "deeplink_fields": ["azi", "q"],
+        "quality_levels": ["standard", "fine", "extreme"],
+    },
+    {
+        "id": "studio3d",
+        "label": "Studio 3D",
+        "description": "Dedicated controls for WebGL fractals: camera presets, material hint, and depth fog state.",
+        "deeplink_fields": ["mat", "fog"],
+        "applies_to": sorted(MODES_3D),
+    },
+    {
+        "id": "lsysteme",
+        "label": "Atelier L-système",
+        "description": "Local L-system proposal workbench with axiom/rule/angle/generation preview and an Apply action that renders the proposal through the line-fractal pipeline. Proposals are not official fractals until added to src/fractales_lsystem.multi.",
+        "applies_to_render_mode": "line",
+        "deeplink_fields": ["lp", "lg", "la", "lax", "lr"],
+        "canonical_status": "temporary_user_proposal",
+    },
+    {
+        "id": "meteo",
+        "label": "Météo mathématique",
+        "description": "Composable mathematical overlays: grid/axes, iteration contours, and captured orbit path.",
+        "deeplink_fields": ["ov"],
+        "overlays": ["grille", "contours", "orbite"],
+    },
+]
+
 
 # ── Extraction helpers ─────────────────────────────────────────────────────
 
@@ -350,6 +402,17 @@ def main() -> None:
             "total": len(palettes),
             "default": "aurora",
             "palettes": palettes,
+            "coloring_modes": ["standard", "histogramme", "phase", "contours", "potentiel"],
+        }
+    )
+
+    write_json(
+        PUBLIC / "api" / "exploration-modes.json",
+        {
+            "base_url": BASE_URL,
+            "total": len(EXPLORATION_MODES),
+            "modes": EXPLORATION_MODES,
+            "deeplink_schema": f"{BASE_URL}/schemas/deeplink-params.schema.json",
         }
     )
 

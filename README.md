@@ -12,6 +12,11 @@ Les réglages propres à certaines fractales sont regroupés dans un bloc
 **Options spécifiques** configurable : il n'apparaît que lorsque la fractale active
 utilise réellement des paramètres dédiés.
 
+Les fonctions avancées vivent dans des **Modes d'exploration** flottants, séparés
+du pied de page pour ne pas surcharger les contrôles globaux : carte des paramètres,
+carnet de voyage, physique de palette, mode Abysses, studio 3D, atelier L-système
+et météo mathématique.
+
 L'application peut aussi **exporter la zone courante en PNG**, **générer une
 vidéo WebM de zoom**, et **exporter les fractales L-système en SVG**. La planification
 d'export reste décrite en **français multilingual** dans `fractales_export.multi`, tandis
@@ -237,6 +242,7 @@ index.html
         ├── renderer-bookmarks.js → signets (localStorage) + restauration de vue
         ├── renderer-export.js → PNG courant / PNG HD / vidéo WebM / SVG (L-système)
         ├── Palettes : Feu / Océan / Aurora / Braise / Lagon / Crépuscule / Neon / Infrarouge / éditeur personnalisé complet (fond, intérieur, stops)
+        ├── renderer-exploration.js → modes avancés : paramètres, temps, palette, abysses, 3D, L-systèmes, météo
         ├── Zoom/pan/rotation : clic, molette, pincement tactile, touches [ ]
         ├── Couplage Julia/Mandelbrot : aperçu Julia 200×200 en temps réel au survol
         ├── Options spécifiques : bloc dynamique configurable pour les paramètres par fractale
@@ -278,9 +284,10 @@ index.html
 │   ├── js/renderer-source-panel.js # Code source contextuel + benchmark
 │   ├── js/renderer-bookmarks.js   # Signets navigateur
 │   ├── js/renderer-export.js      # Export PNG / WebM / SVG
+│   ├── js/renderer-exploration.js # Modes d'exploration avancés
 │   ├── js/renderer3d.js           # Backend WebGL des fractales 3D
 │   ├── css/style.css
-│   ├── tools.json                 # Définitions d'outils MCP + OpenAI (8 outils)
+│   ├── tools.json                 # Définitions d'outils MCP + OpenAI
 │   ├── ai-manifest.json           # Manifeste de découverte FAIR pour agents IA
 │   ├── schemas/                   # JSON Schema 2020-12 (fractal, deeplink-params, tool-result)
 │   ├── examples/                  # Exemples d'appels et workflow agent (4 fichiers)
@@ -292,6 +299,7 @@ index.html
 │   ├── benchmark.json             # ← généré (résultats de benchmark)
 │   └── api/                       # ← généré par generate_api.py (gitignore)
 │       ├── fractals.json          #   catalogue complet (71 fractales)
+│       ├── exploration-modes.json #   modes avancés et champs deeplink
 │       ├── families.json          #   index des 8 familles
 │       └── families/{id}.json     #   détail par famille
 └── README.md
@@ -475,12 +483,41 @@ https://multilingualprogramming.github.io/fractales/#f=mandelbrot&x=-0.5&y=0.0&p
 | `r` | Rotation en radians | `0.523` (≈ 30°) |
 | `i` | Nombre maximal d'itérations | `1024` |
 | `p` | Palette de couleurs | `ocean`, `neon`, `feu` |
+| `jr` / `ji` | Paramètre `c` des fractales Julia | `jr=-0.8&ji=0.156` |
+| `cm` / `ph` / `pc` | Physique de palette : mode, phase, contours | `cm=phase&ph=0.35&pc=1` |
+| `azi` / `q` | Mode Abysses : itérations auto, qualité | `azi=1&q=fine` |
+| `mat` / `fog` | Studio 3D : matière et brume de profondeur | `mat=xray&fog=0.4` |
+| `ov` | Météo mathématique : surcouches actives | `ov=grille,contours` |
+| `lp` / `lg` / `la` / `lax` / `lr` | Proposition L-système appliquée | `lp=1&lg=4&la=60&lax=F&lr=F%3DF%2BF--F%2BF` |
 
 Le bouton **Partager** copie l'URL courante dans le presse-papiers. Ouvrir un lien partagé charge la fractale et anime le zoom vers la position encodée grâce aux fonctions WASM de `fractales_navigation.multi` :
 
 - `easer_cubique(t)` — lissage cubique Hermite
 - `interpoler_pixelsize_nav(ps_dep, ps_arr, t)` — interpolation logarithmique du zoom
 - `interpoler_angle_nav(a, b, t)` — interpolation angulaire par le chemin le plus court
+
+### Modes d'exploration
+
+Les modes d'exploration sont accessibles par une barre verticale flottante dans la
+zone de rendu. Ils ne modifient pas la structure du pied de page, en version
+déployée comme en version réduite.
+
+- **Carte des paramètres** : mini-plan du paramètre `c` pour les fractales Julia ;
+  un clic met à jour `jr` / `ji` dans l'URL.
+- **Carnet de voyage** : étapes locales en `localStorage` pour rejouer une trajectoire
+  de vues capturées.
+- **Physique de palette** : modes `standard`, `histogramme`, `phase`, `contours`,
+  `potentiel`, en plus des palettes existantes.
+- **Mode Abysses** : lecture de l'exposant de zoom, avertissement de précision et
+  itérations automatiques optionnelles.
+- **Studio 3D** : presets de caméra et état de matière/brume pour les fractales WebGL.
+- **Atelier L-système** : aperçu local d'une proposition `axiome + règles + angle`,
+  puis bouton **Appliquer** pour rendre cette proposition dans la zone principale
+  et l'exporter via le pipeline L-système. Une proposition appliquée est encodée
+  dans l'URL mais n'est pas une fractale canonique tant qu'elle n'est pas ajoutée
+  dans `src/fractales_lsystem.multi` et les registres associés.
+- **Météo mathématique** : grille/axes, contours et orbite capturée comme surcouches
+  analytiques, encodées via `ov`.
 
 ---
 
@@ -490,13 +527,14 @@ L'application expose une couche machine-readable statique, sans serveur, compati
 
 | Fichier | Contenu |
 |---|---|
-| `tools.json` | 8 outils : `list_fractals`, `get_fractal`, `list_families`, `get_family`, `construct_deeplink`, `get_source`, `get_benchmark`, `list_palettes` |
+| `tools.json` | Outils statiques : catalogue, familles, deep links, sources, benchmarks, palettes et modes d'exploration |
 | `ai-manifest.json` | Manifeste de découverte FAIR — point d'entrée pour les agents IA |
 | `schemas/` | JSON Schema 2020-12 pour les entrées de fractale, les paramètres deeplink, les résultats d'outils |
 | `examples/` | Exemples d'appels et workflow agent en 4 étapes |
 | `api/fractals.json` | Catalogue complet des 71 fractales (généré par CI) |
 | `api/families.json` | Index des 8 familles (généré par CI) |
 | `api/palettes.json` | 9 palettes disponibles (généré par CI) |
+| `api/exploration-modes.json` | Modes avancés et champs de deep link associés (généré par CI) |
 
 `public/api/` est généré à chaque build par `scripts/generate_api.py` (lecture de `renderer.js`) et n'est pas versionné dans git.
 
@@ -559,4 +597,3 @@ Si vous modifiez le comportement visible, ajoutez ou retirez une fractale, ou ch
 ## Licence
 
 GNU General Public License v3.0 (GPL-3.0) — voir `LICENSE`.
-

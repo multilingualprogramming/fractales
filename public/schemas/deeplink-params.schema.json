@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://multilingualprogramming.github.io/fractales/schemas/deeplink-params.schema.json",
   "title": "DeepLink Parameters",
-  "description": "Parameters for the fractal viewer URL hash fragment. The viewer reads these from window.location.hash on load and encodes them on every navigation action. Format: BASE_URL/#f={f}&x={x}&y={y}&ps={ps}&r={r}&i={i}&p={p}",
+  "description": "Parameters for the fractal viewer URL hash fragment. The viewer reads these from window.location.hash on load and encodes them on every navigation action. Format: BASE_URL/#f={f}&x={x}&y={y}&ps={ps}&r={r}&i={i}&p={p}. Advanced exploration modes add optional fields for Julia parameters, palette physics, deep zoom, 3D studio state, and mathematical overlays.",
   "type": "object",
   "required": ["f", "x", "y", "ps"],
   "properties": {
@@ -41,6 +41,84 @@
       "enum": ["aurora", "feu", "ocean", "braise", "lagon", "crepuscule", "neon", "infrared", "personnalisee"],
       "description": "Color palette identifier. Default: aurora. Use /api/palettes.json for descriptions.",
       "default": "aurora"
+    },
+    "jr": {
+      "type": "number",
+      "description": "Julia-family parameter c real part, used by the Carte des paramètres and Julia sliders."
+    },
+    "ji": {
+      "type": "number",
+      "description": "Julia-family parameter c imaginary part, used by the Carte des paramètres and Julia sliders."
+    },
+    "cm": {
+      "type": "string",
+      "enum": ["standard", "histogramme", "phase", "contours", "potentiel"],
+      "description": "Palette Physics coloring mode. Default: standard.",
+      "default": "standard"
+    },
+    "ph": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Palette phase offset for animated/phase coloring modes."
+    },
+    "pc": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Set to 1 to reinforce iteration contour lines in Palette Physics."
+    },
+    "azi": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Set to 1 to enable automatic iteration scaling in Mode Abysses."
+    },
+    "q": {
+      "type": "string",
+      "enum": ["standard", "fine", "extreme"],
+      "description": "Mode Abysses quality level.",
+      "default": "standard"
+    },
+    "mat": {
+      "type": "string",
+      "enum": ["lumineux", "mat", "xray", "contours"],
+      "description": "Studio 3D material hint for WebGL fractals.",
+      "default": "lumineux"
+    },
+    "fog": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Studio 3D depth fog amount."
+    },
+    "ov": {
+      "type": "string",
+      "description": "Comma-separated mathematical weather overlays. Supported values: grille, contours, orbite.",
+      "examples": ["grille", "grille,contours", "grille,contours,orbite"]
+    },
+    "lp": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Set to 1 when an Atelier L-système proposal is applied as the active temporary line rendering."
+    },
+    "lg": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8,
+      "description": "Applied L-system proposal generation count."
+    },
+    "la": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 179,
+      "description": "Applied L-system proposal turn angle in degrees."
+    },
+    "lax": {
+      "type": "string",
+      "description": "Applied L-system proposal axiom."
+    },
+    "lr": {
+      "type": "string",
+      "description": "Applied L-system proposal rewrite rules, separated by newlines or semicolons, e.g. F=F+F--F+F."
     }
   },
   "examples": [

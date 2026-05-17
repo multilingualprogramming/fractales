@@ -67,6 +67,7 @@
         <canvas id="fractal-canvas-3d" class="canvas-masque" aria-label="Vue 3D WebGL">
           Votre navigateur ne supporte pas WebGL.
         </canvas>
+        <canvas id="fractal-overlay-canvas" aria-label="Surcouche d'analyse mathématique"></canvas>
 
         <!-- Indicateur de statut du rendu -->
         <div id="render-overlay">
@@ -171,6 +172,162 @@
           </div>
           <div id="bookmark-list" class="bookmark-list">
             <p class="bookmark-empty">Aucun signet. Naviguez vers une vue intéressante et appuyez sur ★ Signet.</p>
+          </div>
+        </section>
+
+        <nav id="exploration-dock" aria-label="Modes d'exploration">
+          <button class="exploration-mode-btn" type="button" data-mode="parametres" aria-label="Carte des paramètres"
+            title="Carte des paramètres">⌖</button>
+          <button class="exploration-mode-btn" type="button" data-mode="temps" aria-label="Carnet de voyage"
+            title="Carnet de voyage">◴</button>
+          <button class="exploration-mode-btn" type="button" data-mode="palette" aria-label="Physique de palette"
+            title="Physique de palette">◐</button>
+          <button class="exploration-mode-btn" type="button" data-mode="abysses" aria-label="Mode Abysses"
+            title="Mode Abysses">↓</button>
+          <button class="exploration-mode-btn" type="button" data-mode="studio3d" aria-label="Studio 3D"
+            title="Studio 3D">◲</button>
+          <button class="exploration-mode-btn" type="button" data-mode="lsysteme" aria-label="Atelier L-système"
+            title="Atelier L-système">⌁</button>
+          <button class="exploration-mode-btn" type="button" data-mode="meteo" aria-label="Météo mathématique"
+            title="Météo mathématique">☷</button>
+        </nav>
+
+        <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
+          <div class="exploration-panel-header">
+            <div>
+              <div id="exploration-panel-title" class="exploration-panel-title">Modes d'exploration</div>
+              <div id="exploration-panel-subtitle" class="exploration-panel-subtitle">Instruments visuels avancés</div>
+            </div>
+            <button id="btn-close-exploration" class="btn export-close-btn" type="button"
+              aria-label="Fermer le panneau d'exploration">✕</button>
+          </div>
+
+          <div class="exploration-panel-body">
+            <section class="exploration-view" data-view="parametres">
+              <canvas id="parameter-map-canvas" width="280" height="180" aria-label="Carte des paramètres Julia"></canvas>
+              <div class="exploration-readout" id="parameter-map-readout">c = -0.800 + 0.156i</div>
+              <div class="exploration-actions">
+                <button id="btn-parameter-random" class="btn" type="button">Point sensible</button>
+                <button id="btn-parameter-reset" class="btn btn-secondary" type="button">Réinitialiser c</button>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="temps">
+              <div class="exploration-actions">
+                <button id="btn-journey-add" class="btn" type="button">Ajouter une étape</button>
+                <button id="btn-journey-play" class="btn" type="button">Lire</button>
+                <button id="btn-journey-clear" class="btn btn-secondary" type="button">Vider</button>
+              </div>
+              <div id="journey-list" class="exploration-list">Aucune étape enregistrée.</div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="palette">
+              <label class="exploration-field" for="coloring-mode-select">
+                <span>Mode couleur</span>
+                <select id="coloring-mode-select">
+                  <option value="standard">Standard</option>
+                  <option value="histogramme">Histogramme équilibré</option>
+                  <option value="phase">Phase animée</option>
+                  <option value="contours">Contours d'itération</option>
+                  <option value="potentiel">Potentiel doux</option>
+                </select>
+              </label>
+              <label class="exploration-field" for="palette-phase-slider">
+                <span>Phase</span>
+                <input id="palette-phase-slider" type="range" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <label class="exploration-check">
+                <input id="palette-contours-check" type="checkbox" />
+                <span>Renforcer les lignes d'itération</span>
+              </label>
+            </section>
+
+            <section class="exploration-view hidden" data-view="abysses">
+              <div id="deepzoom-readout" class="exploration-readout">Zoom ×1 · précision stable</div>
+              <label class="exploration-check">
+                <input id="deepzoom-auto-iterations" type="checkbox" />
+                <span>Itérations automatiques</span>
+              </label>
+              <label class="exploration-field" for="deepzoom-quality-select">
+                <span>Qualité</span>
+                <select id="deepzoom-quality-select">
+                  <option value="standard">Standard</option>
+                  <option value="fine">Fine</option>
+                  <option value="extreme">Extrême</option>
+                </select>
+              </label>
+              <div class="exploration-actions">
+                <button id="btn-deepzoom-apply" class="btn" type="button">Ajuster maintenant</button>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="studio3d">
+              <label class="exploration-field" for="studio3d-material-select">
+                <span>Matière</span>
+                <select id="studio3d-material-select">
+                  <option value="lumineux">Lumineux</option>
+                  <option value="mat">Mat</option>
+                  <option value="xray">Rayons X</option>
+                  <option value="contours">Contours</option>
+                </select>
+              </label>
+              <label class="exploration-field" for="studio3d-fog-slider">
+                <span>Brume de profondeur</span>
+                <input id="studio3d-fog-slider" type="range" min="0" max="1" step="0.05" value="0" />
+              </label>
+              <div class="exploration-actions">
+                <button class="btn" type="button" data-3d-preset="face">Face</button>
+                <button class="btn" type="button" data-3d-preset="plongee">Plongée</button>
+                <button class="btn" type="button" data-3d-preset="orbite">Orbite</button>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="lsysteme">
+              <label class="exploration-field" for="lsystem-generation-slider">
+                <span>Génération</span>
+                <input id="lsystem-generation-slider" type="range" min="1" max="8" step="1" value="4" />
+              </label>
+              <div class="exploration-grid-2">
+                <label class="exploration-field" for="lsystem-angle-input">
+                  <span>Angle</span>
+                  <input id="lsystem-angle-input" type="number" min="1" max="179" value="60" />
+                </label>
+                <label class="exploration-field" for="lsystem-axiom-input">
+                  <span>Axiome</span>
+                  <input id="lsystem-axiom-input" type="text" value="F" />
+                </label>
+              </div>
+              <label class="exploration-field" for="lsystem-rules-input">
+                <span>Règles proposées</span>
+                <textarea id="lsystem-rules-input" rows="3">F=F+F--F+F</textarea>
+              </label>
+              <canvas id="lsystem-proposal-canvas" width="280" height="180"
+                aria-label="Aperçu d'une proposition L-système"></canvas>
+              <div id="lsystem-proposal-readout" class="exploration-readout">Proposition locale : non ajoutée au catalogue canonique.</div>
+              <div class="exploration-actions">
+                <button id="btn-lsystem-apply" class="btn" type="button">Appliquer</button>
+                <button id="btn-lsystem-clear" class="btn btn-secondary" type="button">Revenir au canonique</button>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="meteo">
+              <label class="exploration-check">
+                <input class="weather-toggle" type="checkbox" value="grille" />
+                <span>Grille et axes</span>
+              </label>
+              <label class="exploration-check">
+                <input class="weather-toggle" type="checkbox" value="contours" />
+                <span>Contours d'itération</span>
+              </label>
+              <label class="exploration-check">
+                <input class="weather-toggle" type="checkbox" value="orbite" />
+                <span>Orbite du point capturé</span>
+              </label>
+              <div class="exploration-actions">
+                <button id="btn-capture-orbit" class="btn" type="button">Capturer une orbite</button>
+              </div>
+              <div id="weather-readout" class="exploration-readout">Aucune orbite capturée.</div>
+            </section>
           </div>
         </section>
 

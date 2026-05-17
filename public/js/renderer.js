@@ -11,22 +11,25 @@
 
 import {
   initialiserExports,
-} from "./renderer-export.js?v=20260517r1";
+} from "./renderer-export.js";
 import {
   initialiserSignets,
-} from "./renderer-bookmarks.js?v=20260517r1";
+} from "./renderer-bookmarks.js";
 import {
   initialiserPanneauSource,
-} from "./renderer-source-panel.js?v=20260517r1";
+} from "./renderer-source-panel.js";
 import {
   animerVersVue,
   decoderEtat,
   encoderEtat,
   initialiserPartage,
   mettreAJourHash,
-} from "./renderer-navigation.js?v=20260517r1";
+} from "./renderer-navigation.js";
+import {
+  initialiserExploration,
+} from "./renderer-exploration.js";
 
-const WASM_URL = "mandelbrot.wasm?v=20260517r1";
+const WASM_URL = "mandelbrot.wasm";
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -53,6 +56,19 @@ const params = {
   paletteBackground: "#020008",
   paletteInterior: "#fff5b4",
   paletteStops: ["#0a0028", "#4600aa", "#0028e6", "#00aad2", "#00e66e", "#a0ff00", "#ffc800", "#fff5b4"],
+  coloringMode: "standard",
+  palettePhase: 0.0,
+  paletteContours: false,
+  deepZoomAutoIterations: false,
+  deepZoomQuality: "standard",
+  studio3dMaterial: "lumineux",
+  studio3dFog: 0.0,
+  weatherOverlays: "",
+  lsystemProposalActive: false,
+  lsystemAxiom: "F",
+  lsystemRules: "F=F+F--F+F",
+  lsystemAngle: 60,
+  lsystemGenerations: 4,
 };
 
 const VIEW_PRESETS = {
@@ -164,6 +180,7 @@ let rendering = false;
 let renderToken = 0;
 /** ImageData réutilisable */
 let imageDataBuffer = null;
+let explorationModes = null;
 
 // ============================================================
 // ÉLÉMENTS DOM
@@ -172,6 +189,7 @@ let imageDataBuffer = null;
 const canvas = document.getElementById("fractal-canvas");
 const canvas3d = document.getElementById("fractal-canvas-3d");
 const ctx = canvas.getContext("2d", { willReadFrequently: false });
+const overlayCanvas = document.getElementById("fractal-overlay-canvas");
 const renderStatus = document.getElementById("render-status");
 const coordsDisplay = document.getElementById("coords-display");
 const nav3dHud = document.getElementById("nav-3d-hud");
@@ -253,6 +271,15 @@ const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
 const bookmarkList = document.getElementById("bookmark-list");
+const explorationDock = document.getElementById("exploration-dock");
+const explorationPanel = document.getElementById("exploration-panel");
+const btnCloseExploration = document.getElementById("btn-close-exploration");
+const explorationTitle = document.getElementById("exploration-panel-title");
+const explorationSubtitle = document.getElementById("exploration-panel-subtitle");
+const explorationViews = [...document.querySelectorAll(".exploration-view")];
+const parameterMapCanvas = document.getElementById("parameter-map-canvas");
+const parameterMapReadout = document.getElementById("parameter-map-readout");
+const lsystemProposalCanvas = document.getElementById("lsystem-proposal-canvas");
 
 let familySelectCompact = null;
 let fractalSelectCompact = null;
@@ -534,7 +561,7 @@ import {
   reinitialiserVue3DActive,
   zoomerVue3D,
   deplacerVue3D,
-} from "./renderer3d.js?v=20260517r1";
+} from "./renderer3d.js";
 
 /**
  * Retourne la couleur [r, g, b] pour une valeur d'itération.
@@ -545,26 +572,48 @@ import {
  */
 function getColor(iter, max, name) {
   if (iter >= max) return getPaletteInterior(name);
-  const stops = getPaletteStops(name);
   // normaliser dans [0, 1] avec légère correction logarithmique
   const t = Math.sqrt(iter / max);
-  return getColorFromRatio(t, stops);
+  return getColorFromRatio(t, name);
 }
 
 function getColorFromRatio(t, paletteOrName) {
   const stops = Array.isArray(paletteOrName) ? paletteOrName : getPaletteStops(paletteOrName);
-  const normalise = Math.max(0, Math.min(0.999999, t));
+  const mode = !Array.isArray(paletteOrName) && typeof paletteOrName === "object"
+    ? (paletteOrName.coloringMode ?? "standard")
+    : "standard";
+  const phase = !Array.isArray(paletteOrName) && typeof paletteOrName === "object"
+    ? (paletteOrName.palettePhase ?? 0)
+    : 0;
+  const contours = !Array.isArray(paletteOrName) && typeof paletteOrName === "object"
+    ? Boolean(paletteOrName.paletteContours)
+    : false;
+  let normalise = Math.max(0, Math.min(0.999999, t));
+  if (mode === "histogramme") {
+    normalise = Math.pow(normalise, 0.62);
+  } else if (mode === "phase") {
+    normalise = (normalise + phase) % 1.0;
+  } else if (mode === "potentiel") {
+    normalise = 0.5 - 0.5 * Math.cos(normalise * Math.PI);
+  }
   const scaled = normalise * (stops.length - 1);
   const lo = Math.floor(scaled) | 0;
   const hi = Math.min(lo + 1, stops.length - 1);
   const frac = scaled - lo;
   const c0 = stops[lo];
   const c1 = stops[hi];
-  return [
+  let color = [
     (c0[0] + (c1[0] - c0[0]) * frac) | 0,
     (c0[1] + (c1[1] - c0[1]) * frac) | 0,
     (c0[2] + (c1[2] - c0[2]) * frac) | 0,
   ];
+  if (mode === "contours" || contours) {
+    const band = Math.abs(((normalise * 36) % 1) - 0.5);
+    if (band > 0.42) {
+      color = color.map((value) => clampByte(value * 0.58 + 255 * 0.22));
+    }
+  }
+  return color;
 }
 
 function clampByte(value) {
@@ -894,6 +943,21 @@ function interpolerLogarithmique(a, b, t) {
 }
 
 function capturerVueCourante() {
+  const modeState = {
+    coloringMode: params.coloringMode,
+    palettePhase: params.palettePhase,
+    paletteContours: params.paletteContours,
+    deepZoomAutoIterations: params.deepZoomAutoIterations,
+    deepZoomQuality: params.deepZoomQuality,
+    studio3dMaterial: params.studio3dMaterial,
+    studio3dFog: params.studio3dFog,
+    weatherOverlays: params.weatherOverlays,
+    lsystemProposalActive: params.lsystemProposalActive,
+    lsystemAxiom: params.lsystemAxiom,
+    lsystemRules: params.lsystemRules,
+    lsystemAngle: params.lsystemAngle,
+    lsystemGenerations: params.lsystemGenerations,
+  };
   if (fractaleActiveEst3D()) {
     return {
       fractal: params.fractal,
@@ -905,6 +969,7 @@ function capturerVueCourante() {
       multibrotPower: params.multibrotPower,
       juliaCre: params.juliaCre,
       juliaCim: params.juliaCim,
+      ...modeState,
       vue3d: obtenirVue3DActive(),
     };
   }
@@ -922,6 +987,7 @@ function capturerVueCourante() {
     multibrotPower: params.multibrotPower,
     juliaCre: params.juliaCre,
     juliaCim: params.juliaCim,
+    ...modeState,
   };
 }
 
@@ -936,6 +1002,19 @@ function clonerParamsExport(source = params) {
     multibrotPower: source.multibrotPower,
     juliaCre: source.juliaCre,
     juliaCim: source.juliaCim,
+    coloringMode: source.coloringMode ?? params.coloringMode,
+    palettePhase: source.palettePhase ?? params.palettePhase,
+    paletteContours: source.paletteContours ?? params.paletteContours,
+    deepZoomAutoIterations: source.deepZoomAutoIterations ?? params.deepZoomAutoIterations,
+    deepZoomQuality: source.deepZoomQuality ?? params.deepZoomQuality,
+    studio3dMaterial: source.studio3dMaterial ?? params.studio3dMaterial,
+    studio3dFog: source.studio3dFog ?? params.studio3dFog,
+    weatherOverlays: source.weatherOverlays ?? params.weatherOverlays,
+    lsystemProposalActive: source.lsystemProposalActive ?? params.lsystemProposalActive,
+    lsystemAxiom: source.lsystemAxiom ?? params.lsystemAxiom,
+    lsystemRules: source.lsystemRules ?? params.lsystemRules,
+    lsystemAngle: source.lsystemAngle ?? params.lsystemAngle,
+    lsystemGenerations: source.lsystemGenerations ?? params.lsystemGenerations,
   };
 }
 
@@ -1407,13 +1486,46 @@ function appliquerPresetJulia(fractalName) {
 
 function setActiveFractal(fractalName) {
   params.fractal = fractalName;
+  params.lsystemProposalActive = false;
   syncSelectors(fractalName);
   appliquerPresetJulia(params.fractal);
   mettreAJourAideInteraction();
   resetView();
   mettreAJourOptionsSpecifiques();
+  explorationModes?.syncFromParams();
   loadSources(params.fractal);
   mettreAJourHash(view, params);
+}
+
+function appliquerPropositionLSysteme(config) {
+  params.lsystemProposalActive = true;
+  params.lsystemAxiom = String(config.axiom || "F").slice(0, 96);
+  params.lsystemRules = String(config.rules || "F=F+F--F+F").slice(0, 600);
+  params.lsystemAngle = Math.max(1, Math.min(179, Number(config.angle) || 60));
+  params.lsystemGenerations = Math.max(0, Math.min(8, Number(config.generations) | 0));
+  if (!LINE_FRACTALS.has(params.fractal)) {
+    params.fractal = "koch";
+    syncSelectors(params.fractal);
+    loadSources(params.fractal);
+  }
+  view.centerX = 0.0;
+  view.centerY = 0.0;
+  view.pixelSize = 2.4 / Math.max(canvas.width, 1);
+  view.rotation = 0.0;
+  mettreAJourOptionsSpecifiques();
+  explorationModes?.syncFromParams();
+  render();
+  mettreAJourHash(view, params);
+  updateStatusBar("Proposition L-système appliquée", true);
+}
+
+function effacerPropositionLSysteme() {
+  params.lsystemProposalActive = false;
+  mettreAJourOptionsSpecifiques();
+  explorationModes?.syncFromParams();
+  render();
+  mettreAJourHash(view, params);
+  updateStatusBar("Retour au L-système canonique", true);
 }
 
 function kochGenerate(iterations) {
@@ -1695,6 +1807,86 @@ function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, 
   }
 }
 
+function parserReglesLSysteme(rulesText) {
+  const rules = new Map();
+  String(rulesText || "").split(/\n|;/).forEach((line) => {
+    const [key, value] = line.split("=");
+    const symbole = key?.trim()?.[0];
+    if (symbole && value !== undefined) rules.set(symbole, value.trim());
+  });
+  return rules;
+}
+
+function genererPropositionLSysteme(config) {
+  const rules = parserReglesLSysteme(config.rules);
+  let sequence = String(config.axiom || "F").slice(0, 96);
+  const generations = Math.max(0, Math.min(8, Number(config.generations) | 0));
+  for (let i = 0; i < generations; i++) {
+    let next = "";
+    for (const ch of sequence) next += rules.get(ch) ?? ch;
+    sequence = next.slice(0, 28000);
+  }
+  return sequence;
+}
+
+function pointsPropositionLSysteme(config) {
+  const sequence = genererPropositionLSysteme(config);
+  const angleStep = (Number(config.angle) || 60) * Math.PI / 180;
+  let x = 0.0;
+  let y = 0.0;
+  let angle = 0.0;
+  const stack = [];
+  const points = [{ x, y, move: true }];
+  for (const ch of sequence) {
+    if (ch === "F" || ch === "G") {
+      x += Math.cos(angle);
+      y += Math.sin(angle);
+      points.push({ x, y });
+    } else if (ch === "f") {
+      x += Math.cos(angle);
+      y += Math.sin(angle);
+      points.push({ x, y, move: true });
+    } else if (ch === "+") {
+      angle += angleStep;
+    } else if (ch === "-") {
+      angle -= angleStep;
+    } else if (ch === "[") {
+      stack.push([x, y, angle]);
+    } else if (ch === "]" && stack.length > 0) {
+      [x, y, angle] = stack.pop();
+      points.push({ x, y, move: true });
+    }
+  }
+  return points;
+}
+
+function dessinerPropositionLSystemeMonde(traceur, renduParams) {
+  const points = pointsPropositionLSysteme({
+    axiom: renduParams.lsystemAxiom,
+    rules: renduParams.lsystemRules,
+    angle: renduParams.lsystemAngle,
+    generations: renduParams.lsystemGenerations,
+  });
+  if (points.length < 2) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  const span = Math.max(maxX - minX, maxY - minY, 1);
+  const scale = 1.82 / span;
+  const centerX = (minX + maxX) * 0.5;
+  const centerY = (minY + maxY) * 0.5;
+  points.forEach((point, index) => {
+    const x = (point.x - centerX) * scale;
+    const y = -(point.y - centerY) * scale;
+    if (index === 0 || point.move) traceur.moveTo(x, y);
+    else traceur.lineTo(x, y);
+  });
+}
+
 function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const isBarnsley = params.fractal === "barnsley";
   const estSierpinski = params.fractal === "sierpinski";
@@ -1889,6 +2081,7 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
       canvas.parentElement.classList.remove("rendering");
       const etiquetteMode = estBuddhabrot ? "Mode densité" : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum || estDuffing) ? "Mode attracteur" : "Mode IFS");
       updateStatusBar(etiquetteMode + " - " + elapsed + " ms", true);
+      explorationModes?.afterRender();
     }
   };
   requestAnimationFrame(step);
@@ -1908,6 +2101,7 @@ function renderLineFractal(w, h) {
   rendering = false;
   canvas.parentElement.classList.remove("rendering");
   updateStatusBar("Mode géométrique - " + elapsed + " ms", true);
+  explorationModes?.afterRender();
 }
 
 function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams, skipBackground = false) {
@@ -1923,7 +2117,9 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams, skipBac
   ctxCible.beginPath();
   const traceur = creerTraceurMonde(ctxCible, w, h, vueCible);
 
-  if (renduParams.fractal === "koch") {
+  if (renduParams.lsystemProposalActive) {
+    dessinerPropositionLSystemeMonde(traceur, renduParams);
+  } else if (renduParams.fractal === "koch") {
     const n = Math.max(0, Math.min(6, Math.floor((renduParams.maxIter - 64) / 128)));
     const commands = kochGenerate(n);
     dessinerCommandeLineaireMonde(traceur, commands, 0.05, -0.28, 0.0, 0.8 / Math.pow(3, n), Math.PI / 3);
@@ -2409,6 +2605,10 @@ function resizeCanvas() {
     canvas3d.width = w;
     canvas3d.height = h;
   }
+  if (overlayCanvas && (overlayCanvas.width !== w || overlayCanvas.height !== h)) {
+    overlayCanvas.width = w;
+    overlayCanvas.height = h;
+  }
   redimensionnerMoteur3D();
 }
 
@@ -2451,6 +2651,7 @@ function render() {
     render3D(params.fractal, params.maxIter, getPaletteComplete(params));
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
+    explorationModes?.afterRender();
     return;
   }
 
@@ -2472,6 +2673,7 @@ function render() {
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
     updateStatusBar(`${params.fractal} : export WASM manquant`, true);
+    explorationModes?.afterRender();
     return;
   }
 
@@ -2546,6 +2748,7 @@ function render() {
       rendering = false;
       canvas.parentElement.classList.remove("rendering");
       updateStatusBar(`${backend} - ${elapsed} ms`, true);
+      explorationModes?.afterRender();
     }
   }
 
@@ -2770,6 +2973,7 @@ iterSlider.addEventListener("input", () => {
   if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
   mettreAJourResumeControles();
   render();
+  mettreAJourHash(view, params);
 });
 
 if (iterSliderCompact) {
@@ -2780,6 +2984,7 @@ if (iterSliderCompact) {
     if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
     mettreAJourResumeControles();
     render();
+    mettreAJourHash(view, params);
   });
 }
 
@@ -3246,11 +3451,25 @@ async function appliquerSignet(signet) {
     params.multibrotPower = signet.multibrotPower;
     if (multibrotPower) multibrotPower.value = String(signet.multibrotPower);
   }
+  params.coloringMode = signet.coloringMode ?? params.coloringMode;
+  params.palettePhase = signet.palettePhase ?? params.palettePhase;
+  params.paletteContours = signet.paletteContours ?? params.paletteContours;
+  params.deepZoomAutoIterations = signet.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
+  params.deepZoomQuality = signet.deepZoomQuality ?? params.deepZoomQuality;
+  params.studio3dMaterial = signet.studio3dMaterial ?? params.studio3dMaterial;
+  params.studio3dFog = signet.studio3dFog ?? params.studio3dFog;
+  params.weatherOverlays = signet.weatherOverlays ?? params.weatherOverlays;
+  params.lsystemProposalActive = signet.lsystemProposalActive ?? params.lsystemProposalActive;
+  params.lsystemAxiom = signet.lsystemAxiom ?? params.lsystemAxiom;
+  params.lsystemRules = signet.lsystemRules ?? params.lsystemRules;
+  params.lsystemAngle = signet.lsystemAngle ?? params.lsystemAngle;
+  params.lsystemGenerations = signet.lsystemGenerations ?? params.lsystemGenerations;
   params.palette = signet.palette;
   params.paletteBackground = signet.paletteBackground;
   params.paletteInterior = signet.paletteInterior;
   params.paletteStops = [...(signet.paletteStops || params.paletteStops)];
   synchroniserControlePalette();
+  explorationModes?.syncFromParams();
   mettreAJourOptionsSpecifiques();
   await loadSources(params.fractal);
   render();
@@ -3312,6 +3531,55 @@ const { mettreAJourEtatVideo } = initialiserExports({
   },
 });
 
+explorationModes = initialiserExploration({
+  elements: {
+    dock: explorationDock,
+    panel: explorationPanel,
+    closeButton: btnCloseExploration,
+    title: explorationTitle,
+    subtitle: explorationSubtitle,
+    views: explorationViews,
+    overlayCanvas,
+    parameterCanvas: parameterMapCanvas,
+    parameterReadout: parameterMapReadout,
+    lsystemCanvas: lsystemProposalCanvas,
+  },
+  dependencies: {
+    getView: () => view,
+    getParams: () => params,
+    getWasmFunctions: () => wasmFunctions,
+    getActiveCanvas: obtenirCanvasActif,
+    getPaletteColor: getColor,
+    setJuliaC: (re, im) => {
+      params.juliaCre = re;
+      params.juliaCim = im;
+      synchroniserControlesJulia();
+    },
+    setMaxIter: (maxIter) => {
+      params.maxIter = Math.max(64, Math.min(4096, Math.round(maxIter)));
+      iterSlider.value = String(Math.min(1024, params.maxIter));
+      iterValue.textContent = String(params.maxIter);
+      if (iterSliderCompact) iterSliderCompact.value = String(Math.min(1024, params.maxIter));
+      if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
+      mettreAJourResumeControles();
+    },
+    setParamsPatch: (patch) => Object.assign(params, patch),
+    render,
+    updateHash: () => mettreAJourHash(view, params),
+    updateStatusBar,
+    captureView: capturerVueCourante,
+    applyCapturedView: appliquerSignet,
+    is3D: fractaleActiveEst3D,
+    set3DView: (patch) => {
+      definirVue3DActive(params.fractal, { ...(obtenirVue3DActive() ?? {}), ...patch });
+    },
+    get3DView: obtenirVue3DActive,
+    applyLSystemProposal: appliquerPropositionLSysteme,
+    clearLSystemProposal: effacerPropositionLSysteme,
+    lineFractals: LINE_FRACTALS,
+  },
+});
+
 // ============================================================
 // INITIALISATION
 // ============================================================
@@ -3336,6 +3604,20 @@ async function init() {
     if (etatHash.multibrotPower !== undefined) params.multibrotPower = etatHash.multibrotPower;
     if (etatHash.juliaCre !== undefined) params.juliaCre = etatHash.juliaCre;
     if (etatHash.juliaCim !== undefined) params.juliaCim = etatHash.juliaCim;
+    params.coloringMode = etatHash.coloringMode ?? params.coloringMode;
+    params.palettePhase = etatHash.palettePhase ?? params.palettePhase;
+    params.paletteContours = etatHash.paletteContours ?? params.paletteContours;
+    params.deepZoomAutoIterations = etatHash.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
+    params.deepZoomQuality = etatHash.deepZoomQuality ?? params.deepZoomQuality;
+    params.studio3dMaterial = etatHash.studio3dMaterial ?? params.studio3dMaterial;
+    params.studio3dFog = etatHash.studio3dFog ?? params.studio3dFog;
+    params.weatherOverlays = etatHash.weatherOverlays ?? params.weatherOverlays;
+    params.lsystemProposalActive = etatHash.lsystemProposalActive ?? params.lsystemProposalActive;
+    params.lsystemAxiom = etatHash.lsystemAxiom ?? params.lsystemAxiom;
+    params.lsystemRules = etatHash.lsystemRules ?? params.lsystemRules;
+    params.lsystemAngle = etatHash.lsystemAngle ?? params.lsystemAngle;
+    params.lsystemGenerations = etatHash.lsystemGenerations ?? params.lsystemGenerations;
+    if (params.lsystemProposalActive && !LINE_FRACTALS.has(params.fractal)) params.fractal = "koch";
   }
 
   syncSelectors(params.fractal);
@@ -3345,6 +3627,7 @@ async function init() {
   rendreListeSignets();
   mettreAJourOptionsSpecifiques();
   chargerEtatControles();
+  explorationModes?.syncFromParams();
 
   // Vue initiale : preset de la fractale (point de départ de l'animation)
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

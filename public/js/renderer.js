@@ -120,6 +120,13 @@ const VIEW_PRESETS = {
   julia_piege_cercle: { centerX: 0.0, centerY: 0.0, span: 3.0 },
 };
 
+const JULIA_C_PRESETS = {
+  julia: { re: -0.8, im: 0.156 },
+  burning_julia: { re: -0.8, im: -0.156 },
+  julia_lisse: { re: -0.8, im: 0.156 },
+  julia_piege_cercle: { re: -0.8, im: 0.156 },
+};
+
 function getMultibrotPreset(power) {
   const p = Number.isFinite(power) ? power : 5;
   // Higher powers concentrate details near the origin.
@@ -227,6 +234,10 @@ const juliaCImSlider = document.getElementById("julia-c-im");
 const juliaCReValue = document.getElementById("julia-c-re-value");
 const juliaCImValue = document.getElementById("julia-c-im-value");
 const juliaCControls = document.getElementById("julia-c-controls");
+const juliaCouplingCanvas = document.getElementById("julia-coupling-canvas");
+const jCtx = juliaCouplingCanvas?.getContext("2d", { willReadFrequently: false }) ?? null;
+const jW = juliaCouplingCanvas?.width ?? 0;
+const jH = juliaCouplingCanvas?.height ?? 0;
 const btnBookmark = document.getElementById("btn-bookmark");
 const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
@@ -238,6 +249,7 @@ let iterSliderCompact = null;
 let iterValueCompact = null;
 let paletteSelectCompact = null;
 let controlsSummaryActions = null;
+let couplagePendingId = null;
 let customPaletteEditorOpen = false;
 let controlsCollapsed = false;
 
@@ -1366,9 +1378,25 @@ function syncSelectors(selectedFractal = params.fractal) {
   synchroniserControlePalette();
 }
 
+function synchroniserControlesJulia() {
+  if (juliaCReSlider) juliaCReSlider.value = String(params.juliaCre);
+  if (juliaCImSlider) juliaCImSlider.value = String(params.juliaCim);
+  if (juliaCReValue) juliaCReValue.textContent = params.juliaCre.toFixed(3);
+  if (juliaCImValue) juliaCImValue.textContent = params.juliaCim.toFixed(3);
+}
+
+function appliquerPresetJulia(fractalName) {
+  const preset = JULIA_C_PRESETS[fractalName];
+  if (!preset) return;
+  params.juliaCre = preset.re;
+  params.juliaCim = preset.im;
+  synchroniserControlesJulia();
+}
+
 function setActiveFractal(fractalName) {
   params.fractal = fractalName;
   syncSelectors(fractalName);
+  appliquerPresetJulia(params.fractal);
   mettreAJourAideInteraction();
   resetView();
   mettreAJourOptionsSpecifiques();
@@ -2187,6 +2215,12 @@ async function loadWasm() {
         print_newline: () => { },
         pow_f64: Math.pow,
       },
+      wasi_snapshot_preview1: {
+        fd_write: (_fd, _iovs, _iovsLen, _nwritten) => 0,
+        fd_read: (_fd, _iovs, _iovsLen, _nread) => 0,
+        args_sizes_get: (_argcPtr, _argvBufSizePtr) => 0,
+        args_get: (_argvPtr, _argvBufPtr) => 0,
+      },
     };
 
     let instance;
@@ -2594,9 +2628,9 @@ canvas.addEventListener("pointermove", (e) => {
     `Re ${re >= 0 ? " " : ""}${re.toFixed(6)}  Im ${im >= 0 ? " " : ""}${im.toFixed(6)}`;
 
   // Julia coupling — mini aperçu Julia pour Mandelbrot
-  if (params.fractal === "mandelbrot" && wasmAvailable && juliaCouplingCanvas) {
+  if (params.fractal === "mandelbrot" && wasmAvailable && juliaCouplingCanvas && jCtx) {
     const couplageCre = re;
-    const couplagehCim = im;
+    const couplageCim = im;
     clearTimeout(couplagePendingId);
     couplagePendingId = setTimeout(() => {
       const jFn = wasmFunctions.julia;
@@ -2611,7 +2645,7 @@ canvas.addEventListener("pointermove", (e) => {
         const jcy = jCy0 + jpy * jPs;
         for (let jpx = 0; jpx < jW; jpx++) {
           const jcx = jCx0 + jpx * jPs;
-          const jIter = jFn(jcx, jcy, couplageCre, couplagehCim, jMax);
+          const jIter = jFn(jcx, jcy, couplageCre, couplageCim, jMax);
           const [r, g, b] = getColor(jIter, jMax, params);
           const ji = (jpy * jW + jpx) * 4;
           jImg.data[ji] = r; jImg.data[ji + 1] = g; jImg.data[ji + 2] = b; jImg.data[ji + 3] = 255;
@@ -3065,12 +3099,6 @@ if (juliaCImSlider) {
   });
 }
 
-// ============================================================
-// JULIA COUPLING
-// ============================================================
-
-let couplagePendingId = null;
-
 async function appliquerSignet(signet) {
   params.fractal = signet.fractal;
   syncSelectors(signet.fractal);
@@ -3086,14 +3114,11 @@ async function appliquerSignet(signet) {
   iterValue.textContent = signet.maxIter;
   if (signet.juliaCre !== undefined) {
     params.juliaCre = signet.juliaCre;
-    if (juliaCReSlider) juliaCReSlider.value = signet.juliaCre;
-    if (juliaCReValue) juliaCReValue.textContent = signet.juliaCre.toFixed(3);
   }
   if (signet.juliaCim !== undefined) {
     params.juliaCim = signet.juliaCim;
-    if (juliaCImSlider) juliaCImSlider.value = signet.juliaCim;
-    if (juliaCImValue) juliaCImValue.textContent = signet.juliaCim.toFixed(3);
   }
+  synchroniserControlesJulia();
   if (signet.multibrotPower !== undefined) {
     params.multibrotPower = signet.multibrotPower;
     if (multibrotPower) multibrotPower.value = String(signet.multibrotPower);
@@ -3179,6 +3204,7 @@ async function init() {
     obtenirMaxIter: () => params.maxIter,
   });
   syncSelectors(params.fractal);
+  synchroniserControlesJulia();
   synchroniserControlePalette();
   mettreAJourEtatVideo();
   rendreListeSignets();

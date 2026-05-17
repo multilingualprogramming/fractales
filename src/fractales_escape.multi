@@ -100,26 +100,34 @@ déf multibrot(cx, cy, max_iter, puissance):
     retour iter
 
 déf burning_julia(zx, zy, c_re, c_im, max_iter):
-    # Julia version du Burning Ship : |Re(z)| et |Im(z)| à chaque itération
+    # Julia version du Burning Ship : |Re(z)| et |Im(z)| à chaque itération.
+    # Les points bornes gardent une nuance d'apres leur proximite aux axes,
+    # sinon l'interieur forme un aplat sombre sans details visibles.
     soit rayon_echappement_carre = 4.0
     soit x = zx
     soit y = zy
     soit iter = 0.0
+    soit distance_axes = 1.0e9
     tantque iter < max_iter:
         si norme_carre(x, y) > rayon_echappement_carre:
             retour iter
         soit ax = abs_escape(x)
         soit ay = abs_escape(y)
+        si ax < distance_axes:
+            distance_axes = ax
+        si ay < distance_axes:
+            distance_axes = ay
         soit xtemp = ax * ax - ay * ay + c_re
         y = 2.0 * ax * ay + c_im
         x = xtemp
         iter = iter + 1.0
-    retour iter
+    retour max_iter * (0.18 + 0.75 / (1.0 + distance_axes * 8.0))
 
 déf biomorphe(cx, cy, max_iter):
-    # Biomorphe de Pickover : fuite si |Re(z)| > 100 OU |Im(z)| > 100
-    # Crée des formes organiques rappelant des micro-organismes
-    soit limite = 100.0
+    # Biomorphe de Pickover : a l'echappement, les orbites dont une coordonnee
+    # reste proche d'un axe sont remplies pour former des silhouettes organiques.
+    soit limite_evasion = 100.0
+    soit seuil_biomorphe = 10.0
     soit x = 0.0
     soit y = 0.0
     soit iter = 0.0
@@ -127,7 +135,9 @@ déf biomorphe(cx, cy, max_iter):
         soit xtemp = x * x - y * y + cx
         y = 2.0 * x * y + cy
         x = xtemp
-        si abs_escape(x) > limite ou abs_escape(y) > limite:
+        si abs_escape(x) > limite_evasion ou abs_escape(y) > limite_evasion:
+            si abs_escape(x) < seuil_biomorphe ou abs_escape(y) < seuil_biomorphe:
+                retour max_iter
             retour iter
         iter = iter + 1.0
     retour max_iter

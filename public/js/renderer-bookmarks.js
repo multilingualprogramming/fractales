@@ -28,15 +28,33 @@ export function initialiserSignets({
     if (!list) return;
     const signets = chargerSignets();
     if (signets.length === 0) {
-      list.innerHTML = `<p class="bookmark-empty">${EMPTY_MESSAGE}</p>`;
+      const empty = document.createElement("p");
+      empty.className = "bookmark-empty";
+      empty.textContent = EMPTY_MESSAGE;
+      list.replaceChildren(empty);
       return;
     }
-    list.innerHTML = signets.map((signet, index) => `
-      <div class="bookmark-item">
-        <button class="bookmark-goto btn" data-index="${index}">${signet.nom}</button>
-        <button class="bookmark-delete btn btn-secondary" data-index="${index}" aria-label="Supprimer">✕</button>
-      </div>
-    `).join("");
+    const fragment = document.createDocumentFragment();
+    signets.forEach((signet, index) => {
+      const row = document.createElement("div");
+      row.className = "bookmark-item";
+
+      const gotoButton = document.createElement("button");
+      gotoButton.className = "bookmark-goto btn";
+      gotoButton.dataset.index = String(index);
+      gotoButton.textContent = signet.nom || "";
+      row.appendChild(gotoButton);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "bookmark-delete btn btn-secondary";
+      deleteButton.dataset.index = String(index);
+      deleteButton.setAttribute("aria-label", "Supprimer");
+      deleteButton.textContent = "✕";
+      row.appendChild(deleteButton);
+
+      fragment.appendChild(row);
+    });
+    list.replaceChildren(fragment);
   }
 
   function ajouterSignet() {

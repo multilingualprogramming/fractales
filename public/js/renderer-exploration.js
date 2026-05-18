@@ -464,12 +464,28 @@ export function initialiserExploration({
       list.textContent = "Aucune étape enregistrée.";
       return;
     }
-    list.innerHTML = items.map((item, index) => `
-      <div class="journey-item">
-        <span><strong>${index + 1}</strong> ${item.fractal} · ${item.maxIter} it.</span>
-        <button class="btn btn-secondary" type="button" data-journey-index="${index}">Aller</button>
-      </div>
-    `).join("");
+    const fragment = document.createDocumentFragment();
+    items.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "journey-item";
+
+      const label = document.createElement("span");
+      const rank = document.createElement("strong");
+      rank.textContent = String(index + 1);
+      label.appendChild(rank);
+      label.append(` ${item.fractal || ""} · ${item.maxIter ?? ""} it.`);
+      row.appendChild(label);
+
+      const button = document.createElement("button");
+      button.className = "btn btn-secondary";
+      button.type = "button";
+      button.dataset.journeyIndex = String(index);
+      button.textContent = "Aller";
+      row.appendChild(button);
+
+      fragment.appendChild(row);
+    });
+    list.replaceChildren(fragment);
   }
 
   function updateDeepZoomReadout() {
@@ -521,18 +537,42 @@ export function initialiserExploration({
     }
   }
 
+  function remplirListeSauvegardes(list, items, prefix) {
+    const fragment = document.createDocumentFragment();
+    items.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "lsystem-save-item";
+
+      const name = document.createElement("span");
+      name.className = "lsystem-save-item-name";
+      name.title = item.nom || "";
+      name.textContent = item.nom || "";
+      row.appendChild(name);
+
+      const loadButton = document.createElement("button");
+      loadButton.className = "btn btn-secondary";
+      loadButton.type = "button";
+      loadButton.dataset[`${prefix}Load`] = String(idx);
+      loadButton.textContent = "Charger";
+      row.appendChild(loadButton);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "btn btn-secondary";
+      deleteButton.type = "button";
+      deleteButton.dataset[`${prefix}Delete`] = String(idx);
+      deleteButton.textContent = "✕";
+      row.appendChild(deleteButton);
+
+      fragment.appendChild(row);
+    });
+    list.replaceChildren(fragment);
+  }
+
   function updateLSystemSaveList() {
     const list = document.getElementById("lsystem-save-list");
     if (!list) return;
     const items = lireSauvegardeLSystem();
-    if (items.length === 0) { list.innerHTML = ""; return; }
-    list.innerHTML = items.map((item, idx) => `
-      <div class="lsystem-save-item">
-        <span class="lsystem-save-item-name" title="${item.nom}">${item.nom}</span>
-        <button class="btn btn-secondary" type="button" data-ls-load="${idx}">Charger</button>
-        <button class="btn btn-secondary" type="button" data-ls-delete="${idx}">✕</button>
-      </div>
-    `).join("");
+    remplirListeSauvegardes(list, items, "ls");
   }
 
   function lirePropositionFormule() {
@@ -588,14 +628,7 @@ export function initialiserExploration({
     const list = document.getElementById("formule-save-list");
     if (!list) return;
     const items = lireSauvegardeFormule();
-    if (items.length === 0) { list.innerHTML = ""; return; }
-    list.innerHTML = items.map((item, idx) => `
-      <div class="lsystem-save-item">
-        <span class="lsystem-save-item-name" title="${item.nom}">${item.nom}</span>
-        <button class="btn btn-secondary" type="button" data-ff-load="${idx}">Charger</button>
-        <button class="btn btn-secondary" type="button" data-ff-delete="${idx}">✕</button>
-      </div>
-    `).join("");
+    remplirListeSauvegardes(list, items, "ff");
   }
 
   dock.addEventListener("click", (event) => {

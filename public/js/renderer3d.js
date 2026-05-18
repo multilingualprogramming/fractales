@@ -343,21 +343,19 @@ function lookAt(oeil, cible, haut) {
   const z = normaliserVecteur(soustraire(oeil, cible));
   const x = normaliserVecteur(produitVectoriel(haut, z));
   const y = produitVectoriel(z, x);
-  return new Float32Array([
-    x[0], y[0], z[0], 0,
-    x[1], y[1], z[1], 0,
-    x[2], y[2], z[2], 0,
-    -scalaire(x, oeil), -scalaire(y, oeil), -scalaire(z, oeil), 1,
-  ]);
+  const matrice = identite();
+  matrice[0] = x[0]; matrice[1] = y[0]; matrice[2] = z[0];
+  matrice[4] = x[1]; matrice[5] = y[1]; matrice[6] = z[1];
+  matrice[8] = x[2]; matrice[9] = y[2]; matrice[10] = z[2];
+  matrice[12] = -scalaire(x, oeil);
+  matrice[13] = -scalaire(y, oeil);
+  matrice[14] = -scalaire(z, oeil);
+  return matrice;
 }
 
 function obtenirPositionCamera(vue) {
-  const cosT = Math.cos(vue.tangage);
-  return [
-    vue.cibleX + vue.distance * Math.sin(vue.lacet) * cosT,
-    vue.cibleY + vue.distance * Math.sin(vue.tangage),
-    vue.cibleZ + vue.distance * Math.cos(vue.lacet) * cosT,
-  ];
+  const [x, y, z] = rotationPoint([0, 0, vue.distance], vue.lacet, vue.tangage);
+  return [vue.cibleX + x, vue.cibleY + y, vue.cibleZ + z];
 }
 
 function paletteVersUniformes(palette) {

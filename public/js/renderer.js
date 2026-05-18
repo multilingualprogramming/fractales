@@ -2749,6 +2749,7 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
       else if (estFractaleLyapunov) couleur = getColorFromRatio(0.12 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.85) * 0.82, renduParams);
       else if (estFractaleMagnetique) couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / renduParams.maxIter), 0.68) * 0.88, renduParams);
       else if (estFractaleOrbitrap) couleur = getColorFromRatio(Math.min(0.999, iterValue / renduParams.maxIter), renduParams);
+      else if (estFractaleLisse) couleur = getColorFromRatio(Math.min(0.999, iterValue / renduParams.maxIter), renduParams);
       else couleur = getColor(iterColor, renduParams.maxIter, renduParams);
       const i = base + px * 4;
       data[i] = couleur[0];
@@ -3197,6 +3198,8 @@ function render() {
         } else if (estFractaleMagnetique) {
           couleur = getColorFromRatio(0.08 + Math.pow(Math.min(0.999, iterColor / max), 0.68) * 0.88, pal);
         } else if (estFractaleOrbitrap) {
+          couleur = getColorFromRatio(Math.min(0.999, iter / max), pal);
+        } else if (estFractaleLisse) {
           couleur = getColorFromRatio(Math.min(0.999, iter / max), pal);
         } else {
           couleur = getColor(iterColor, max, pal);

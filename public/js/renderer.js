@@ -21,7 +21,6 @@ import {
 import {
   animerVersVue,
   decoderEtat,
-  encoderEtat,
   initialiserPartage,
   mettreAJourHash,
 } from "./renderer-navigation.js?v=app";
@@ -653,11 +652,7 @@ function getColorFromRatio(t, paletteOrName) {
   const frac = scaled - lo;
   const c0 = stops[lo];
   const c1 = stops[hi];
-  let color = [
-    (c0[0] + (c1[0] - c0[0]) * frac) | 0,
-    (c0[1] + (c1[1] - c0[1]) * frac) | 0,
-    (c0[2] + (c1[2] - c0[2]) * frac) | 0,
-  ];
+  let color = melangerCouleurs(c0, c1, frac);
   if (mode === "contours" || contours) {
     const band = Math.abs(((normalise * 36) % 1) - 0.5);
     if (band > 0.42) {
@@ -1376,11 +1371,31 @@ function projeterJuliaQuaternion(x, y, z) {
 }
 
 function projeterFractalePonctuelle(nom, x, y, z, iter, largeur) {
-  if (nom === "menger_sponge") return projeterPoint3D("menger_sponge", x, y, z);
-  if (nom === "mandelbulb") return projeterPoint3D("mandelbulb", x, y, z);
-  if (nom === "tetraedre_sierpinski") return projeterPoint3D("tetraedre_sierpinski", x - 0.5, y - 0.289, z - 0.204);
-  if (nom === "julia_quaternion") return projeterPoint3D("julia_quaternion", x, y, z);
-  if (nom === "mandelbox") return projeterPoint3D("mandelbox", x, y, z);
+  if (nom === "menger_sponge") {
+    const p = projeterPoint3D("menger_sponge", x, y, z);
+    const [px, py] = projeterMengerSponge(x, y, z);
+    return { ...p, x: px, y: py };
+  }
+  if (nom === "mandelbulb") {
+    const p = projeterPoint3D("mandelbulb", x, y, z);
+    const [px, py] = projeterMandelbulb(x, y, z);
+    return { ...p, x: px, y: py };
+  }
+  if (nom === "tetraedre_sierpinski") {
+    const p = projeterPoint3D("tetraedre_sierpinski", x - 0.5, y - 0.289, z - 0.204);
+    const [px, py] = projeterTetraedre(x, y, z);
+    return { ...p, x: px, y: py };
+  }
+  if (nom === "julia_quaternion") {
+    const p = projeterPoint3D("julia_quaternion", x, y, z);
+    const [px, py] = projeterJuliaQuaternion(x, y, z);
+    return { ...p, x: px, y: py };
+  }
+  if (nom === "mandelbox") {
+    const p = projeterPoint3D("mandelbox", x, y, z);
+    const [px, py] = projeterMandelbox(x, y, z);
+    return { ...p, x: px, y: py };
+  }
   if (nom === "lorenz_attractor") {
     const [px, py] = projeterLorenzAttractor(x, y, z);
     return { x: px, y: py, proximite: 0.0, rayon: 0 };
@@ -1628,21 +1643,19 @@ function etapeDuffingAttractor(x, y) {
   return [y, -b * x + a * y - y * y * y];
 }
 
-function dessinerCantor(ctxCible, w, h, maxIter) {
+function dessinerCantor(traceur, maxIter, x0 = -1.0, largeurInitiale = 2.0, y0 = -0.78, espacement = 0.18) {
   const profondeur = Math.max(3, Math.min(8, Math.floor(maxIter / 64) + 2));
-  const hauteurLigne = Math.max(6, Math.min(18, h / (profondeur + 3)));
-
   function dessinerSegment(x, largeur, niveau) {
-    const y = h * 0.18 + niveau * hauteurLigne;
-    ctxCible.moveTo(x, y);
-    ctxCible.lineTo(x + largeur, y);
+    const y = y0 + niveau * espacement;
+    traceur.moveTo(x, y);
+    traceur.lineTo(x + largeur, y);
     if (niveau >= profondeur) return;
     const tiers = largeur / 3;
     dessinerSegment(x, tiers, niveau + 1);
     dessinerSegment(x + tiers * 2, tiers, niveau + 1);
   }
 
-  dessinerSegment(w * 0.12, w * 0.76, 0);
+  dessinerSegment(x0, largeurInitiale, 0);
 }
 
 function findFractalFamily(fractalName) {
@@ -2036,17 +2049,7 @@ function dessinerHFractalMonde(traceur, x, y, taille, niveau) {
 }
 
 function dessinerCantorMonde(traceur, maxIter) {
-  const profondeur = Math.max(3, Math.min(8, Math.floor(maxIter / 64) + 2));
-  function dessinerSegment(x, largeur, niveau) {
-    const y = -0.78 + niveau * 0.18;
-    traceur.moveTo(x, y);
-    traceur.lineTo(x + largeur, y);
-    if (niveau >= profondeur) return;
-    const tiers = largeur / 3;
-    dessinerSegment(x, tiers, niveau + 1);
-    dessinerSegment(x + tiers * 2, tiers, niveau + 1);
-  }
-  dessinerSegment(-1.0, 2.0, 0);
+  dessinerCantor(traceur, maxIter);
 }
 
 function dessinerCercleMonde(traceur, x, y, rayon, segments = 40) {

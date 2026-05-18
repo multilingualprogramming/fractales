@@ -52,6 +52,26 @@ function formaterNombreFrancais(value) {
   return value.toLocaleString("fr-FR");
 }
 
+function creerBadgeRow(items) {
+  const row = document.createElement("div");
+  row.className = "badge-row";
+  items.forEach(({ className, text, dim }) => {
+    const span = document.createElement("span");
+    span.className = className;
+    if (dim) span.style.color = "var(--text-dim)";
+    span.textContent = text;
+    row.appendChild(span);
+  });
+  return row;
+}
+
+function afficherMessageCode(element, message) {
+  const span = document.createElement("span");
+  span.className = "cmt";
+  span.textContent = message;
+  element.replaceChildren(span);
+}
+
 function renderBenchmarkBadge(badgeDiv, data) {
   const {
     python_ms,
@@ -66,17 +86,16 @@ function renderBenchmarkBadge(badgeDiv, data) {
     python_ms === null &&
     wasm_ms === null;
 
-  let html = "";
   if (benchmarkDisabled && wasm_available) {
-    html += `
-      <div class="badge-row">
-        <span class="badge-wasm">• WASM généré</span>
-        <span class="badge-label">pipeline officiel</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python" style="color:var(--text-dim)">Benchmark désactivé (mode strict)</span>
-      </div>`;
-    badgeDiv.innerHTML = html;
+    badgeDiv.replaceChildren(
+      creerBadgeRow([
+        { className: "badge-wasm", text: "• WASM généré" },
+        { className: "badge-label", text: "pipeline officiel" },
+      ]),
+      creerBadgeRow([
+        { className: "badge-python", text: "Benchmark désactivé (mode strict)", dim: true },
+      ]),
+    );
     return;
   }
 
@@ -85,28 +104,31 @@ function renderBenchmarkBadge(badgeDiv, data) {
     const speedupLabel = speedup !== null
       ? `${typeof speedup === "number" ? speedup.toFixed(1) : formaterNombreFrancais(speedup)}× plus rapide`
       : "";
-    html += `
-      <div class="badge-row">
-        <span class="badge-wasm">? ~${formaterNombreFrancais(wasm_ms)} ms</span>
-        <span class="badge-label">${wasmLabel}</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python">PY ${formaterNombreFrancais(python_ms)} ms</span>
-        <span class="badge-label">Python</span>
-      </div>
-      ${speedupLabel ? `<div class="badge-row"><span class="badge-speedup">${speedupLabel}</span></div>` : ""}`;
+    const rows = [
+      creerBadgeRow([
+        { className: "badge-wasm", text: `? ~${formaterNombreFrancais(wasm_ms)} ms` },
+        { className: "badge-label", text: wasmLabel },
+      ]),
+      creerBadgeRow([
+        { className: "badge-python", text: `PY ${formaterNombreFrancais(python_ms)} ms` },
+        { className: "badge-label", text: "Python" },
+      ]),
+    ];
+    if (speedupLabel) {
+      rows.push(creerBadgeRow([{ className: "badge-speedup", text: speedupLabel }]));
+    }
+    badgeDiv.replaceChildren(...rows);
   } else {
-    html += `
-      <div class="badge-row">
-        <span class="badge-python">PY ${formaterNombreFrancais(python_ms)} ms</span>
-        <span class="badge-label">Python</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge-python" style="color:var(--text-dim)">WASM non disponible</span>
-      </div>`;
+    badgeDiv.replaceChildren(
+      creerBadgeRow([
+        { className: "badge-python", text: `PY ${formaterNombreFrancais(python_ms)} ms` },
+        { className: "badge-label", text: "Python" },
+      ]),
+      creerBadgeRow([
+        { className: "badge-python", text: "WASM non disponible", dim: true },
+      ]),
+    );
   }
-
-  badgeDiv.innerHTML = html;
 }
 
 export function initialiserPanneauSource({
@@ -147,8 +169,8 @@ export function initialiserPanneauSource({
       return;
     }
 
-    codeFrench.innerHTML = `<span class="cmt"># Chargement de ${module}.multi…</span>`;
-    codePython.innerHTML = `<span class="cmt"># Chargement de ${module}.py…</span>`;
+    afficherMessageCode(codeFrench, `# Chargement de ${module}.multi…`);
+    afficherMessageCode(codePython, `# Chargement de ${module}.py…`);
 
     let multiHtml;
     try {
@@ -156,7 +178,7 @@ export function initialiserPanneauSource({
       const source = response.ok ? await response.text() : `# Source indisponible (${module}.multi)`;
       multiHtml = highlightFrench(escapeHtml(source));
     } catch {
-      multiHtml = `<span class="cmt"># Impossible de charger ${module}.multi</span>`;
+      multiHtml = highlightFrench(escapeHtml(`# Impossible de charger ${module}.multi`));
     }
     codeFrench.innerHTML = multiHtml;
 
@@ -166,7 +188,7 @@ export function initialiserPanneauSource({
       const source = response.ok ? await response.text() : `# Transpilation indisponible (${module}.py)`;
       pyHtml = highlightPython(escapeHtml(source));
     } catch {
-      pyHtml = `<span class="cmt"># Impossible de charger ${module}.py</span>`;
+      pyHtml = highlightPython(escapeHtml(`# Impossible de charger ${module}.py`));
     }
     codePython.innerHTML = pyHtml;
 

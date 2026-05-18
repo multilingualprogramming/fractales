@@ -295,27 +295,67 @@ let couplagePendingId = null;
 let customPaletteEditorOpen = false;
 let controlsCollapsed = false;
 
+function copierOptionsSelect(source, target) {
+  [...source.options].forEach((option) => {
+    target.appendChild(option.cloneNode(true));
+  });
+}
+
+function definirIconeBouton(button, icon) {
+  const span = document.createElement("span");
+  span.setAttribute("aria-hidden", "true");
+  span.textContent = icon;
+  button.replaceChildren(span);
+}
+
 function initialiserControlesCompacts() {
   if (!controlsSummary || !btnToggleControls || !familySelect || !paletteSelect) return;
   const compact = document.createElement("div");
   compact.id = "controls-compact";
   compact.className = "controls-compact";
   compact.setAttribute("aria-label", "Contrôles compacts");
-  compact.innerHTML = `
-    <select id="family-select-compact" aria-label="Choisir une famille de fractales">${familySelect.innerHTML}</select>
-    <select id="fractal-select-compact" aria-label="Choisir une fractale"></select>
-    <div class="compact-iter-group">
-      <input type="range" id="iter-slider-compact" min="64" max="1024" step="64" value="${params.maxIter}" aria-label="Choisir le nombre d'itérations" />
-      <span id="iter-value-compact" class="control-value">${params.maxIter}</span>
-    </div>
-    <select id="palette-select-compact" aria-label="Choisir une palette de couleurs">${paletteSelect.innerHTML}</select>
-  `;
+
+  const familyCompact = document.createElement("select");
+  familyCompact.id = "family-select-compact";
+  familyCompact.setAttribute("aria-label", "Choisir une famille de fractales");
+  copierOptionsSelect(familySelect, familyCompact);
+  compact.appendChild(familyCompact);
+
+  const fractalCompact = document.createElement("select");
+  fractalCompact.id = "fractal-select-compact";
+  fractalCompact.setAttribute("aria-label", "Choisir une fractale");
+  compact.appendChild(fractalCompact);
+
+  const iterGroup = document.createElement("div");
+  iterGroup.className = "compact-iter-group";
+  const iterCompact = document.createElement("input");
+  iterCompact.type = "range";
+  iterCompact.id = "iter-slider-compact";
+  iterCompact.min = "64";
+  iterCompact.max = "1024";
+  iterCompact.step = "64";
+  iterCompact.value = String(params.maxIter);
+  iterCompact.setAttribute("aria-label", "Choisir le nombre d'itérations");
+  iterGroup.appendChild(iterCompact);
+  const iterValue = document.createElement("span");
+  iterValue.id = "iter-value-compact";
+  iterValue.className = "control-value";
+  iterValue.textContent = String(params.maxIter);
+  iterGroup.appendChild(iterValue);
+  compact.appendChild(iterGroup);
+
+  const paletteCompact = document.createElement("select");
+  paletteCompact.id = "palette-select-compact";
+  paletteCompact.setAttribute("aria-label", "Choisir une palette de couleurs");
+  copierOptionsSelect(paletteSelect, paletteCompact);
+  compact.appendChild(paletteCompact);
+
   controlsSummary.insertBefore(compact, btnToggleControls);
-  familySelectCompact = document.getElementById("family-select-compact");
-  fractalSelectCompact = document.getElementById("fractal-select-compact");
-  iterSliderCompact = document.getElementById("iter-slider-compact");
-  iterValueCompact = document.getElementById("iter-value-compact");
-  paletteSelectCompact = document.getElementById("palette-select-compact");
+  familySelectCompact = familyCompact;
+  fractalSelectCompact = fractalCompact;
+  iterSliderCompact = iterCompact;
+  iterValueCompact = iterValue;
+  paletteSelectCompact = paletteCompact;
 }
 
 initialiserControlesCompacts();
@@ -324,11 +364,18 @@ function initialiserActionsCompactes() {
   if (!controlsSummary || !btnToggleControls) return;
   const actions = document.createElement("div");
   actions.className = "controls-summary-actions";
-  actions.innerHTML = `
-    <button class="btn btn-secondary summary-action-btn" type="button" data-action="reset">↺</button>
-    <button class="btn btn-secondary summary-action-btn" type="button" data-action="bookmark">★</button>
-    <button class="btn btn-secondary summary-action-btn" type="button" data-action="export">⇩</button>
-  `;
+  [
+    ["reset", "↺"],
+    ["bookmark", "★"],
+    ["export", "⇩"],
+  ].forEach(([action, label]) => {
+    const button = document.createElement("button");
+    button.className = "btn btn-secondary summary-action-btn";
+    button.type = "button";
+    button.dataset.action = action;
+    button.textContent = label;
+    actions.appendChild(button);
+  });
   controlsSummary.insertBefore(actions, btnToggleControls);
   controlsSummaryActions = actions;
   controlsSummaryActions.addEventListener("click", (event) => {
@@ -730,13 +777,35 @@ function rendreEditeurPalette() {
   const palette = getPaletteComplete(params);
   const stopsHex = (params.paletteStops ?? []).map((stop, index) => normaliserHexCouleur(stop, rgbVersHex(palette.stops[index] ?? [255, 255, 255])));
   customPalettePreview.style.background = construireApercuPaletteCss();
-  customPaletteStops.innerHTML = stopsHex.map((stop, index) => `
-    <div class="palette-stop" role="listitem">
-      <span class="palette-stop-index">${index + 1}</span>
-      <input type="color" value="${stop}" data-stop-index="${index}" aria-label="Couleur du stop ${index + 1}" />
-      <button class="btn palette-stop-remove" type="button" data-remove-stop="${index}" aria-label="Supprimer le stop ${index + 1}">×</button>
-    </div>
-  `).join("");
+  const fragment = document.createDocumentFragment();
+  stopsHex.forEach((stop, index) => {
+    const row = document.createElement("div");
+    row.className = "palette-stop";
+    row.setAttribute("role", "listitem");
+
+    const stopIndex = document.createElement("span");
+    stopIndex.className = "palette-stop-index";
+    stopIndex.textContent = String(index + 1);
+    row.appendChild(stopIndex);
+
+    const input = document.createElement("input");
+    input.type = "color";
+    input.value = stop;
+    input.dataset.stopIndex = String(index);
+    input.setAttribute("aria-label", `Couleur du stop ${index + 1}`);
+    row.appendChild(input);
+
+    const removeButton = document.createElement("button");
+    removeButton.className = "btn palette-stop-remove";
+    removeButton.type = "button";
+    removeButton.dataset.removeStop = String(index);
+    removeButton.setAttribute("aria-label", `Supprimer le stop ${index + 1}`);
+    removeButton.textContent = "×";
+    row.appendChild(removeButton);
+
+    fragment.appendChild(row);
+  });
+  customPaletteStops.replaceChildren(fragment);
 }
 
 function definirVisibiliteEditeurPalette(forceOuverture) {
@@ -748,7 +817,7 @@ function definirVisibiliteEditeurPalette(forceOuverture) {
   customPaletteControls.classList.toggle("hidden", !afficher);
   toggleCustomPaletteButton.classList.toggle("hidden", !palettePersonnalisee);
   toggleCustomPaletteButton.setAttribute("aria-expanded", afficher ? "true" : "false");
-  toggleCustomPaletteButton.innerHTML = `<span aria-hidden="true">${afficher ? "▴" : "▾"}</span>`;
+  definirIconeBouton(toggleCustomPaletteButton, afficher ? "▴" : "▾");
   toggleCustomPaletteButton.setAttribute("aria-label", afficher ? "Réduire la palette personnalisée" : "Afficher la palette personnalisée");
   toggleCustomPaletteButton.title = afficher ? "Réduire la palette personnalisée" : "Afficher la palette personnalisée";
   if (afficher) rendreEditeurPalette();
@@ -788,13 +857,12 @@ function appliquerEtatControles() {
   if (btnToggleControls) {
     btnToggleControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
     btnToggleControls.textContent = controlsCollapsed ? "Afficher" : "Réduire";
-    btnToggleControls.innerHTML = `<span aria-hidden="true">${controlsCollapsed ? "▴" : "▾"}</span>`;
     btnToggleControls.setAttribute("aria-label", controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles");
     btnToggleControls.title = controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles";
   }
   if (btnMinimizeControls) {
     btnMinimizeControls.setAttribute("aria-expanded", controlsCollapsed ? "false" : "true");
-    btnMinimizeControls.innerHTML = `<span aria-hidden="true">${controlsCollapsed ? "▴" : "▾"}</span>`;
+    definirIconeBouton(btnMinimizeControls, controlsCollapsed ? "▴" : "▾");
     btnMinimizeControls.setAttribute("aria-label", controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles");
     btnMinimizeControls.title = controlsCollapsed ? "Afficher les contrôles" : "Réduire les contrôles";
   }
@@ -1586,11 +1654,24 @@ function populateFractalSelect(familyId, selectedFractal = null) {
   const activeFractal = selectedFractal && family.fractales.some(([nom]) => nom === selectedFractal)
     ? selectedFractal
     : family.fractales[0][0];
-  const optionsHtml = family.fractales
-    .map(([value, label]) => `<option value="${value}">${label}</option>`)
-    .join("");
-  fractalSelect.innerHTML = optionsHtml;
-  if (fractalSelectCompact) fractalSelectCompact.innerHTML = optionsHtml;
+  const fragment = document.createDocumentFragment();
+  family.fractales.forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    fragment.appendChild(option);
+  });
+  fractalSelect.replaceChildren(fragment);
+  if (fractalSelectCompact) {
+    const compactFragment = document.createDocumentFragment();
+    family.fractales.forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      compactFragment.appendChild(option);
+    });
+    fractalSelectCompact.replaceChildren(compactFragment);
+  }
   fractalSelect.value = activeFractal;
   if (fractalSelectCompact) fractalSelectCompact.value = activeFractal;
   return activeFractal;

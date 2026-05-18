@@ -73,6 +73,9 @@ jobs:
       - name: Compiler le bundle WASM
         run: python scripts/compile_wasm.py
 
+      - name: Generer l'API statique JSON
+        run: python scripts/generate_api.py
+
       - name: Verifier les checks d'integration
         run: python scripts/integration_checks.py
 

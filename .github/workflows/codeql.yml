@@ -12,7 +12,6 @@ on:
 permissions:
   actions: read
   contents: read
-  security-events: write
 
 jobs:
   analyze:
@@ -42,3 +41,54 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
+          output: codeql-results
+          upload: never
+
+      - name: Echouer si CodeQL trouve des alertes
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          sarif_files = sorted(pathlib.Path("codeql-results").glob("*.sarif"))
+          if not sarif_files:
+              print("Aucun fichier SARIF CodeQL trouve.")
+              sys.exit(1)
+
+          findings = []
+          for sarif_file in sarif_files:
+              data = json.loads(sarif_file.read_text(encoding="utf-8"))
+              for run in data.get("runs", []):
+                  rules = {
+                      rule.get("id"): rule
+                      for rule in run.get("tool", {}).get("driver", {}).get("rules", [])
+                  }
+                  for result in run.get("results", []):
+                      rule_id = result.get("ruleId", "unknown-rule")
+                      rule = rules.get(rule_id, {})
+                      message = result.get("message", {}).get("text") or rule.get("shortDescription", {}).get("text", "")
+                      location = result.get("locations", [{}])[0].get("physicalLocation", {})
+                      artifact = location.get("artifactLocation", {}).get("uri", "unknown-file")
+                      region = location.get("region", {})
+                      line = region.get("startLine", 1)
+                      findings.append((rule_id, artifact, line, message))
+
+          if not findings:
+              print("CodeQL n'a trouve aucune alerte.")
+              sys.exit(0)
+
+          print(f"CodeQL a trouve {len(findings)} alerte(s):")
+          for rule_id, artifact, line, message in findings[:50]:
+              print(f"- {rule_id}: {artifact}:{line} - {message}")
+          if len(findings) > 50:
+              print(f"... {len(findings) - 50} alerte(s) supplementaire(s).")
+          sys.exit(1)
+          PY
+
+      - name: Archiver les resultats SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif-${{ matrix.language }}
+          path: codeql-results

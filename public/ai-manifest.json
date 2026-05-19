@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "name": "Fractales",
-  "tagline": "Multilingual WebAssembly fractal explorer — 73 fractals, static GitHub Pages, FAIR open knowledge",
-  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 73 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
+  "tagline": "Multilingual WebAssembly fractal explorer — 81 fractals, static GitHub Pages, FAIR open knowledge",
+  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 81 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
   "base_url": "https://multilingualprogramming.github.io/fractales",
   "viewer_url": "https://multilingualprogramming.github.io/fractales/",
   "repository": "https://github.com/multilingualprogramming/fractales",
@@ -70,7 +70,7 @@
     }
   },
   "fractal_stats": {
-    "total": 73,
+    "total": 81,
     "families": 8,
     "render_modes": ["escape_time", "point_cloud", "line", "webgl_3d"],
     "palettes": 9
@@ -78,7 +78,7 @@
         "exploration_modes": 8
   },
   "deeplink_format": {
-    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&lc={lsystemLineColor}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}&fpa={formulaProposalActive}",
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&lc={lsystemLineColor}&lsw={lsystemStrokeWidth}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}&fpa={formulaProposalActive}",
     "parameters": {
       "f": "Fractal identifier (required)",
       "x": "Center X in complex plane (required)",
@@ -93,6 +93,7 @@
       "ph": "Palette phase offset (optional)",
       "pc": "Palette contour enhancement flag, 1 when enabled (optional)",
       "lc": "L-system line coloring mode: uniforme, progression, profondeur, orientation (optional)",
+      "lsw": "Applied L-system proposal stroke width from 0.5 to 6 (optional)",
       "azi": "Mode Abysses automatic iteration flag, 1 when enabled (optional)",
       "q": "Mode Abysses quality level: standard, fine, extreme (optional)",
       "mat": "Studio 3D material hint (optional)",

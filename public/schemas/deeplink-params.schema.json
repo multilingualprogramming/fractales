@@ -73,6 +73,13 @@
       "description": "L-system line coloring mode for applied Atelier L-system proposals. Default: progression.",
       "default": "progression"
     },
+    "lsw": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 6,
+      "description": "Applied L-system proposal stroke width. Default: 1.35.",
+      "default": 1.35
+    },
     "azi": {
       "type": "string",
       "enum": ["1"],

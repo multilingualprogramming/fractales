@@ -243,3 +243,137 @@ déf formule_sinc(cx, cy, max_iter):
         x = xtemp
         iter = iter + 1.0
     retour iter
+
+déf formule_cosinus_c(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 16.0:
+            retour iter
+        soit xtemp = formule_cos_re(x, y) + cx
+        y = formule_cos_im(x, y) + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_biomorphe(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 16.0:
+            retour iter
+        soit z2x = x * x - y * y
+        soit z2y = 2.0 * x * y
+        soit divx = formule_div_re(x, y, cx, cy)
+        soit divy = formule_div_im(x, y, cx, cy)
+        x = z2x + divx
+        y = z2y + divy
+        iter = iter + 1.0
+    retour iter
+
+déf formule_tricorne(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 4.0:
+            retour iter
+        soit conjx = formule_conj_re(x, y)
+        soit conjy = formule_conj_im(x, y)
+        soit xtemp = conjx * conjx - conjy * conjy + cx
+        y = 2.0 * conjx * conjy + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_perturbee(cx, cy, a, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 9.0:
+            retour iter
+        soit xtemp = x * x - y * y + cx + a * formule_sin_re(x, y)
+        y = 2.0 * x * y + cy + a * formule_sin_im(x, y)
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_rationnelle(cx, cy, a, b, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 64.0:
+            retour iter
+        soit z2x = x * x - y * y
+        soit z2y = 2.0 * x * y
+        soit denx = z2x + b
+        soit deny = z2y
+        soit corrx = formule_div_re(a, 0.0, denx, deny)
+        soit corry = formule_div_im(a, 0.0, denx, deny)
+        x = z2x + cx + corrx
+        y = z2y + cy + corry
+        iter = iter + 1.0
+    retour iter
+
+déf formule_exponentielle(cx, cy, a, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 144.0:
+            retour iter
+        soit xtemp = formule_exp_re(x, y) + cx - a
+        y = formule_exp_im(x, y) + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_tangente_c(cx, cy, a, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 64.0:
+            retour iter
+        soit xtemp = formule_tan_re(x, y) + cx * a
+        y = formule_tan_im(x, y) + cy * a
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+déf formule_norme_perturbee(cx, cy, a, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        si x * x + y * y > 36.0:
+            retour iter
+        soit n = formule_norme(x, y)
+        soit xtemp = x * x - y * y + cx - a * n
+        y = 2.0 * x * y + cy
+        x = xtemp
+        iter = iter + 1.0
+    retour iter
+
+# ---------- Variantes canoniques à paramètres fixes ----------
+# L'Atelier formule garde les curseurs a/b côté interface, tandis que ces
+# fonctions donnent au catalogue WASM des versions reproductibles.
+
+déf formule_perturbee_canonique(cx, cy, max_iter):
+    retour formule_perturbee(cx, cy, 0.25, max_iter)
+
+déf formule_rationnelle_canonique(cx, cy, max_iter):
+    retour formule_rationnelle(cx, cy, 0.2, 0.4, max_iter)
+
+déf formule_exponentielle_canonique(cx, cy, max_iter):
+    retour formule_exponentielle(cx, cy, 1.0, max_iter)
+
+déf formule_tangente_canonique(cx, cy, max_iter):
+    retour formule_tangente_c(cx, cy, 0.6, max_iter)
+
+déf formule_norme_canonique(cx, cy, max_iter):
+    retour formule_norme_perturbee(cx, cy, 0.08, max_iter)

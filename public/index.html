@@ -331,6 +331,10 @@
                   <button id="btn-lsystem-seed" class="btn btn-secondary" type="button">Nouvelle graine</button>
                 </div>
               </div>
+              <label class="exploration-field" for="lsystem-stroke-width-slider">
+                <span>Épaisseur du trait</span>
+                <input id="lsystem-stroke-width-slider" type="range" min="0.5" max="6" step="0.25" value="1.35" />
+              </label>
               <label class="exploration-field" for="lsystem-rules-input">
                 <span>Règles proposées</span>
                 <textarea id="lsystem-rules-input" rows="4">F=F+F--F+F</textarea>
@@ -402,10 +406,14 @@
               </label>
               <div class="exploration-grid-2">
                 <label class="exploration-field" for="formule-param-a-input">Paramètre a
+                  <span id="formule-param-a-label" class="formula-param-label">a</span>
                   <input id="formule-param-a-input" type="range" min="-4" max="4" step="0.01" value="0" />
+                  <output id="formule-param-a-value" class="formula-param-value" for="formule-param-a-input">0.00</output>
                 </label>
                 <label class="exploration-field" for="formule-param-b-input">Paramètre b
+                  <span id="formule-param-b-label" class="formula-param-label">b</span>
                   <input id="formule-param-b-input" type="range" min="-4" max="4" step="0.01" value="0" />
+                  <output id="formule-param-b-value" class="formula-param-value" for="formule-param-b-input">0.00</output>
                 </label>
               </div>
               <details class="lsystem-legend">
@@ -427,6 +435,7 @@
               <div class="exploration-actions">
                 <button id="btn-formule-apply" class="btn" type="button">Appliquer</button>
                 <button id="btn-formule-share" class="btn btn-secondary" type="button">Copier le lien</button>
+                <button id="btn-formule-manifest" class="btn btn-secondary" type="button">Copier le manifeste</button>
                 <button id="btn-formule-clear" class="btn btn-secondary" type="button">Revenir au canonique</button>
               </div>
               <div class="lsystem-save-section">

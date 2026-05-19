@@ -22,19 +22,31 @@ const TITRES_MODES = {
   transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
 };
 
+const PARAMETRES_FORMULE_DEFAUT = {
+  a: { nom: "a", min: -4, max: 4, pas: 0.01, defaut: 0 },
+  b: { nom: "b", min: -4, max: 4, pas: 0.01, defaut: 0 },
+};
+
+function definirParametresFormule(a = {}, b = {}) {
+  return {
+    a: { ...PARAMETRES_FORMULE_DEFAUT.a, ...a },
+    b: { ...PARAMETRES_FORMULE_DEFAUT.b, ...b },
+  };
+}
+
 const FORMULE_PRESETS = {
-  mandelbrot: { formule: "z*z+c",              rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
-  julia:      { formule: "z*z+c",              rayon: 2,  mode: "julia",      a: 0,    b: 0    },
-  cubique:    { formule: "z^3+c",              rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
-  sinus:      { formule: "sin(z)+c",           rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
-  cosinus:    { formule: "cos(z)+c",           rayon: 4,  mode: "mandelbrot", a: 0,    b: 0    },
-  biomorphe:  { formule: "z^2+z/c",            rayon: 4,  mode: "mandelbrot", a: 0,    b: 0    },
-  tricorne:   { formule: "conj(z)^2+c",        rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
-  perturbe:   { formule: "z^2+c+a*sin(z)",     rayon: 3,  mode: "mandelbrot", a: 0.25, b: 0    },
-  rationnel:  { formule: "z^2+c+a/(z^2+b)",    rayon: 8,  mode: "mandelbrot", a: 0.2,  b: 0.4  },
-  exponentiel:{ formule: "exp(z)+c-a",         rayon: 12, mode: "mandelbrot", a: 1,    b: 0    },
-  tangente:   { formule: "tan(z)+c*a",         rayon: 8,  mode: "mandelbrot", a: 0.6,  b: 0    },
-  norme:      { formule: "z^2+c-a*norm(z)",    rayon: 6,  mode: "mandelbrot", a: 0.08, b: 0    },
+  mandelbrot: { formule: "z*z+c",              rayon: 2,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  julia:      { formule: "z*z+c",              rayon: 2,  mode: "julia",      parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  cubique:    { formule: "z^3+c",              rayon: 2,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  sinus:      { formule: "sin(z)+c",           rayon: 2,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  cosinus:    { formule: "cos(z)+c",           rayon: 4,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  biomorphe:  { formule: "z^2+z/c",            rayon: 4,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  tricorne:   { formule: "conj(z)^2+c",        rayon: 2,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "a inutilisé" }, { nom: "b inutilisé" }) },
+  perturbe:   { formule: "z^2+c+a*sin(z)",     rayon: 3,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "amplitude sinus", min: -1.5, max: 1.5, defaut: 0.25 }, { nom: "b inutilisé" }) },
+  rationnel:  { formule: "z^2+c+a/(z^2+b)",    rayon: 8,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "force rationnelle", min: -2, max: 2, defaut: 0.2 }, { nom: "décalage du pôle", min: -2, max: 2, defaut: 0.4 }) },
+  exponentiel:{ formule: "exp(z)+c-a",         rayon: 12, mode: "mandelbrot", parametres: definirParametresFormule({ nom: "translation réelle", min: -3, max: 3, defaut: 1 }, { nom: "b inutilisé" }) },
+  tangente:   { formule: "tan(z)+c*a",         rayon: 8,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "gain de c", min: -2, max: 2, defaut: 0.6 }, { nom: "b inutilisé" }) },
+  norme:      { formule: "z^2+c-a*norm(z)",    rayon: 6,  mode: "mandelbrot", parametres: definirParametresFormule({ nom: "frein radial", min: -0.5, max: 0.5, pas: 0.005, defaut: 0.08 }, { nom: "b inutilisé" }) },
 };
 
 const STORAGE_FORMULE_SAVES = "fractales_formule_sauvegardes";
@@ -220,6 +232,7 @@ function lirePropositionLSysteme() {
     angle: parseFloat(document.getElementById("lsystem-angle-input")?.value || "60"),
     generations: parseInt(document.getElementById("lsystem-generation-slider")?.value || "4", 10),
     seed: document.getElementById("lsystem-seed-input")?.value || "1",
+    strokeWidth: parseFloat(document.getElementById("lsystem-stroke-width-slider")?.value || "1.35"),
   };
 }
 
@@ -493,7 +506,7 @@ export function initialiserExploration({
       const symbols = description.symboles.length ? ` · symboles ${description.symboles.slice(0, 8).join(" ")}` : "";
       const diagnostic = description.diagnostics.length ? ` · ${description.diagnostics[0]}` : "";
       const points = apercu?.pointsCount ? ` · ${apercu.pointsCount} points` : "";
-      readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°${stochastic}${symbols}${points}${diagnostic} · non canonique`;
+      readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°, trait ${formatNombre(proposition.strokeWidth, 2)}${stochastic}${symbols}${points}${diagnostic} · non canonique`;
     }
     const stringPreview = document.getElementById("lsystem-string-preview");
     if (stringPreview) {
@@ -610,6 +623,71 @@ export function initialiserExploration({
     if (!list) return;
     const items = lireSauvegardeFormule();
     remplirListeSauvegardes(list, items, "ff");
+  }
+
+  function creerManifesteFormule(prop) {
+    const view = getView();
+    const params = getParams();
+    return {
+      type: "promotion_formule",
+      statut: "proposition_locale",
+      cible_source: "src/fractales_formule.multi",
+      formule: prop.formule,
+      mode: prop.mode,
+      rayon_evasion: prop.rayon,
+      parametres: {
+        a: prop.paramA,
+        b: prop.paramB,
+      },
+      vue: {
+        centerX: view.centerX,
+        centerY: view.centerY,
+        pixelSize: view.pixelSize,
+        rotation: view.rotation ?? 0,
+      },
+      rendu: {
+        iterations: params.maxIter,
+        palette: params.palette,
+      },
+      workflow: [
+        "Ajouter la fonction canonique dans src/fractales_formule.multi",
+        "Enregistrer l'identifiant dans src/main.multi",
+        "Mettre a jour compile_wasm.multi, integration_checks.py, renderer.js et generate_api.py",
+      ],
+    };
+  }
+
+  function configurerCurseurFormule(input, label, output, meta) {
+    if (!input) return;
+    input.min = String(meta.min);
+    input.max = String(meta.max);
+    input.step = String(meta.pas);
+    const valeur = Number(input.value);
+    if (!Number.isFinite(valeur) || valeur < meta.min || valeur > meta.max) input.value = String(meta.defaut);
+    if (label) label.textContent = meta.nom;
+    if (output) output.textContent = formatNombre(parseFloat(input.value || "0"), 2);
+  }
+
+  function appliquerParametresFormulePreset(preset, remplacerValeurs = false) {
+    const parametres = preset?.parametres ?? PARAMETRES_FORMULE_DEFAUT;
+    const aInput = document.getElementById("formule-param-a-input");
+    const bInput = document.getElementById("formule-param-b-input");
+    if (remplacerValeurs) {
+      if (aInput) aInput.value = String(parametres.a.defaut);
+      if (bInput) bInput.value = String(parametres.b.defaut);
+    }
+    configurerCurseurFormule(
+      aInput,
+      document.getElementById("formule-param-a-label"),
+      document.getElementById("formule-param-a-value"),
+      parametres.a,
+    );
+    configurerCurseurFormule(
+      bInput,
+      document.getElementById("formule-param-b-label"),
+      document.getElementById("formule-param-b-value"),
+      parametres.b,
+    );
   }
 
   dock.addEventListener("click", (event) => {
@@ -744,12 +822,13 @@ export function initialiserExploration({
     updateHash();
   });
 
-  ["lsystem-generation-slider", "lsystem-angle-input", "lsystem-axiom-input", "lsystem-rules-input", "lsystem-seed-input"].forEach((id) => {
+  ["lsystem-generation-slider", "lsystem-angle-input", "lsystem-axiom-input", "lsystem-rules-input", "lsystem-seed-input", "lsystem-stroke-width-slider"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updateLSystemProposal);
   });
 
   document.getElementById("btn-lsystem-seed")?.addEventListener("click", () => {
     const seedInput = document.getElementById("lsystem-seed-input");
+    const strokeInput = document.getElementById("lsystem-stroke-width-slider");
     if (seedInput) seedInput.value = String(Math.floor(Math.random() * 100000));
     updateLSystemProposal();
   });
@@ -768,6 +847,7 @@ export function initialiserExploration({
     if (angleInput) angleInput.value = String(preset.angle);
     if (genSlider) genSlider.value = String(preset.gen);
     if (seedInput) seedInput.value = String(preset.graine ?? 1);
+    if (strokeInput) strokeInput.value = String(preset.trait ?? 1.35);
     updateLSystemProposal();
   });
 
@@ -813,11 +893,13 @@ export function initialiserExploration({
       const angleInput = document.getElementById("lsystem-angle-input");
       const genSlider = document.getElementById("lsystem-generation-slider");
       const seedInput = document.getElementById("lsystem-seed-input");
+      const strokeInput = document.getElementById("lsystem-stroke-width-slider");
       if (axiomInput) axiomInput.value = item.axiom || "F";
       if (rulesInput) rulesInput.value = item.rules || "F=F+F--F+F";
       if (angleInput) angleInput.value = String(item.angle ?? 60);
       if (genSlider) genSlider.value = String(item.generations ?? 4);
       if (seedInput) seedInput.value = String(item.seed ?? 1);
+      if (strokeInput) strokeInput.value = String(item.strokeWidth ?? 1.35);
       updateLSystemProposal();
     }
     const deleteBtn = event.target.closest("[data-ls-delete]");
@@ -837,7 +919,10 @@ export function initialiserExploration({
   // ── Atelier formule ──────────────────────────────────────────
 
   ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select", "formule-param-a-input", "formule-param-b-input"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", updateFormuleProposal);
+    document.getElementById(id)?.addEventListener("input", () => {
+      appliquerParametresFormulePreset(FORMULE_PRESETS[document.getElementById("formule-preset-select")?.value]);
+      updateFormuleProposal();
+    });
   });
 
   document.getElementById("formule-preset-select")?.addEventListener("change", (event) => {
@@ -851,8 +936,9 @@ export function initialiserExploration({
     if (fi) fi.value = preset.formule;
     if (fr) fr.value = String(preset.rayon);
     if (fm) fm.value = preset.mode;
-    if (fa) fa.value = String(preset.a ?? 0);
-    if (fb) fb.value = String(preset.b ?? 0);
+    appliquerParametresFormulePreset(preset, true);
+    if (fa) fa.value = String(preset.parametres.a.defaut);
+    if (fb) fb.value = String(preset.parametres.b.defaut);
     updateFormuleProposal();
   });
 
@@ -870,6 +956,22 @@ export function initialiserExploration({
       try { navigator.clipboard.writeText(window.location.href); updateStatusBar("Lien avec la formule copié", true); }
       catch { updateStatusBar("Impossible de copier : autorisez le presse-papiers", true); }
     }, 60);
+  });
+
+  document.getElementById("btn-formule-manifest")?.addEventListener("click", () => {
+    const prop = lirePropositionFormule();
+    const compiled = compilerFormule?.(prop.formule);
+    if (!compiled?.fn) {
+      updateStatusBar(`Formule invalide : ${compiled?.error ?? "erreur de syntaxe"}`, true);
+      return;
+    }
+    const manifeste = JSON.stringify(creerManifesteFormule(prop), null, 2);
+    try {
+      navigator.clipboard.writeText(manifeste);
+      updateStatusBar("Manifeste de promotion copié", true);
+    } catch {
+      updateStatusBar("Impossible de copier : autorisez le presse-papiers", true);
+    }
   });
 
   document.getElementById("btn-formule-clear")?.addEventListener("click", () => {
@@ -903,6 +1005,7 @@ export function initialiserExploration({
       if (fm) fm.value = item.mode || "mandelbrot";
       if (fa) fa.value = String(item.paramA ?? 0);
       if (fb) fb.value = String(item.paramB ?? 0);
+      appliquerParametresFormulePreset(null);
       updateFormuleProposal();
     }
     const deleteBtn = event.target.closest("[data-ff-delete]");
@@ -1057,11 +1160,13 @@ export function initialiserExploration({
     const lsystemAxiom = document.getElementById("lsystem-axiom-input");
     const lsystemRules = document.getElementById("lsystem-rules-input");
     const lsystemSeed = document.getElementById("lsystem-seed-input");
+    const lsystemStroke = document.getElementById("lsystem-stroke-width-slider");
     if (lsystemGeneration) lsystemGeneration.value = String(params.lsystemGenerations ?? 4);
     if (lsystemAngle) lsystemAngle.value = String(params.lsystemAngle ?? 60);
     if (lsystemAxiom) lsystemAxiom.value = params.lsystemAxiom || "F";
     if (lsystemRules) lsystemRules.value = params.lsystemRules || "F=F+F--F+F";
     if (lsystemSeed) lsystemSeed.value = String(params.lsystemSeed ?? 1);
+    if (lsystemStroke) lsystemStroke.value = String(params.lsystemStrokeWidth ?? 1.35);
     const formuleIter = document.getElementById("formule-iteration-input");
     const formuleRadius = document.getElementById("formule-escape-radius-input");
     const formuleMode = document.getElementById("formule-mode-select");
@@ -1072,6 +1177,7 @@ export function initialiserExploration({
     if (formuleMode) formuleMode.value = params.formuleMode || "mandelbrot";
     if (formuleParamA) formuleParamA.value = String(params.formuleParamA ?? 0);
     if (formuleParamB) formuleParamB.value = String(params.formuleParamB ?? 0);
+    appliquerParametresFormulePreset(FORMULE_PRESETS[document.getElementById("formule-preset-select")?.value]);
     const overlays = activeWeather();
     document.querySelectorAll(".weather-toggle").forEach((input) => {
       input.checked = overlays.has(input.value);

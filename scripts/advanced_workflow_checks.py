@@ -45,6 +45,7 @@ def main() -> None:
         "lsystem-axiom-input",
         "lsystem-rules-input",
         "lsystem-seed-input",
+        "lsystem-stroke-width-slider",
         "lsystem-proposal-canvas",
         "lsystem-proposal-readout",
         "lsystem-string-preview",
@@ -56,8 +57,13 @@ def main() -> None:
         "formule-escape-radius-input",
         "formule-param-a-input",
         "formule-param-b-input",
+        "formule-param-a-label",
+        "formule-param-b-label",
+        "formule-param-a-value",
+        "formule-param-b-value",
         "formule-proposal-canvas",
         "formule-proposal-readout",
+        "btn-formule-manifest",
         "formule-save-name",
         "formule-save-list",
     }
@@ -82,11 +88,15 @@ def main() -> None:
 
     require(r"export function analyserFormule", formule, "formula analyzer must be exported")
     require(r"analyserFormule\?\.\(prop\.formule\)", exploration, "formula studio must use analyzer diagnostics")
+    require(r"PARAMETRES_FORMULE_DEFAUT", exploration, "formula studio must define default parameter metadata")
+    require(r"appliquerParametresFormulePreset", exploration, "formula studio must apply named preset parameters")
+    require(r"creerManifesteFormule", exploration, "formula studio must expose a promotion manifest")
+    require(r"nom:\s*\"amplitude sinus\"", exploration, "formula presets must expose French parameter labels")
     require(r"z absent.*c absent", formule, "formula analyzer must warn about missing z/c variables")
     require(r"symboles: \[\.\.\.symboles\]\.sort\(\)", lsystem, "L-system diagnostics must expose used symbols")
     require(r"fusionnerSauvegarde", exploration, "saved formulas/grammars must dedupe by name")
 
-    for field in ["ffi", "ffe", "ffm", "ffa", "ffb", "lax", "lr", "ls"]:
+    for field in ["ffi", "ffe", "ffm", "ffa", "ffb", "lax", "lr", "ls", "lsw"]:
         decoded = f'p.get("{field}")' in navigation or f'num("{field}")' in navigation or f'ent("{field}")' in navigation
         if f'p.set("{field}"' not in navigation or not decoded:
             fail(f"deeplink field {field} must round-trip through renderer-navigation.js")

@@ -1,6 +1,6 @@
 ﻿# Explorateur de Fractales
 
-Application GitHub Pages qui rend **73 fractales** en **WebAssembly**, dont le code de
+Application GitHub Pages qui rend **81 fractales** en **WebAssembly**, dont le code de
 calcul est entièrement écrit en **français** grâce au langage
 [multilingual](https://github.com/johnsamuelwrites/multilingual).
 
@@ -34,7 +34,7 @@ françaises** dans `src/*.multi`.
 
 | Groupe | Fractales |
 |---|---|
-| Évasion (15) | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot, Burning Julia, Biomorphe |
+| Évasion (23) | Mandelbrot, Julia, Burning Ship, Tricorn, Multibrot (n=3…8), Celtic, Buffalo, Perpendicular Burning Ship, Heart, Perpendicular Mandelbrot, Perpendicular Celtic, Duck, Buddhabrot, Burning Julia, Biomorphe, Formule cosinus, Formule biomorphe, Formule tricorne, Formule perturbée, Formule rationnelle, Formule exponentielle, Formule tangente, Formule norme |
 | Dynamique (17) | Newton (z³−1), Phoenix, Lyapunov, Lyapunov multiséquence, Bassin de Newton généralisé, Orbitale de Nova, Collatz complexe, Attracteur de Clifford, Attracteur de Peter de Jong, Attracteur d'Ikeda, Attracteur de Hénon, Attracteur de Lorenz, Attracteur de Rössler, Attracteur d'Aizawa, Attracteur de Sprott, Feigenbaum, Duffing |
 | IFS (10) | Barnsley (fougère), Sierpinski, Tapis de Sierpinski, Éponge de Menger, Mandelbulb, Vicsek, Figures de Lichtenberg, Tétraèdre de Sierpinski, Julia quaternion, Mandelbox |
 | L-système (14) | Koch (flocon de neige), Dragon de Heighway, Courbe de Lévy C, Courbe de Gosper, Ensemble de Cantor, Triangle de cercles récursifs, Joint apollonien, T-Square, H-Fractal, Courbe de Hilbert, Courbe de Peano, Arbre de Pythagore, Arbre stochastique, Plante buisson |
@@ -74,7 +74,7 @@ public/mandelbrot.wasm + public/js/renderer.js
         │
         │  python scripts/generate_api.py  (GitHub Actions)
         │
-        ├─ public/api/fractals.json         (catalogue complet — 73 fractales)
+        ├─ public/api/fractals.json         (catalogue complet — 81 fractales)
         ├─ public/api/families.json         (index des 8 familles)
         ├─ public/api/families/{id}.json    (détail par famille)
         └─ public/api/palettes.json         (9 palettes)
@@ -269,7 +269,7 @@ index.html
 │   ├── fractales_lisse.multi         # ★ Coloration lisse (mandelbrot_lisse, julia_lisse, …) — log_lisse sans math natif
 │   ├── fractales_orbitrap.multi      # ★ Pièges orbitaux (piege_cercle, piege_croix, piege_ligne, julia_piege_cercle)
 │   ├── fractales_export.multi        # Interpolation et réglages d'export en français
-│   ├── fractales_formule.multi       # Primitives complexes de l'Atelier formule
+│   ├── fractales_formule.multi       # Primitives complexes et préréglages canoniques de l'Atelier formule
 │   ├── fractales_classes_compat.multi # Pont WASM pour mandelbrot_classe
 │   └── fractales_classes.multi       # ★ Hiérarchie OOP (classe/soi/super) — Python uniquement
 ├── scripts/
@@ -303,7 +303,7 @@ index.html
 │   ├── mandelbrot_transpiled.py   # ← transpilation du bundle complet
 │   ├── benchmark.json             # ← généré (résultats de benchmark)
 │   └── api/                       # ← généré par generate_api.py (gitignore)
-│       ├── fractals.json          #   catalogue complet (73 fractales)
+│       ├── fractals.json          #   catalogue complet (81 fractales)
 │       ├── exploration-modes.json #   modes avancés et champs deeplink
 │       ├── families.json          #   index des 8 familles
 │       └── families/{id}.json     #   détail par famille
@@ -513,16 +513,19 @@ déployée comme en version réduite.
 - **Studio 3D** : presets de caméra et état de matière/brume pour les fractales WebGL.
 - **Atelier L-système** : aperçu local d'une proposition
   `axiome + règles + angle + graine`, avec règles déterministes ou stochastiques
-  pondérées (`F=0.5:FF|0.5:F[+F]`). Une même graine donne toujours le même tracé,
-  puis le bouton **Appliquer** rend cette proposition dans la zone principale et
+  pondérées (`F=0.5:FF|0.5:F[+F]`). Une même graine donne toujours le même tracé ;
+  la coloration par progression/profondeur/orientation et l'épaisseur du trait
+  sont configurables, puis le bouton **Appliquer** rend cette proposition dans la zone principale et
   l'exporte via le pipeline L-système. Une proposition appliquée est encodée dans
   l'URL mais n'est pas une fractale canonique tant qu'elle n'est pas ajoutée dans
   `src/fractales_lsystem.multi` et les registres associés.
 - **Atelier formule** : banc d'essai local pour formules d'itération complexes,
   avec diagnostics de parseur, fonctions complexes (`tan`, `arg`, `norm`, `re`,
-  `im`, …), paramètres `a` / `b`, aperçu, sauvegarde locale et liens encodés via
-  `fpa` / `ffi` / `ffe` / `ffm` / `ffa` / `ffb`. Une formule appliquée reste une
-  proposition temporaire tant qu'elle n'est pas promue dans les sources `.multi`.
+  `im`, …), paramètres nommés `a` / `b`, aperçu, sauvegarde locale et liens encodés via
+  `fpa` / `ffi` / `ffe` / `ffm` / `ffa` / `ffb`. Plusieurs préréglages disposent
+  aussi d'une version canonique compilée dans `src/fractales_formule.multi`, et le
+  bouton **Copier le manifeste** prépare les métadonnées de promotion d'une
+  expérience locale vers une fonction canonique.
 - **Météo mathématique** : grille/axes, contours et orbite capturée comme surcouches
   analytiques, encodées via `ov`.
 
@@ -538,7 +541,7 @@ L'application expose une couche machine-readable statique, sans serveur, compati
 | `ai-manifest.json` | Manifeste de découverte FAIR — point d'entrée pour les agents IA |
 | `schemas/` | JSON Schema 2020-12 pour les entrées de fractale, les paramètres deeplink, les résultats d'outils |
 | `examples/` | Exemples d'appels et workflow agent en 4 étapes |
-| `api/fractals.json` | Catalogue complet des 73 fractales (généré par CI) |
+| `api/fractals.json` | Catalogue complet des 81 fractales (généré par CI) |
 | `api/families.json` | Index des 8 familles (généré par CI) |
 | `api/palettes.json` | 9 palettes disponibles (généré par CI) |
 | `api/exploration-modes.json` | Modes avancés et champs de deep link associés (généré par CI) |

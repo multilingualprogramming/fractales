@@ -77,6 +77,7 @@ const params = {
   lsystemAngle: 60,
   lsystemGenerations: 4,
   lsystemSeed: 1,
+  lsystemStrokeWidth: 1.35,
   formulePropositionActive: false,
   formuleIteration: "z*z+c",
   formuleEscapeRadius: 2,
@@ -159,6 +160,14 @@ const VIEW_PRESETS = {
   mandelbrot_piege_croix: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   mandelbrot_piege_ligne: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   julia_piege_cercle: { centerX: 0.0, centerY: 0.0, span: 3.0 },
+  formule_cosinus_c: { centerX: 0.0, centerY: 0.0, span: 4.0 },
+  formule_biomorphe: { centerX: -0.2, centerY: 0.0, span: 4.0 },
+  formule_tricorne: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  formule_perturbee_canonique: { centerX: -0.35, centerY: 0.0, span: 3.2 },
+  formule_rationnelle_canonique: { centerX: -0.25, centerY: 0.0, span: 3.6 },
+  formule_exponentielle_canonique: { centerX: 0.0, centerY: 0.0, span: 5.2 },
+  formule_tangente_canonique: { centerX: 0.0, centerY: 0.0, span: 4.8 },
+  formule_norme_canonique: { centerX: -0.4, centerY: 0.0, span: 3.2 },
 };
 
 const JULIA_C_PRESETS = {
@@ -504,6 +513,14 @@ const FRACTAL_FAMILIES = [
       ["buddhabrot", "Buddhabrot"],
       ["burning_julia", "Burning Julia"],
       ["biomorphe", "Biomorphe de Pickover"],
+      ["formule_cosinus_c", "Formule cosinus"],
+      ["formule_biomorphe", "Formule biomorphe"],
+      ["formule_tricorne", "Formule tricorne"],
+      ["formule_perturbee_canonique", "Formule perturbée"],
+      ["formule_rationnelle_canonique", "Formule rationnelle"],
+      ["formule_exponentielle_canonique", "Formule exponentielle"],
+      ["formule_tangente_canonique", "Formule tangente"],
+      ["formule_norme_canonique", "Formule norme"],
     ],
   },
   {
@@ -1038,6 +1055,7 @@ function capturerVueCourante() {
     palettePhase: params.palettePhase,
     paletteContours: params.paletteContours,
     lsystemLineColor: params.lsystemLineColor,
+    lsystemStrokeWidth: params.lsystemStrokeWidth,
     deepZoomAutoIterations: params.deepZoomAutoIterations,
     deepZoomQuality: params.deepZoomQuality,
     studio3dMaterial: params.studio3dMaterial,
@@ -1104,6 +1122,7 @@ function clonerParamsExport(source = params) {
     palettePhase: source.palettePhase ?? params.palettePhase,
     paletteContours: source.paletteContours ?? params.paletteContours,
     lsystemLineColor: source.lsystemLineColor ?? params.lsystemLineColor,
+    lsystemStrokeWidth: source.lsystemStrokeWidth ?? params.lsystemStrokeWidth,
     deepZoomAutoIterations: source.deepZoomAutoIterations ?? params.deepZoomAutoIterations,
     deepZoomQuality: source.deepZoomQuality ?? params.deepZoomQuality,
     studio3dMaterial: source.studio3dMaterial ?? params.studio3dMaterial,
@@ -1772,6 +1791,7 @@ function appliquerPropositionLSysteme(config) {
   params.lsystemAngle = Math.max(1, Math.min(179, Number(config.angle) || 60));
   params.lsystemGenerations = Math.max(0, Math.min(8, Number(config.generations) | 0));
   params.lsystemSeed = String(config.seed ?? params.lsystemSeed ?? 1).slice(0, 40);
+  params.lsystemStrokeWidth = Math.max(0.5, Math.min(6, Number(config.strokeWidth) || params.lsystemStrokeWidth || 1.35));
   if (!LINE_FRACTALS.has(params.fractal)) {
     params.fractal = "koch";
     syncSelectors(params.fractal);
@@ -1998,6 +2018,7 @@ function creerTraceurMonde(ctxCible, w, h, vueCible) {
   const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
   const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
   return {
+    ctx: ctxCible,
     moveTo(x, y) {
       ctxCible.moveTo((x - cx0) / vueCible.pixelSize, (y - cy0) / vueCible.pixelSize);
     },
@@ -2136,6 +2157,10 @@ function couleurSegmentLSysteme(segment, index, total, renduParams) {
 }
 
 function dessinerPropositionLSystemeMonde(traceur, renduParams, couleurParSegment = false) {
+  if (traceur.ctx) {
+    const baseWidth = Math.max(0.5, Math.min(6, Number(renduParams.lsystemStrokeWidth) || 1.35));
+    traceur.ctx.lineWidth = baseWidth;
+  }
   const { points } = pointsPropositionLSysteme({
     axiom: renduParams.lsystemAxiom,
     rules: renduParams.lsystemRules,
@@ -2930,6 +2955,14 @@ async function loadWasm() {
       mandelbrot_piege_croix: typeof exports.mandelbrot_piege_croix === "function" ? exports.mandelbrot_piege_croix : null,
       mandelbrot_piege_ligne: typeof exports.mandelbrot_piege_ligne === "function" ? exports.mandelbrot_piege_ligne : null,
       julia_piege_cercle: typeof exports.julia_piege_cercle === "function" ? exports.julia_piege_cercle : null,
+      formule_cosinus_c: typeof exports.formule_cosinus_c === "function" ? exports.formule_cosinus_c : null,
+      formule_biomorphe: typeof exports.formule_biomorphe === "function" ? exports.formule_biomorphe : null,
+      formule_tricorne: typeof exports.formule_tricorne === "function" ? exports.formule_tricorne : null,
+      formule_perturbee_canonique: typeof exports.formule_perturbee_canonique === "function" ? exports.formule_perturbee_canonique : null,
+      formule_rationnelle_canonique: typeof exports.formule_rationnelle_canonique === "function" ? exports.formule_rationnelle_canonique : null,
+      formule_exponentielle_canonique: typeof exports.formule_exponentielle_canonique === "function" ? exports.formule_exponentielle_canonique : null,
+      formule_tangente_canonique: typeof exports.formule_tangente_canonique === "function" ? exports.formule_tangente_canonique : null,
+      formule_norme_canonique: typeof exports.formule_norme_canonique === "function" ? exports.formule_norme_canonique : null,
     };
     wasmExportFunctions = {
       interpoler_lineaire: typeof exports.interpoler_lineaire === "function" ? exports.interpoler_lineaire : null,
@@ -3815,6 +3848,14 @@ const FRACTAL_SOURCE_MAP = {
   mandelbrot_piege_croix: "fractales_orbitrap",
   mandelbrot_piege_ligne: "fractales_orbitrap",
   julia_piege_cercle: "fractales_orbitrap",
+  formule_cosinus_c: "fractales_formule",
+  formule_biomorphe: "fractales_formule",
+  formule_tricorne: "fractales_formule",
+  formule_perturbee_canonique: "fractales_formule",
+  formule_rationnelle_canonique: "fractales_formule",
+  formule_exponentielle_canonique: "fractales_formule",
+  formule_tangente_canonique: "fractales_formule",
+  formule_norme_canonique: "fractales_formule",
 };
 const { loadSources, loadBenchmark } = initialiserPanneauSource({
   fractalSourceMap: FRACTAL_SOURCE_MAP,
@@ -3926,6 +3967,7 @@ async function appliquerSignet(signet) {
   params.palettePhase = signet.palettePhase ?? params.palettePhase;
   params.paletteContours = signet.paletteContours ?? params.paletteContours;
   params.lsystemLineColor = signet.lsystemLineColor ?? params.lsystemLineColor;
+  params.lsystemStrokeWidth = signet.lsystemStrokeWidth ?? params.lsystemStrokeWidth;
   params.deepZoomAutoIterations = signet.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
   params.deepZoomQuality = signet.deepZoomQuality ?? params.deepZoomQuality;
   params.studio3dMaterial = signet.studio3dMaterial ?? params.studio3dMaterial;
@@ -4091,6 +4133,7 @@ async function init() {
     params.palettePhase = etatHash.palettePhase ?? params.palettePhase;
     params.paletteContours = etatHash.paletteContours ?? params.paletteContours;
     params.lsystemLineColor = etatHash.lsystemLineColor ?? params.lsystemLineColor;
+    params.lsystemStrokeWidth = etatHash.lsystemStrokeWidth ?? params.lsystemStrokeWidth;
     params.deepZoomAutoIterations = etatHash.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
     params.deepZoomQuality = etatHash.deepZoomQuality ?? params.deepZoomQuality;
     params.studio3dMaterial = etatHash.studio3dMaterial ?? params.studio3dMaterial;

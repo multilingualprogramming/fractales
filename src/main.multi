@@ -19,7 +19,7 @@ importer fractales_formule
 # Démontre : classe, héritage, soi (self), super().__init__
 importer fractales_classes
 
-soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot", "burning_julia", "biomorphe"]
+soit MODES_EVASION = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot", "burning_julia", "biomorphe", "formule_cosinus_c", "formule_biomorphe", "formule_tricorne", "formule_perturbee_canonique", "formule_rationnelle_canonique", "formule_exponentielle_canonique", "formule_tangente_canonique", "formule_norme_canonique"]
 soit MODES_DYNAMIQUE = ["newton", "phoenix", "lyapunov", "lyapunov_multisequence", "bassin_newton_generalise", "orbitale_de_nova", "collatz_complexe", "attracteur_de_clifford", "attracteur_de_peter_de_jong", "attracteur_ikeda", "attracteur_de_henon", "lorenz_attractor", "rossler_attractor", "aizawa_attractor", "sprott_attractor", "feigenbaum_tree", "duffing_attractor"]
 soit MODES_IFS = ["barnsley", "sierpinski", "tapis_sierpinski", "menger_sponge", "mandelbulb", "vicsek_fractal", "lichtenberg_figures", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]
 soit MODES_3D = ["tetraedre_sierpinski", "julia_quaternion", "mandelbox"]
@@ -28,7 +28,7 @@ soit MODES_MAGNETIQUE = ["magnet1", "magnet2", "magnet3", "lambda_fractale", "la
 soit MODES_LISSE = ["mandelbrot_lisse", "julia_lisse", "burning_ship_lisse", "tricorn_lisse"]
 soit MODES_ORBITRAP = ["mandelbrot_piege_cercle", "mandelbrot_piege_croix", "mandelbrot_piege_ligne", "julia_piege_cercle"]
 soit MODES_CLASSES_COMPAT = ["mandelbrot_classe"]
-affirmer longueur(MODES_EVASION) == 15
+affirmer longueur(MODES_EVASION) == 23
 affirmer longueur(MODES_DYNAMIQUE) == 17
 affirmer longueur(MODES_IFS) == 10
 affirmer longueur(MODES_3D) == 3

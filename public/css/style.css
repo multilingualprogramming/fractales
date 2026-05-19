@@ -1693,6 +1693,18 @@ option {
   min-height: 72px;
 }
 
+.formula-param-label,
+.formula-param-value {
+  color: var(--text-dim);
+  font-family: var(--font-code);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.formula-param-value {
+  color: var(--cyan-dim);
+}
+
 .exploration-check {
   display: flex;
   align-items: center;

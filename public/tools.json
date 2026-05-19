@@ -26,7 +26,7 @@
           "request": {},
           "response_shape": {
             "schema": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
-                        "total": 73,
+                        "total": 81,
             "fractals": [{"id": "mandelbrot", "label": "Mandelbrot", "...": "..."}]
           }
         }
@@ -90,7 +90,7 @@
           "request": {},
           "response_shape": {
             "total_families": 8,
-                        "total_fractals": 73,
+                        "total_fractals": 81,
             "families": [
               {"id": "evasion", "label": "Évasion", "count": 15, "fractal_ids": ["mandelbrot", "julia", "..."]}
             ]
@@ -209,6 +209,13 @@
             "description": "Optional L-system line coloring mode, encoded as lc.",
             "default": "progression"
           },
+          "lsystemStrokeWidth": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 6,
+            "description": "Optional L-system proposal stroke width, encoded as lsw.",
+            "default": 1.35
+          },
           "weatherOverlays": {
             "type": "string",
             "description": "Optional comma-separated mathematical weather overlays, encoded as ov. Supported values: grille, contours, orbite."
@@ -240,7 +247,7 @@
       },
       "endpoint": {
         "method": "NONE",
-        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&lc={lsystemLineColor}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}&ls={lsystemProposal.seed}&fpa=1&ffi={formulaProposal.iteration}&ffe={formulaProposal.escapeRadius}&ffm={formulaProposal.mode}&ffa={formulaProposal.a}&ffb={formulaProposal.b}",
+        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&lc={lsystemLineColor}&lsw={lsystemStrokeWidth}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}&ls={lsystemProposal.seed}&fpa=1&ffi={formulaProposal.iteration}&ffe={formulaProposal.escapeRadius}&ffm={formulaProposal.mode}&ffa={formulaProposal.a}&ffb={formulaProposal.b}",
         "note": "Assemble directly from parameters — no HTTP request required"
       },
       "examples": [

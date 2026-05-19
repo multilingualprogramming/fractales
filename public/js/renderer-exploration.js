@@ -828,7 +828,6 @@ export function initialiserExploration({
 
   document.getElementById("btn-lsystem-seed")?.addEventListener("click", () => {
     const seedInput = document.getElementById("lsystem-seed-input");
-    const strokeInput = document.getElementById("lsystem-stroke-width-slider");
     if (seedInput) seedInput.value = String(Math.floor(Math.random() * 100000));
     updateLSystemProposal();
   });
@@ -842,6 +841,7 @@ export function initialiserExploration({
     const angleInput = document.getElementById("lsystem-angle-input");
     const genSlider = document.getElementById("lsystem-generation-slider");
     const seedInput = document.getElementById("lsystem-seed-input");
+    const strokeInput = document.getElementById("lsystem-stroke-width-slider");
     if (axiomInput) axiomInput.value = preset.axiome;
     if (rulesInput) rulesInput.value = preset.regles;
     if (angleInput) angleInput.value = String(preset.angle);

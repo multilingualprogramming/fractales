@@ -25,6 +25,15 @@ def require(pattern: str, text: str, message: str) -> None:
         fail(message)
 
 
+def require_block(text: str, start: str, end: str, pattern: str, message: str) -> None:
+    try:
+        start_index = text.index(start)
+        end_index = text.index(end, start_index)
+    except ValueError:
+        fail(message)
+    require(pattern, text[start_index:end_index], message)
+
+
 def ids_from_html(html: str) -> set[str]:
     return set(re.findall(r'id="([^"]+)"', html))
 
@@ -92,6 +101,20 @@ def main() -> None:
     require(r"appliquerParametresFormulePreset", exploration, "formula studio must apply named preset parameters")
     require(r"creerManifesteFormule", exploration, "formula studio must expose a promotion manifest")
     require(r"nom:\s*\"amplitude sinus\"", exploration, "formula presets must expose French parameter labels")
+    require_block(
+        exploration,
+        'document.getElementById("lsystem-preset-select")',
+        'document.getElementById("btn-lsystem-apply")',
+        r'const\s+strokeInput\s*=\s*document\.getElementById\("lsystem-stroke-width-slider"\)',
+        "L-system preset handler must declare strokeInput before using it",
+    )
+    require_block(
+        exploration,
+        'document.getElementById("formule-preset-select")',
+        'document.getElementById("btn-formule-apply")',
+        r"appliquerParametresFormulePreset\(preset,\s*true\).*updateFormuleProposal\(\)",
+        "formula preset handler must update named parameters and preview",
+    )
     require(r"z absent.*c absent", formule, "formula analyzer must warn about missing z/c variables")
     require(r"symboles: \[\.\.\.symboles\]\.sort\(\)", lsystem, "L-system diagnostics must expose used symbols")
     require(r"fusionnerSauvegarde", exploration, "saved formulas/grammars must dedupe by name")

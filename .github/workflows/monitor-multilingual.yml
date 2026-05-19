@@ -79,15 +79,8 @@ jobs:
       - name: Verifier les checks d'integration
         run: python scripts/integration_checks.py
 
-      - name: Verifier les smoke tests UI
-        run: python scripts/ui_smoke_checks.py
-
-      - name: Verifier la syntaxe JavaScript
-        run: |
-          node --check public/js/renderer.js
-          node --check public/js/renderer-source-panel.js
-          node --check public/js/renderer-bookmarks.js
-          node --check public/js/renderer-export.js
+      - name: Executer les verifications rapides
+        run: python scripts/quick_checks.py
 
       - name: Verifier l'instanciation WASM
         run: |

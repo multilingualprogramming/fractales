@@ -8,8 +8,10 @@
 #      → public/mandelbrot.wasm    (binaire WebAssembly)
 #      → public/benchmark.json     (résultats de benchmark)
 #      → public/mandelbrot_transpiled.py (Python généré)
-#      → public/mandelbrot.ml      (copie du source français)
-#   4. Déployer public/ vers GitHub Pages
+#      → public/main.multi         (copie du source français)
+#   4. python scripts/generate_api.py
+#   5. python scripts/integration_checks.py + scripts/quick_checks.py
+#   6. Déployer public/ vers GitHub Pages
 # ============================================================
 
 name: Compiler WASM et déployer sur GitHub Pages
@@ -79,17 +81,8 @@ jobs:
       - name: Exécuter les tests d'intégration
         run: python scripts/integration_checks.py
 
-      - name: Exécuter les smoke tests UI
-        run: python scripts/ui_smoke_checks.py
-
-      - name: Vérifier la syntaxe JavaScript (Node)
-        run: |
-          node --check public/js/renderer.js
-          node --check public/js/renderer-navigation.js
-          node --check public/js/renderer-source-panel.js
-          node --check public/js/renderer-bookmarks.js
-          node --check public/js/renderer-export.js
-          node --check public/js/renderer3d.js
+      - name: Exécuter les vérifications rapides
+        run: python scripts/quick_checks.py
 
       - name: Vérifier l'instanciation WASM (Node)
         run: |

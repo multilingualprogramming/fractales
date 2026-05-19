@@ -276,6 +276,8 @@ index.html
 │   ├── compile_wasm.py               # Lanceur Python du pipeline
 │   ├── generate_api.py               # Génère public/api/ depuis renderer.js (CI artifact)
 │   ├── integration_checks.py         # Tests d'intégration CI
+│   ├── js_backend_contract_checks.py # Contrat JS ↔ source canonique français
+│   ├── quick_checks.py               # Vérifications rapides locales/CI
 │   └── ui_smoke_checks.py            # Smoke tests UI
 ├── public/                        # Racine statique déployée sur GitHub Pages
 │   ├── index.html
@@ -327,13 +329,7 @@ Outils recommandés pour le développement local :
 python scripts/compile_wasm.py
 python scripts/generate_api.py
 python scripts/integration_checks.py
-python scripts/ui_smoke_checks.py
-node --check public/js/renderer.js
-node --check public/js/renderer-navigation.js
-node --check public/js/renderer-source-panel.js
-node --check public/js/renderer-bookmarks.js
-node --check public/js/renderer-export.js
-node --check public/js/renderer-lsystem.js
+python scripts/quick_checks.py
 ```
 
 Pour tester explicitement une copie locale du depot `multilingual` au lieu de la
@@ -575,7 +571,8 @@ git push origin main
 Le workflow Actions installe Python 3.12 et la version epinglée dans
 `requirements-build.txt`, exécute `python scripts/compile_wasm.py`, puis
 `python scripts/generate_api.py` (qui génère `public/api/`), les tests d'intégration,
-et déploie `public/` sur GitHub Pages.
+`python scripts/quick_checks.py` (syntax checks JS, tests Node, smoke UI et contrat
+JS/source français), puis déploie `public/` sur GitHub Pages.
 
 Un workflow planifie surveille aussi la compatibilite avec la version epinglee,
 la derniere version publiee et la branche `main` du depot amont

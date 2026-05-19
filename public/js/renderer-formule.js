@@ -2,6 +2,7 @@
 
 const FONCTIONS_FORMULE = new Set(["sin", "cos", "tan", "abs", "conj", "exp", "log", "re", "im", "norm", "arg"]);
 const VARIABLES_FORMULE = new Set(["z", "c", "i", "e", "pi", "a", "b"]);
+const OPERATEURS_FORMULE = new Set(["+", "-", "*", "/", "^"]);
 
 function estValeurImpliciteDroite(token) {
   return token === "(" || /^[a-z]+$/i.test(token) || /^\d/.test(token);
@@ -147,4 +148,48 @@ export function compilerFormule(source) {
   } catch (err) {
     return { fn: null, error: err.message, tokens };
   }
+}
+
+export function analyserFormule(source) {
+  const tokens = tokeniserFormule(source);
+  const fonctions = new Set();
+  const variables = new Set();
+  let operateurs = 0;
+  let profondeur = 0;
+  let profondeurMax = 0;
+
+  tokens.forEach((token, index) => {
+    if (FONCTIONS_FORMULE.has(token) && tokens[index + 1] === "(") fonctions.add(token);
+    if (VARIABLES_FORMULE.has(token)) variables.add(token);
+    if (OPERATEURS_FORMULE.has(token)) operateurs += 1;
+    if (token === "(") {
+      profondeur += 1;
+      profondeurMax = Math.max(profondeurMax, profondeur);
+    } else if (token === ")") {
+      profondeur = Math.max(0, profondeur - 1);
+    }
+  });
+
+  const avertissements = [];
+  if (!variables.has("z")) avertissements.push("z absent : itération probablement constante");
+  if (!variables.has("c")) avertissements.push("c absent : le plan peut perdre sa structure");
+  if (fonctions.has("tan") || fonctions.has("exp") || fonctions.has("log")) {
+    avertissements.push("croissance sensible : augmentez le rayon si l'image sature");
+  }
+
+  const complexite = tokens.length + operateurs * 2 + fonctions.size * 3 + profondeurMax;
+  let niveau = "simple";
+  if (complexite >= 42) niveau = "dense";
+  else if (complexite >= 22) niveau = "moyenne";
+
+  return {
+    tokens,
+    fonctions: [...fonctions],
+    variables: [...variables],
+    operateurs,
+    profondeurMax,
+    complexite,
+    niveau,
+    avertissements,
+  };
 }

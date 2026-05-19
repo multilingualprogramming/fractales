@@ -6,6 +6,7 @@ import {
   genererPropositionLSysteme,
 } from "./renderer-lsystem.js?v=app";
 import {
+  analyserFormule,
   compilerFormule,
 } from "./renderer-formule.js?v=app";
 
@@ -45,6 +46,14 @@ function lireSauvegardeFormule() {
 
 function ecrireSauvegardeFormule(items) {
   try { localStorage.setItem(STORAGE_FORMULE_SAVES, JSON.stringify(items.slice(0, 20))); } catch {}
+}
+
+function fusionnerSauvegarde(items, item) {
+  const nom = String(item.nom || "").trim();
+  return [
+    { ...item, nom },
+    ...items.filter((saved) => String(saved.nom || "").trim().toLowerCase() !== nom.toLowerCase()),
+  ].slice(0, 20);
 }
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
@@ -475,14 +484,16 @@ export function initialiserExploration({
 
   function updateLSystemProposal() {
     const proposition = lirePropositionLSysteme();
-    dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
+    const apercu = dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
     const description = decrireReglesLSysteme(proposition.rules);
     const readout = document.getElementById("lsystem-proposal-readout");
     if (readout) {
       const active = getParams().lsystemProposalActive ? "appliquée" : "locale";
       const stochastic = description.stochasticCount > 0 ? ` · ${description.stochasticCount} règle(s) stochastique(s), graine ${proposition.seed}` : "";
+      const symbols = description.symboles.length ? ` · symboles ${description.symboles.slice(0, 8).join(" ")}` : "";
       const diagnostic = description.diagnostics.length ? ` · ${description.diagnostics[0]}` : "";
-      readout.textContent = `Proposition ${active} · ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°${stochastic}${diagnostic} · non canonique`;
+      const points = apercu?.pointsCount ? ` · ${apercu.pointsCount} points` : "";
+      readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°${stochastic}${symbols}${points}${diagnostic} · non canonique`;
     }
     const stringPreview = document.getElementById("lsystem-string-preview");
     if (stringPreview) {
@@ -498,11 +509,19 @@ export function initialiserExploration({
       const row = document.createElement("div");
       row.className = "lsystem-save-item";
 
+      const text = document.createElement("span");
+      text.className = "lsystem-save-item-text";
       const name = document.createElement("span");
       name.className = "lsystem-save-item-name";
       name.title = item.nom || "";
       name.textContent = item.nom || "";
-      row.appendChild(name);
+      const detail = document.createElement("span");
+      detail.className = "lsystem-save-item-detail";
+      detail.textContent = prefix === "ff"
+        ? `${item.mode || "mandelbrot"} · ${item.formule || "z*z+c"}`
+        : `${item.generations ?? 4} gen · ${item.angle ?? 60}° · ${String(item.axiom || "F").slice(0, 18)}`;
+      text.append(name, detail);
+      row.appendChild(text);
 
       const loadButton = document.createElement("button");
       loadButton.className = "btn btn-secondary";
@@ -530,7 +549,7 @@ export function initialiserExploration({
     remplirListeSauvegardes(list, items, "ls");
   }
 
-function lirePropositionFormule() {
+  function lirePropositionFormule() {
     return {
       formule: document.getElementById("formule-iteration-input")?.value.trim() || "z*z+c",
       rayon: parseFloat(document.getElementById("formule-escape-radius-input")?.value || "2"),
@@ -544,6 +563,7 @@ function lirePropositionFormule() {
     if (!formuleCanvas) return;
     const prop = lirePropositionFormule();
     const compiled = compilerFormule?.(prop.formule);
+    const analyse = analyserFormule?.(prop.formule);
     const ctx = formuleCanvas.getContext("2d");
     const w = formuleCanvas.width, h = formuleCanvas.height;
     ctx.fillStyle = "rgba(2,4,10,0.96)";
@@ -553,6 +573,8 @@ function lirePropositionFormule() {
       ctx.font = "11px system-ui,sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(compiled?.error ?? "Formule invalide", w / 2, h / 2);
+      const readout = document.getElementById("formule-proposal-readout");
+      if (readout) readout.textContent = `Formule invalide · ${compiled?.error ?? "erreur de syntaxe"}`;
       return;
     }
     const fn = compiled.fn, R2 = prop.rayon ** 2, maxIt = 32;
@@ -577,7 +599,9 @@ function lirePropositionFormule() {
     const readout = document.getElementById("formule-proposal-readout");
     if (readout) {
       const active = getParams().formulePropositionActive ? "appliquée" : "locale";
-      readout.textContent = `Proposition ${active} · ${prop.formule} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode}`;
+      const funcs = analyse?.fonctions?.length ? ` · fonctions ${analyse.fonctions.join(", ")}` : "";
+      const warnings = analyse?.avertissements?.length ? ` · ${analyse.avertissements[0]}` : "";
+      readout.textContent = `Proposition ${active} · ${prop.formule} · ${analyse?.tokens.length ?? 0} jetons, complexité ${analyse?.niveau ?? "simple"}${funcs} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode}${warnings}`;
     }
   }
 
@@ -772,8 +796,7 @@ function lirePropositionFormule() {
     if (!nom) { updateStatusBar("Entrez un nom avant de sauvegarder", true); return; }
     const items = lireSauvegardeLSystem();
     const proposition = lirePropositionLSysteme();
-    items.unshift({ nom, ...proposition });
-    ecrireSauvegardeLSystem(items);
+    ecrireSauvegardeLSystem(fusionnerSauvegarde(items, { nom, ...proposition }));
     updateLSystemSaveList();
     const nameInput = document.getElementById("lsystem-save-name");
     if (nameInput) nameInput.value = "";
@@ -858,8 +881,7 @@ function lirePropositionFormule() {
     const nom = document.getElementById("formule-save-name")?.value.trim();
     if (!nom) { updateStatusBar("Entrez un nom avant de sauvegarder", true); return; }
     const items = lireSauvegardeFormule();
-    items.unshift({ nom, ...lirePropositionFormule() });
-    ecrireSauvegardeFormule(items);
+    ecrireSauvegardeFormule(fusionnerSauvegarde(items, { nom, ...lirePropositionFormule() }));
     updateFormuleSaveList();
     const nameInput = document.getElementById("formule-save-name");
     if (nameInput) nameInput.value = "";

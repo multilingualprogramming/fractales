@@ -25,6 +25,7 @@ COMMANDS = [
     ["node", "--test", "tests/lsystem.test.js"],
     ["node", "--test", "tests/formule.test.js"],
     [sys.executable, "scripts/js_backend_contract_checks.py"],
+    [sys.executable, "scripts/advanced_workflow_checks.py"],
     [sys.executable, "scripts/ui_smoke_checks.py"],
 ]
 

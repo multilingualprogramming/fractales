@@ -156,7 +156,7 @@ export function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, 
     generations,
     seed,
   }, { limit: LIMITE_SEQUENCE_APERCU });
-  if (points.length < 2) return { diagnostics, sequence: "" };
+  if (points.length < 2) return { diagnostics, sequence: "", pointsCount: points.length };
 
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -173,14 +173,34 @@ export function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, 
     else ctx.lineTo(px, py);
   });
   ctx.stroke();
-  return { diagnostics };
+  return { diagnostics, pointsCount: points.length };
 }
 
 export function decrireReglesLSysteme(rulesText) {
   const { rules, diagnostics } = parserReglesLSysteme(rulesText);
   let stochasticCount = 0;
+  const symboles = new Set();
+  let productions = 0;
+  let longueurMoyenne = 0;
   for (const rule of rules.values()) {
     if (rule.stochastique) stochasticCount++;
+    productions += rule.alternatives.length;
+    rule.alternatives.forEach((alternative) => {
+      longueurMoyenne += alternative.valeur.length;
+      for (const ch of alternative.valeur) {
+        if (/[A-Za-z]/.test(ch)) symboles.add(ch);
+      }
+    });
   }
-  return { diagnostics, stochasticCount };
+  const ruleCount = rules.size;
+  longueurMoyenne = productions > 0 ? longueurMoyenne / productions : 0;
+  return {
+    diagnostics,
+    stochasticCount,
+    deterministicCount: Math.max(0, ruleCount - stochasticCount),
+    ruleCount,
+    productions,
+    symboles: [...symboles].sort(),
+    longueurMoyenne,
+  };
 }

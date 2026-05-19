@@ -37,6 +37,9 @@ describe("Atelier L-systeme stochastique", () => {
   test("weighted stochastic rules are detected", () => {
     const description = decrireReglesLSysteme("F=0.25:FF|0.75:F[-F]");
     assert.equal(description.stochasticCount, 1);
+    assert.equal(description.ruleCount, 1);
+    assert.equal(description.productions, 2);
+    assert.deepEqual(description.symboles, ["F"]);
     assert.deepEqual(description.diagnostics, []);
   });
 

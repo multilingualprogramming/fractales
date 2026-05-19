@@ -209,12 +209,13 @@
           },
           "lsystemProposal": {
             "type": "object",
-            "description": "Optional applied Atelier L-system proposal. Encoded as lp/lg/la/lax/lr and rendered temporarily through the line-fractal pipeline without adding an official catalogue fractal.",
+            "description": "Optional applied Atelier L-system proposal. Encoded as lp/lg/la/lax/lr/ls and rendered temporarily through the line-fractal pipeline without adding an official catalogue fractal. Rules may use deterministic weighted stochastic alternatives such as F=0.5:FF|0.5:F[+F].",
             "properties": {
               "generations": {"type": "integer", "minimum": 0, "maximum": 8},
               "angle": {"type": "number", "minimum": 1, "maximum": 179},
               "axiom": {"type": "string"},
-              "rules": {"type": "string"}
+              "rules": {"type": "string"},
+              "seed": {"type": "string"}
             }
           }
         },
@@ -222,7 +223,7 @@
       },
       "endpoint": {
         "method": "NONE",
-        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}",
+        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}&ls={lsystemProposal.seed}",
         "note": "Assemble directly from parameters — no HTTP request required"
       },
       "examples": [

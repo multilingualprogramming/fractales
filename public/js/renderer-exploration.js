@@ -1,5 +1,11 @@
 "use strict";
 
+import {
+  decrireReglesLSysteme,
+  dessinerPropositionLSysteme,
+  genererPropositionLSysteme,
+} from "./renderer-lsystem.js?v=app";
+
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
   temps: ["Carnet de voyage", "Composer une trajectoire de vues"],
@@ -47,6 +53,8 @@ const LSYSTEM_PRESETS = {
   peano:        { axiome: "X",        regles: "X=XFYFX+F+YFXFY-F-XFYFX\nY=YFXFY-F-XFYFX+F+YFXFY", angle: 90,  gen: 3 },
   arbre_simple: { axiome: "F",        regles: "F=F[+F]F[-F]F",                                        angle: 26,  gen: 5 },
   arbre_touffu: { axiome: "X",        regles: "X=F-[[X]+X]+F[+FX]-X\nF=FF",                          angle: 25,  gen: 6 },
+  plante_stochastique: { axiome: "X", regles: "X=0.55:F-[[X]+X]+F[+FX]-X | 0.45:F[+X]-X\nF=0.65:FF | 0.35:F", angle: 24, gen: 6, graine: 13 },
+  corail_stochastique: { axiome: "F", regles: "F=0.50:F[+F]F[-F]F | 0.30:FF | 0.20:F[+F]", angle: 22, gen: 5, graine: 34 },
   flocon_carre: { axiome: "F+F+F+F",  regles: "F=F-F+F+FF-F-F+F",                                   angle: 90,  gen: 4 },
   cristal:      { axiome: "F+F+F+F",  regles: "F=FF+F++F+F",                                         angle: 90,  gen: 4 },
   pentigree:    { axiome: "F-F-F-F-F", regles: "F=F-F++F+F-F-F",                                     angle: 72,  gen: 4 },
@@ -188,66 +196,13 @@ function coordToPixel(point, canvas, view) {
   };
 }
 
-function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, generations) {
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "rgba(2, 4, 10, 0.96)";
-  ctx.fillRect(0, 0, w, h);
-  const rules = new Map();
-  rulesText.split(/\n|;/).forEach((line) => {
-    const [key, value] = line.split("=");
-    if (key && value) rules.set(key.trim()[0], value.trim());
-  });
-  let sequence = axiom || "F";
-  for (let i = 0; i < clamp(generations, 0, 8); i++) {
-    let next = "";
-    for (const ch of sequence) next += rules.get(ch) ?? ch;
-    sequence = next.slice(0, 14000);
-  }
-  let x = 0;
-  let y = 0;
-  let a = 0;
-  const angle = angleDeg * Math.PI / 180;
-  const stack = [];
-  const points = [{ x, y }];
-  for (const ch of sequence) {
-    if (ch === "F" || ch === "G") {
-      x += Math.cos(a);
-      y += Math.sin(a);
-      points.push({ x, y });
-    } else if (ch === "+") a += angle;
-    else if (ch === "-") a -= angle;
-    else if (ch === "[") stack.push([x, y, a]);
-    else if (ch === "]" && stack.length) {
-      [x, y, a] = stack.pop();
-      points.push({ x, y, move: true });
-    }
-  }
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const scale = Math.min((w - 28) / Math.max(1, maxX - minX), (h - 28) / Math.max(1, maxY - minY));
-  ctx.strokeStyle = "#00d4ff";
-  ctx.lineWidth = 1.35;
-  ctx.beginPath();
-  points.forEach((p, index) => {
-    const px = 14 + (p.x - minX) * scale;
-    const py = h - 14 - (p.y - minY) * scale;
-    if (index === 0 || p.move) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
-}
-
 function lirePropositionLSysteme() {
   return {
     axiom: document.getElementById("lsystem-axiom-input")?.value || "F",
     rules: document.getElementById("lsystem-rules-input")?.value || "F=F+F--F+F",
     angle: parseFloat(document.getElementById("lsystem-angle-input")?.value || "60"),
     generations: parseInt(document.getElementById("lsystem-generation-slider")?.value || "4", 10),
+    seed: document.getElementById("lsystem-seed-input")?.value || "1",
   };
 }
 
@@ -513,25 +468,18 @@ export function initialiserExploration({
 
   function updateLSystemProposal() {
     const proposition = lirePropositionLSysteme();
-    dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations);
+    dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
+    const description = decrireReglesLSysteme(proposition.rules);
     const readout = document.getElementById("lsystem-proposal-readout");
     if (readout) {
       const active = getParams().lsystemProposalActive ? "appliquée" : "locale";
-      readout.textContent = `Proposition ${active} · ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}° · non canonique`;
+      const stochastic = description.stochasticCount > 0 ? ` · ${description.stochasticCount} règle(s) stochastique(s), graine ${proposition.seed}` : "";
+      const diagnostic = description.diagnostics.length ? ` · ${description.diagnostics[0]}` : "";
+      readout.textContent = `Proposition ${active} · ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°${stochastic}${diagnostic} · non canonique`;
     }
     const stringPreview = document.getElementById("lsystem-string-preview");
     if (stringPreview) {
-      const rules = new Map();
-      proposition.rules.split(/\n|;/).forEach((line) => {
-        const [key, value] = line.split("=");
-        if (key && value) rules.set(key.trim()[0], value.trim());
-      });
-      let seq = proposition.axiom || "F";
-      for (let i = 0; i < clamp(proposition.generations, 0, 8); i++) {
-        let next = "";
-        for (const ch of seq) next += rules.get(ch) ?? ch;
-        seq = next.slice(0, 14000);
-      }
+      const { sequence: seq } = genererPropositionLSysteme(proposition, { limit: 14000 });
       const display = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles)` : seq + ` (${seq.length} symboles)`;
       stringPreview.textContent = display;
     }
@@ -763,8 +711,14 @@ export function initialiserExploration({
     updateHash();
   });
 
-  ["lsystem-generation-slider", "lsystem-angle-input", "lsystem-axiom-input", "lsystem-rules-input"].forEach((id) => {
+  ["lsystem-generation-slider", "lsystem-angle-input", "lsystem-axiom-input", "lsystem-rules-input", "lsystem-seed-input"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updateLSystemProposal);
+  });
+
+  document.getElementById("btn-lsystem-seed")?.addEventListener("click", () => {
+    const seedInput = document.getElementById("lsystem-seed-input");
+    if (seedInput) seedInput.value = String(Math.floor(Math.random() * 100000));
+    updateLSystemProposal();
   });
 
   document.getElementById("lsystem-preset-select")?.addEventListener("change", (event) => {
@@ -775,10 +729,12 @@ export function initialiserExploration({
     const rulesInput = document.getElementById("lsystem-rules-input");
     const angleInput = document.getElementById("lsystem-angle-input");
     const genSlider = document.getElementById("lsystem-generation-slider");
+    const seedInput = document.getElementById("lsystem-seed-input");
     if (axiomInput) axiomInput.value = preset.axiome;
     if (rulesInput) rulesInput.value = preset.regles;
     if (angleInput) angleInput.value = String(preset.angle);
     if (genSlider) genSlider.value = String(preset.gen);
+    if (seedInput) seedInput.value = String(preset.graine ?? 1);
     event.target.value = "";
     updateLSystemProposal();
   });
@@ -825,10 +781,12 @@ export function initialiserExploration({
       const rulesInput = document.getElementById("lsystem-rules-input");
       const angleInput = document.getElementById("lsystem-angle-input");
       const genSlider = document.getElementById("lsystem-generation-slider");
+      const seedInput = document.getElementById("lsystem-seed-input");
       if (axiomInput) axiomInput.value = item.axiom || "F";
       if (rulesInput) rulesInput.value = item.rules || "F=F+F--F+F";
       if (angleInput) angleInput.value = String(item.angle ?? 60);
       if (genSlider) genSlider.value = String(item.generations ?? 4);
+      if (seedInput) seedInput.value = String(item.seed ?? 1);
       updateLSystemProposal();
     }
     const deleteBtn = event.target.closest("[data-ls-delete]");
@@ -1061,10 +1019,12 @@ export function initialiserExploration({
     const lsystemAngle = document.getElementById("lsystem-angle-input");
     const lsystemAxiom = document.getElementById("lsystem-axiom-input");
     const lsystemRules = document.getElementById("lsystem-rules-input");
+    const lsystemSeed = document.getElementById("lsystem-seed-input");
     if (lsystemGeneration) lsystemGeneration.value = String(params.lsystemGenerations ?? 4);
     if (lsystemAngle) lsystemAngle.value = String(params.lsystemAngle ?? 60);
     if (lsystemAxiom) lsystemAxiom.value = params.lsystemAxiom || "F";
     if (lsystemRules) lsystemRules.value = params.lsystemRules || "F=F+F--F+F";
+    if (lsystemSeed) lsystemSeed.value = String(params.lsystemSeed ?? 1);
     const formuleIter = document.getElementById("formule-iteration-input");
     const formuleRadius = document.getElementById("formule-escape-radius-input");
     const formuleMode = document.getElementById("formule-mode-select");

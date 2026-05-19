@@ -8,6 +8,29 @@ déf min_koch(a, b):
         retour a
     retour b
 
+déf normaliser_graine_lsysteme(graine):
+    soit v = graine
+    si v < 0.0:
+        v = -v
+    retour (v % 2147483647.0) + 1.0
+
+déf hasard_lsysteme(graine):
+    soit v = normaliser_graine_lsysteme(graine)
+    v = (v * 48271.0) % 2147483647.0
+    retour v / 2147483647.0
+
+déf choisir_regle_ponderee_lsysteme(tirage, poids_a, poids_b, poids_c):
+    soit total = poids_a + poids_b + poids_c
+    si total <= 0.0:
+        retour 0.0
+    soit seuil_a = poids_a / total
+    si tirage < seuil_a:
+        retour 0.0
+    soit seuil_b = (poids_a + poids_b) / total
+    si tirage < seuil_b:
+        retour 1.0
+    retour 2.0
+
 déf koch_generer(iterations):
     soit etat = "F"
     soit i = 0

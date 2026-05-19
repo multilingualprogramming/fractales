@@ -78,7 +78,7 @@
     "exploration_modes": 7
   },
   "deeplink_format": {
-    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}",
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}",
     "parameters": {
       "f": "Fractal identifier (required)",
       "x": "Center X in complex plane (required)",
@@ -101,7 +101,8 @@
       "lg": "Applied L-system proposal generation count (optional)",
       "la": "Applied L-system proposal angle in degrees (optional)",
       "lax": "Applied L-system proposal axiom (optional)",
-      "lr": "Applied L-system proposal rewrite rules (optional)"
+      "lr": "Applied L-system proposal rewrite rules, including optional weighted stochastic alternatives (optional)",
+      "ls": "Applied L-system proposal deterministic seed (optional)"
     }
   },
   "source_access": {

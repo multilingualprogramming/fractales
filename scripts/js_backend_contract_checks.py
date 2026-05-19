@@ -18,7 +18,7 @@ SRC = ROOT / "src"
 
 
 FORMULA_FUNCTION_RE = re.compile(
-    r"^function\s+("
+    r"^(?:export\s+)?function\s+("
     r"(?:etape|projeter|generer|calculer|iteration)[A-Za-z0-9_]*"
     r"|[A-Za-z0-9_]*(?:Step|Generate|JS)"
     r")\s*\(",
@@ -101,7 +101,7 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "renderer.js:genererGosper": {"backend_refs": ["gosper_curve"]},
     "renderer.js:genererHilbert": {"backend_refs": ["hilbert_curve"]},
     "renderer.js:genererPeano": {"backend_refs": ["peano_curve"]},
-    "renderer.js:genererPropositionLSysteme": {
+    "renderer-lsystem.js:genererPropositionLSysteme": {
         "browser_only": "user-authored L-system preview, not a canonical fractal"
     },
     "renderer3d.js:genererTetraedre": {"backend_refs": ["tetraedre_etape", "tetraedre_sierpinski"]},

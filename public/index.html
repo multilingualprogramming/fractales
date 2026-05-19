@@ -300,6 +300,8 @@
                   <option value="peano">Courbe de Peano</option>
                   <option value="arbre_simple">Arbre simple</option>
                   <option value="arbre_touffu">Arbre touffu</option>
+                  <option value="plante_stochastique">Plante stochastique</option>
+                  <option value="corail_stochastique">Corail stochastique</option>
                   <option value="flocon_carre">Flocon carré</option>
                   <option value="cristal">Cristal</option>
                   <option value="pentigree">Pentigree</option>
@@ -319,9 +321,19 @@
                   <input id="lsystem-axiom-input" type="text" value="F" />
                 </label>
               </div>
+              <div class="exploration-grid-2">
+                <label class="exploration-field" for="lsystem-seed-input">
+                  <span>Graine</span>
+                  <input id="lsystem-seed-input" type="text" value="1" maxlength="40" />
+                </label>
+                <div class="exploration-field">
+                  <span>Variante</span>
+                  <button id="btn-lsystem-seed" class="btn btn-secondary" type="button">Nouvelle graine</button>
+                </div>
+              </div>
               <label class="exploration-field" for="lsystem-rules-input">
                 <span>Règles proposées</span>
-                <textarea id="lsystem-rules-input" rows="3">F=F+F--F+F</textarea>
+                <textarea id="lsystem-rules-input" rows="4">F=F+F--F+F</textarea>
               </label>
               <details class="lsystem-legend">
                 <summary>Symboles disponibles</summary>
@@ -332,6 +344,8 @@
                   <code>-</code><span>Tourner à droite</span>
                   <code>[</code><span>Empiler la position</span>
                   <code>]</code><span>Dépiler la position</span>
+                  <code>|</code><span>Séparer des productions stochastiques</span>
+                  <code>0.5:</code><span>Poids d'une production</span>
                   <code>X Y</code><span>Variables libres (non tracées)</span>
                 </div>
               </details>

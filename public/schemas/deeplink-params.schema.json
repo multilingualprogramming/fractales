@@ -118,7 +118,11 @@
     },
     "lr": {
       "type": "string",
-      "description": "Applied L-system proposal rewrite rules, separated by newlines or semicolons, e.g. F=F+F--F+F."
+      "description": "Applied L-system proposal rewrite rules, separated by newlines or semicolons, e.g. F=F+F--F+F. Stochastic alternatives may be weighted, e.g. F=0.5:FF|0.5:F[+F]."
+    },
+    "ls": {
+      "type": "string",
+      "description": "Applied L-system proposal deterministic seed."
     }
   },
   "examples": [

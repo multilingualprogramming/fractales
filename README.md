@@ -333,6 +333,7 @@ node --check public/js/renderer-navigation.js
 node --check public/js/renderer-source-panel.js
 node --check public/js/renderer-bookmarks.js
 node --check public/js/renderer-export.js
+node --check public/js/renderer-lsystem.js
 ```
 
 Pour tester explicitement une copie locale du depot `multilingual` au lieu de la
@@ -511,11 +512,13 @@ déployée comme en version réduite.
 - **Mode Abysses** : lecture de l'exposant de zoom, avertissement de précision et
   itérations automatiques optionnelles.
 - **Studio 3D** : presets de caméra et état de matière/brume pour les fractales WebGL.
-- **Atelier L-système** : aperçu local d'une proposition `axiome + règles + angle`,
-  puis bouton **Appliquer** pour rendre cette proposition dans la zone principale
-  et l'exporter via le pipeline L-système. Une proposition appliquée est encodée
-  dans l'URL mais n'est pas une fractale canonique tant qu'elle n'est pas ajoutée
-  dans `src/fractales_lsystem.multi` et les registres associés.
+- **Atelier L-système** : aperçu local d'une proposition
+  `axiome + règles + angle + graine`, avec règles déterministes ou stochastiques
+  pondérées (`F=0.5:FF|0.5:F[+F]`). Une même graine donne toujours le même tracé,
+  puis le bouton **Appliquer** rend cette proposition dans la zone principale et
+  l'exporte via le pipeline L-système. Une proposition appliquée est encodée dans
+  l'URL mais n'est pas une fractale canonique tant qu'elle n'est pas ajoutée dans
+  `src/fractales_lsystem.multi` et les registres associés.
 - **Météo mathématique** : grille/axes, contours et orbite capturée comme surcouches
   analytiques, encodées via `ov`.
 

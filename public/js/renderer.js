@@ -27,6 +27,9 @@ import {
 import {
   initialiserExploration,
 } from "./renderer-exploration.js?v=app";
+import {
+  pointsPropositionLSysteme,
+} from "./renderer-lsystem.js?v=app";
 
 const WASM_URL = "mandelbrot.wasm?v=app";
 
@@ -68,6 +71,7 @@ const params = {
   lsystemRules: "F=F+F--F+F",
   lsystemAngle: 60,
   lsystemGenerations: 4,
+  lsystemSeed: 1,
   formulePropositionActive: false,
   formuleIteration: "z*z+c",
   formuleEscapeRadius: 2,
@@ -1024,6 +1028,7 @@ function capturerVueCourante() {
     lsystemRules: params.lsystemRules,
     lsystemAngle: params.lsystemAngle,
     lsystemGenerations: params.lsystemGenerations,
+    lsystemSeed: params.lsystemSeed,
     formulePropositionActive: params.formulePropositionActive,
     formuleIteration: params.formuleIteration,
     formuleEscapeRadius: params.formuleEscapeRadius,
@@ -1086,6 +1091,7 @@ function clonerParamsExport(source = params) {
     lsystemRules: source.lsystemRules ?? params.lsystemRules,
     lsystemAngle: source.lsystemAngle ?? params.lsystemAngle,
     lsystemGenerations: source.lsystemGenerations ?? params.lsystemGenerations,
+    lsystemSeed: source.lsystemSeed ?? params.lsystemSeed,
   };
 }
 
@@ -1736,6 +1742,7 @@ function appliquerPropositionLSysteme(config) {
   params.lsystemRules = String(config.rules || "F=F+F--F+F").slice(0, 600);
   params.lsystemAngle = Math.max(1, Math.min(179, Number(config.angle) || 60));
   params.lsystemGenerations = Math.max(0, Math.min(8, Number(config.generations) | 0));
+  params.lsystemSeed = String(config.seed ?? params.lsystemSeed ?? 1).slice(0, 40);
   if (!LINE_FRACTALS.has(params.fractal)) {
     params.fractal = "koch";
     syncSelectors(params.fractal);
@@ -2117,65 +2124,13 @@ function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, 
   }
 }
 
-function parserReglesLSysteme(rulesText) {
-  const rules = new Map();
-  String(rulesText || "").split(/\n|;/).forEach((line) => {
-    const [key, value] = line.split("=");
-    const symbole = key?.trim()?.[0];
-    if (symbole && value !== undefined) rules.set(symbole, value.trim());
-  });
-  return rules;
-}
-
-function genererPropositionLSysteme(config) {
-  const rules = parserReglesLSysteme(config.rules);
-  let sequence = String(config.axiom || "F").slice(0, 96);
-  const generations = Math.max(0, Math.min(8, Number(config.generations) | 0));
-  for (let i = 0; i < generations; i++) {
-    let next = "";
-    for (const ch of sequence) next += rules.get(ch) ?? ch;
-    sequence = next.slice(0, 28000);
-  }
-  return sequence;
-}
-
-function pointsPropositionLSysteme(config) {
-  const sequence = genererPropositionLSysteme(config);
-  const angleStep = (Number(config.angle) || 60) * Math.PI / 180;
-  let x = 0.0;
-  let y = 0.0;
-  let angle = 0.0;
-  const stack = [];
-  const points = [{ x, y, move: true }];
-  for (const ch of sequence) {
-    if (ch === "F" || ch === "G") {
-      x += Math.cos(angle);
-      y += Math.sin(angle);
-      points.push({ x, y });
-    } else if (ch === "f") {
-      x += Math.cos(angle);
-      y += Math.sin(angle);
-      points.push({ x, y, move: true });
-    } else if (ch === "+") {
-      angle += angleStep;
-    } else if (ch === "-") {
-      angle -= angleStep;
-    } else if (ch === "[") {
-      stack.push([x, y, angle]);
-    } else if (ch === "]" && stack.length > 0) {
-      [x, y, angle] = stack.pop();
-      points.push({ x, y, move: true });
-    }
-  }
-  return points;
-}
-
 function dessinerPropositionLSystemeMonde(traceur, renduParams) {
-  const points = pointsPropositionLSysteme({
+  const { points } = pointsPropositionLSysteme({
     axiom: renduParams.lsystemAxiom,
     rules: renduParams.lsystemRules,
     angle: renduParams.lsystemAngle,
     generations: renduParams.lsystemGenerations,
+    seed: renduParams.lsystemSeed,
   });
   if (points.length < 2) return;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -3939,6 +3894,7 @@ async function appliquerSignet(signet) {
   params.lsystemRules = signet.lsystemRules ?? params.lsystemRules;
   params.lsystemAngle = signet.lsystemAngle ?? params.lsystemAngle;
   params.lsystemGenerations = signet.lsystemGenerations ?? params.lsystemGenerations;
+  params.lsystemSeed = signet.lsystemSeed ?? params.lsystemSeed;
   params.formulePropositionActive = signet.formulePropositionActive ?? params.formulePropositionActive;
   if (signet.formuleIteration !== undefined) params.formuleIteration = signet.formuleIteration;
   if (signet.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = signet.formuleEscapeRadius;
@@ -4101,6 +4057,7 @@ async function init() {
     params.lsystemRules = etatHash.lsystemRules ?? params.lsystemRules;
     params.lsystemAngle = etatHash.lsystemAngle ?? params.lsystemAngle;
     params.lsystemGenerations = etatHash.lsystemGenerations ?? params.lsystemGenerations;
+    params.lsystemSeed = etatHash.lsystemSeed ?? params.lsystemSeed;
     if (params.lsystemProposalActive && !LINE_FRACTALS.has(params.fractal)) params.fractal = "koch";
     params.formulePropositionActive = etatHash.formulePropositionActive ?? params.formulePropositionActive;
     if (etatHash.formuleIteration !== undefined) params.formuleIteration = etatHash.formuleIteration;

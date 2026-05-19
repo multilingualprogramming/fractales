@@ -162,9 +162,9 @@ EXPLORATION_MODES: list[dict] = [
     {
         "id": "lsysteme",
         "label": "Atelier L-système",
-        "description": "Local L-system proposal workbench with axiom/rule/angle/generation preview and an Apply action that renders the proposal through the line-fractal pipeline. Proposals are not official fractals until added to src/fractales_lsystem.multi.",
+        "description": "Local L-system proposal workbench with axiom/rule/angle/generation/seed preview, including deterministic weighted stochastic rules, and an Apply action that renders the proposal through the line-fractal pipeline. Proposals are not official fractals until added to src/fractales_lsystem.multi.",
         "applies_to_render_mode": "line",
-        "deeplink_fields": ["lp", "lg", "la", "lax", "lr"],
+        "deeplink_fields": ["lp", "lg", "la", "lax", "lr", "ls"],
         "canonical_status": "temporary_user_proposal",
     },
     {

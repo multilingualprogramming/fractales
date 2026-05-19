@@ -90,6 +90,7 @@ describe("share: encoderEtat", () => {
       lsystemAngle: 60,
       lsystemAxiom: "F",
       lsystemRules: "F=F+F--F+F",
+      lsystemSeed: "13",
     };
     const hash = encoderEtat(defaultView, params);
     assert.ok(hash.includes("cm=phase"), "coloring mode");
@@ -103,6 +104,7 @@ describe("share: encoderEtat", () => {
     assert.ok(hash.includes("lp=1"), "L-system proposal flag");
     assert.ok(hash.includes("lg=4"), "L-system generations");
     assert.ok(hash.includes("la=60"), "L-system angle");
+    assert.ok(hash.includes("ls=13"), "L-system seed");
     assert.ok(hash.includes("lax=F"), "L-system axiom");
     assert.ok(hash.includes("lr=F%3DF%2BF--F%2BF"), "L-system rules");
   });
@@ -181,7 +183,7 @@ describe("share: decoderEtat", () => {
   });
 
   test("parses advanced exploration mode state", () => {
-    const result = decoderEtat("#f=mandelbrot&x=0&y=0&ps=0.003&i=256&cm=contours&ph=0.2&pc=1&azi=1&q=extreme&mat=contours&fog=0.5&ov=grille,orbite&lp=1&lg=5&la=45&lax=FX&lr=F%3DFF");
+    const result = decoderEtat("#f=mandelbrot&x=0&y=0&ps=0.003&i=256&cm=contours&ph=0.2&pc=1&azi=1&q=extreme&mat=contours&fog=0.5&ov=grille,orbite&lp=1&lg=5&la=45&lax=FX&lr=F%3DFF&ls=plante-7");
     assert.equal(result.coloringMode, "contours");
     assert.equal(result.palettePhase, 0.2);
     assert.equal(result.paletteContours, true);
@@ -195,6 +197,7 @@ describe("share: decoderEtat", () => {
     assert.equal(result.lsystemAngle, 45);
     assert.equal(result.lsystemAxiom, "FX");
     assert.equal(result.lsystemRules, "F=FF");
+    assert.equal(result.lsystemSeed, "plante-7");
   });
 });
 

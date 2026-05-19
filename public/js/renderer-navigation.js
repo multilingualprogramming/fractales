@@ -53,6 +53,7 @@ export function encoderEtat(view, params) {
     p.set("la", String(params.lsystemAngle ?? 60));
     p.set("lax", params.lsystemAxiom ?? "F");
     p.set("lr", params.lsystemRules ?? "F=F+F--F+F");
+    p.set("ls", String(params.lsystemSeed ?? 1));
   }
   if (params.coordTransform && params.coordTransform !== "aucune") {
     p.set("ct", params.coordTransform);
@@ -106,6 +107,7 @@ export function decoderEtat(hash) {
     lsystemAngle: num("la"),
     lsystemAxiom: p.get("lax") ?? undefined,
     lsystemRules: p.get("lr") ?? undefined,
+    lsystemSeed: p.get("ls") ?? undefined,
     coordTransform: p.get("ct") ?? "aucune",
     mobiusPreset: p.get("mp") ?? "inversion_cercle",
     formulePropositionActive: p.get("fpa") === "1",

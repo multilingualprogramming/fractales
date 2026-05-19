@@ -552,6 +552,8 @@ const FRACTAL_FAMILIES = [
       ["hilbert_curve", "Courbe de Hilbert"],
       ["peano_curve", "Courbe de Peano"],
       ["arbre_pythagore", "Arbre de Pythagore"],
+      ["arbre_stochastique", "Arbre stochastique"],
+      ["plante_buisson", "Plante buisson"],
     ],
   },
   {
@@ -2120,6 +2122,8 @@ function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, 
       angle += rotation;
     } else if (c === "-") {
       angle -= rotation;
+    } else if (c === "|") {
+      angle += Math.PI;
     }
   }
 }
@@ -3755,6 +3759,8 @@ const FRACTAL_SOURCE_MAP = {
   hilbert_curve: "fractales_lsystem",
   peano_curve: "fractales_lsystem",
   arbre_pythagore: "fractales_lsystem",
+  arbre_stochastique: "fractales_lsystem",
+  plante_buisson: "fractales_lsystem",
   magnet1: "fractales_magnetiques",
   magnet2: "fractales_magnetiques",
   magnet3: "fractales_magnetiques",

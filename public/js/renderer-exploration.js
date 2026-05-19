@@ -735,7 +735,6 @@ export function initialiserExploration({
     if (angleInput) angleInput.value = String(preset.angle);
     if (genSlider) genSlider.value = String(preset.gen);
     if (seedInput) seedInput.value = String(preset.graine ?? 1);
-    event.target.value = "";
     updateLSystemProposal();
   });
 
@@ -818,7 +817,6 @@ export function initialiserExploration({
     if (fi) fi.value = preset.formule;
     if (fr) fr.value = String(preset.rayon);
     if (fm) fm.value = preset.mode;
-    event.target.value = "";
     updateFormuleProposal();
   });
 

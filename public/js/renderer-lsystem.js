@@ -109,6 +109,7 @@ export function pointsPropositionLSysteme(config, options = {}) {
   let x = 0.0;
   let y = 0.0;
   let angle = 0.0;
+  let angleSign = 1;
   const stack = [];
   const points = [{ x, y, move: true }];
   for (const ch of sequence) {
@@ -121,14 +122,18 @@ export function pointsPropositionLSysteme(config, options = {}) {
       y += Math.sin(angle);
       points.push({ x, y, move: true });
     } else if (ch === "+") {
-      angle += angleStep;
+      angle += angleStep * angleSign;
     } else if (ch === "-") {
-      angle -= angleStep;
+      angle -= angleStep * angleSign;
     } else if (ch === "[") {
-      stack.push([x, y, angle]);
+      stack.push([x, y, angle, angleSign]);
     } else if (ch === "]" && stack.length > 0) {
-      [x, y, angle] = stack.pop();
+      [x, y, angle, angleSign] = stack.pop();
       points.push({ x, y, move: true });
+    } else if (ch === "|") {
+      angle += Math.PI;
+    } else if (ch === "!") {
+      angleSign = -angleSign;
     }
   }
   return { points, sequence, diagnostics };

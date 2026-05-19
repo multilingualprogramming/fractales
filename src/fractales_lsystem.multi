@@ -511,3 +511,86 @@ déf peano_curve(cx, cy, max_iter):
     si dist < seuil:
         retour max_iter * 0.9
     retour max_iter * 0.9 - min_koch(dist / (seuil * 6.0), 0.9) * (max_iter * 0.8)
+
+déf hachage_pos(x, y, n):
+    soit v = abs_koch(x * 73.1 + y * 157.3 + n * 43.7)
+    soit a = v % 97.0
+    soit b = (a * 61.0 + 17.0) % 97.0
+    retour b / 97.0
+
+déf arbre_stochastique(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy + 1.0
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit nmax = min_koch(max_iter, 11.0)
+
+    tantque niveau < nmax:
+        soit d_tronc_x = abs_koch(x) - 0.16
+        soit d_tronc_y = abs_koch(y + 0.75) - 0.25
+        soit d_tronc = abs_koch(d_tronc_x) + abs_koch(d_tronc_y)
+        si d_tronc < dist:
+            dist = d_tronc
+
+        y = y - 0.52
+        soit ancien_x = x
+        soit ancien_y = y
+
+        soit h = hachage_pos(cx, cy, niveau)
+        soit decalage = 0.27 + h * 0.10
+
+        si x < 0.0:
+            x = (ancien_x + ancien_y) * 0.70710678118
+            y = (ancien_y - ancien_x) * 0.70710678118
+            x = x + decalage
+        sinon:
+            x = (ancien_x - ancien_y) * 0.70710678118
+            y = (ancien_x + ancien_y) * 0.70710678118
+            x = x - decalage
+        niveau = niveau + 1.0
+
+    soit seuil = 0.035
+    si dist < seuil:
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (seuil * 9.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score
+
+déf plante_buisson(cx, cy, max_iter):
+    soit x = cx
+    soit y = cy + 0.9
+    soit dist = abs_koch(x) + abs_koch(y)
+    soit niveau = 0.0
+    soit nmax = min_koch(max_iter, 10.0)
+
+    tantque niveau < nmax:
+        soit d_tige_x = abs_koch(x) - 0.13
+        soit d_tige_y = abs_koch(y + 0.45) - 0.45
+        soit d_tige = abs_koch(d_tige_x) + abs_koch(d_tige_y)
+        si d_tige < dist:
+            dist = d_tige
+
+        y = y - 0.46
+        soit ancien_x = x
+        soit ancien_y = y
+
+        soit h = hachage_pos(cx, cy, niveau)
+        si h < 0.35:
+            x = (ancien_x + ancien_y) * 0.70710678118 + 0.31
+            y = (ancien_y - ancien_x) * 0.70710678118
+        sinonsi h < 0.65:
+            x = ancien_x * 0.88
+            y = ancien_y * 0.88
+        sinon:
+            x = (ancien_x - ancien_y) * 0.70710678118 - 0.31
+            y = (ancien_x + ancien_y) * 0.70710678118
+        niveau = niveau + 1.0
+
+    soit seuil = 0.040
+    si dist < seuil:
+        retour max_iter * 0.9
+    soit score = max_iter * 0.9 - (dist / (seuil * 8.0)) * (max_iter * 0.9)
+    si score < 6.0:
+        retour 6.0
+    retour score

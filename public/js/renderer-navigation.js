@@ -64,6 +64,8 @@ export function encoderEtat(view, params) {
     p.set("ffi", params.formuleIteration ?? "z*z+c");
     p.set("ffe", String(params.formuleEscapeRadius ?? 2));
     p.set("ffm", params.formuleMode ?? "mandelbrot");
+    p.set("ffa", String(params.formuleParamA ?? 0));
+    p.set("ffb", String(params.formuleParamB ?? 0));
   }
   return "#" + p.toString();
 }
@@ -114,6 +116,8 @@ export function decoderEtat(hash) {
     formuleIteration: p.get("ffi") ?? undefined,
     formuleEscapeRadius: num("ffe"),
     formuleMode: p.get("ffm") ?? undefined,
+    formuleParamA: num("ffa"),
+    formuleParamB: num("ffb"),
   };
 
   if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;

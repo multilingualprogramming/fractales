@@ -22,7 +22,7 @@ soit SORTIE_WASM = DOSSIER_PUBLIC / "mandelbrot.wasm"
 soit TAILLE_BENCH_GRILLE = 200
 soit ITER_BENCH_MAX = 100
 soit SEPARATEUR = "=" * 62
-soit MODULES_WASM = ["fractales_escape", "fractales_dynamique", "fractales_variantes", "fractales_ifs", "fractales_lsystem", "fractales_magnetiques", "fractales_export", "fractales_navigation", "fractales_classes_compat", "fractales_lisse", "fractales_orbitrap"]
+soit MODULES_WASM = ["fractales_escape", "fractales_dynamique", "fractales_variantes", "fractales_ifs", "fractales_lsystem", "fractales_magnetiques", "fractales_export", "fractales_navigation", "fractales_classes_compat", "fractales_lisse", "fractales_orbitrap", "fractales_formule"]
 
 déf ajouter_depot_multilingual_au_chemin():
     soit chemin_dev = os.environ.get("MULTILINGUAL_DEV_PATH", "").strip()

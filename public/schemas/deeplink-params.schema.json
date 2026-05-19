@@ -123,6 +123,38 @@
     "ls": {
       "type": "string",
       "description": "Applied L-system proposal deterministic seed."
+    },
+    "fpa": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Set to 1 when an Atelier formule proposal is applied as the active temporary escape-time rendering."
+    },
+    "ffi": {
+      "type": "string",
+      "description": "Applied formula iteration expression, e.g. z^2+c+a*sin(z)."
+    },
+    "ffe": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Applied formula escape radius."
+    },
+    "ffm": {
+      "type": "string",
+      "enum": ["mandelbrot", "julia"],
+      "description": "Applied formula mode."
+    },
+    "ffa": {
+      "type": "number",
+      "minimum": -4,
+      "maximum": 4,
+      "description": "Applied formula numeric parameter a."
+    },
+    "ffb": {
+      "type": "number",
+      "minimum": -4,
+      "maximum": 4,
+      "description": "Applied formula numeric parameter b."
     }
   },
   "examples": [

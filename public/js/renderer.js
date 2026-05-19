@@ -30,6 +30,9 @@ import {
 import {
   pointsPropositionLSysteme,
 } from "./renderer-lsystem.js?v=app";
+import {
+  compilerFormule,
+} from "./renderer-formule.js?v=app";
 
 const WASM_URL = "mandelbrot.wasm?v=app";
 
@@ -76,6 +79,8 @@ const params = {
   formuleIteration: "z*z+c",
   formuleEscapeRadius: 2,
   formuleMode: "mandelbrot",
+  formuleParamA: 0.0,
+  formuleParamB: 0.0,
   coordTransform: "aucune",
   mobiusPreset: "inversion_cercle",
 };
@@ -1035,6 +1040,8 @@ function capturerVueCourante() {
     formuleIteration: params.formuleIteration,
     formuleEscapeRadius: params.formuleEscapeRadius,
     formuleMode: params.formuleMode,
+    formuleParamA: params.formuleParamA,
+    formuleParamB: params.formuleParamB,
   };
   if (fractaleActiveEst3D()) {
     return {
@@ -1094,6 +1101,12 @@ function clonerParamsExport(source = params) {
     lsystemAngle: source.lsystemAngle ?? params.lsystemAngle,
     lsystemGenerations: source.lsystemGenerations ?? params.lsystemGenerations,
     lsystemSeed: source.lsystemSeed ?? params.lsystemSeed,
+    formulePropositionActive: source.formulePropositionActive ?? params.formulePropositionActive,
+    formuleIteration: source.formuleIteration ?? params.formuleIteration,
+    formuleEscapeRadius: source.formuleEscapeRadius ?? params.formuleEscapeRadius,
+    formuleMode: source.formuleMode ?? params.formuleMode,
+    formuleParamA: source.formuleParamA ?? params.formuleParamA,
+    formuleParamB: source.formuleParamB ?? params.formuleParamB,
   };
 }
 
@@ -1774,51 +1787,6 @@ function effacerPropositionLSysteme() {
 // FORMULE D'ITÉRATION PERSONNALISÉE
 // ============================================================
 
-// Compile "z^2+c" → fonction JS rapide via new Function().
-// Variables : z (itéré), c (paramètre), i (unité imaginaire).
-// Fonctions : sin cos abs conj exp log pow.
-function compilerFormule(s) {
-  const raw = s.match(/\d+\.?\d*|[a-z]+|[+\-*/^()]/gi) ?? [];
-  const tok = [];
-  raw.forEach((v, j) => {
-    tok.push(v);
-    const n = raw[j + 1];
-    if (n && (/\d$/.test(v) || v === ")") && (n === "(" || /^[a-z]/.test(n))) tok.push("*");
-  });
-  let i = 0;
-  const p = () => tok[i], nx = () => tok[i++];
-  function E() { let a=T(); while(p()==="+"||p()==="-"){const o=nx();a=o==="+"?`A(${a},${T()})`:`S(${a},${T()})`;} return a; }
-  function T() { let a=W(); while(p()==="*"||p()==="/"){const o=nx();a=o==="*"?`M(${a},${W()})`:`D(${a},${W()})`;} return a; }
-  function W() { const b=U(); return p()==="^"?(nx(),`P(${b},${W()})`):b; }
-  function U() { return p()==="-"?(nx(),`N(${B()})`):B(); }
-  function B() {
-    const v = p(); if (!v) return "[0,0]";
-    if (v === "(") { nx(); const r=E(); p()===")"&&nx(); return r; }
-    if (/^[a-z]/i.test(v)) {
-      nx();
-      if (p() === "(") { nx(); const a=E(); p()===")"&&nx(); return `${v}(${a})`; }
-      if (v==="z") return "[zr,zi]"; if (v==="c") return "[cr,ci]";
-      if (v==="i") return "[0,1]"; if (v==="e") return `[${Math.E},0]`; if (v==="pi") return `[${Math.PI},0]`;
-      return "[0,0]";
-    }
-    if (/\d/.test(v)) { nx(); return `[${v},0]`; }
-    nx(); return "[0,0]";
-  }
-  let expr; try { expr = E(); } catch (err) { return { fn: null, error: err.message }; }
-  const h = "function exp(a){const e=Math.exp(a[0]);return[e*Math.cos(a[1]),e*Math.sin(a[1])];}"
-    + "function log(a){return[Math.log(Math.hypot(a[0],a[1])||1e-30),Math.atan2(a[1],a[0])];}"
-    + "function A(a,b){return[a[0]+b[0],a[1]+b[1]];} function S(a,b){return[a[0]-b[0],a[1]-b[1]];}"
-    + "function M(a,b){return[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}"
-    + "function D(a,b){const d=b[0]*b[0]+b[1]*b[1];return d<1e-30?[0,0]:[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];}"
-    + "function N(a){return[-a[0],-a[1]];}"
-    + "function P(a,b){if(!b[1]&&Number.isInteger(b[0])&&b[0]>=0){let r=1,m=0,x=a[0],y=a[1],n=b[0];while(n>0){if(n&1){const t=r*x-m*y;m=r*y+m*x;r=t;}const t=x*x-y*y;y=2*x*y;x=t;n>>=1;}return[r,m];}return exp(M(b,log(a)));}"
-    + "function sin(a){return[Math.sin(a[0])*Math.cosh(a[1]),Math.cos(a[0])*Math.sinh(a[1])];}"
-    + "function cos(a){return[Math.cos(a[0])*Math.cosh(a[1]),-Math.sin(a[0])*Math.sinh(a[1])];}"
-    + "function abs(a){return[Math.hypot(a[0],a[1]),0];} function conj(a){return[a[0],-a[1]];}";
-  try { const fn=new Function("zr","zi","cr","ci",h+"return "+expr); fn(0,0,0,0); return{fn}; }
-  catch (err) { return { fn: null, error: err.message }; }
-}
-
 function appliquerFormuleProposition(config) {
   const formuleTxt = String(config.formule || "z*z+c").slice(0, 200);
   const compiled = compilerFormule(formuleTxt);
@@ -1831,6 +1799,8 @@ function appliquerFormuleProposition(config) {
   params.formuleIteration = formuleTxt;
   params.formuleEscapeRadius = Math.max(1, Math.min(100, Number(config.rayon) || 2));
   params.formuleMode = config.mode === "julia" ? "julia" : "mandelbrot";
+  params.formuleParamA = Math.max(-4, Math.min(4, Number(config.paramA) || 0));
+  params.formuleParamB = Math.max(-4, Math.min(4, Number(config.paramB) || 0));
   if (POINT_FRACTALS.has(params.fractal) || LINE_FRACTALS.has(params.fractal)) {
     params.fractal = "mandelbrot";
     syncSelectors(params.fractal);
@@ -1844,7 +1814,7 @@ function appliquerFormuleProposition(config) {
   explorationModes?.syncFromParams();
   render();
   mettreAJourHash(view, params);
-  updateStatusBar(`Formule appliquée : ${formuleTxt}`, true);
+  updateStatusBar(`Formule appliquée : ${formuleTxt} · a=${params.formuleParamA.toFixed(2)} · b=${params.formuleParamB.toFixed(2)}`, true);
 }
 
 function effacerFormuleProposition() {
@@ -2743,7 +2713,7 @@ async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
   if (renduParams.formulePropositionActive && formuleFnCompilee) {
     const modeJulia = renduParams.formuleMode === "julia";
     const R2 = (renduParams.formuleEscapeRadius || 2) ** 2;
-    const fFn = formuleFnCompilee;
+    const fFn = compilerFormule(renduParams.formuleIteration || params.formuleIteration).fn ?? formuleFnCompilee;
     const cx0f = vueCible.centerX - (w / 2) * vueCible.pixelSize;
     const cy0f = vueCible.centerY - (h / 2) * vueCible.pixelSize;
     const psf = vueCible.pixelSize;
@@ -2755,7 +2725,7 @@ async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
         const cr = modeJulia ? renduParams.juliaCre : qx, ci = modeJulia ? renduParams.juliaCim : qy;
         let iter = renduParams.maxIter;
         for (let n = 0; n < renduParams.maxIter; n++) {
-          const r = fFn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+          const r = fFn(zr, zi, cr, ci, renduParams.formuleParamA || 0, renduParams.formuleParamB || 0); zr = r[0]; zi = r[1];
           if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
         }
         const c = getColor(iter, renduParams.maxIter, renduParams);
@@ -3076,7 +3046,7 @@ function render() {
           const cr = modeJulia ? params.juliaCre : qx, ci = modeJulia ? params.juliaCim : qy;
           let iter = max;
           for (let n = 0; n < max; n++) {
-            const r = fFn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+            const r = fFn(zr, zi, cr, ci, params.formuleParamA || 0, params.formuleParamB || 0); zr = r[0]; zi = r[1];
             if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
           }
           const couleur = getColor(iter, max, pal);
@@ -3905,6 +3875,8 @@ async function appliquerSignet(signet) {
   if (signet.formuleIteration !== undefined) params.formuleIteration = signet.formuleIteration;
   if (signet.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = signet.formuleEscapeRadius;
   if (signet.formuleMode !== undefined) params.formuleMode = signet.formuleMode;
+  if (signet.formuleParamA !== undefined) params.formuleParamA = signet.formuleParamA;
+  if (signet.formuleParamB !== undefined) params.formuleParamB = signet.formuleParamB;
   if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
   params.palette = signet.palette;
   params.paletteBackground = signet.paletteBackground;
@@ -4021,7 +3993,6 @@ explorationModes = initialiserExploration({
     clearLSystemProposal: effacerPropositionLSysteme,
     applyFormuleProposal: appliquerFormuleProposition,
     clearFormuleProposal: effacerFormuleProposition,
-    compilerFormule,
     lineFractals: LINE_FRACTALS,
   },
 });
@@ -4069,6 +4040,8 @@ async function init() {
     if (etatHash.formuleIteration !== undefined) params.formuleIteration = etatHash.formuleIteration;
     if (etatHash.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = etatHash.formuleEscapeRadius;
     if (etatHash.formuleMode !== undefined) params.formuleMode = etatHash.formuleMode;
+    if (etatHash.formuleParamA !== undefined) params.formuleParamA = etatHash.formuleParamA;
+    if (etatHash.formuleParamB !== undefined) params.formuleParamB = etatHash.formuleParamB;
     if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
   }
 

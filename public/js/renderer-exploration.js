@@ -5,6 +5,9 @@ import {
   dessinerPropositionLSysteme,
   genererPropositionLSysteme,
 } from "./renderer-lsystem.js?v=app";
+import {
+  compilerFormule,
+} from "./renderer-formule.js?v=app";
 
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
@@ -19,13 +22,18 @@ const TITRES_MODES = {
 };
 
 const FORMULE_PRESETS = {
-  mandelbrot: { formule: "z*z+c",            rayon: 2,  mode: "mandelbrot" },
-  julia:      { formule: "z*z+c",            rayon: 2,  mode: "julia"      },
-  cubique:    { formule: "z^3+c",            rayon: 2,  mode: "mandelbrot" },
-  sinus:      { formule: "sin(z)+c",         rayon: 2,  mode: "mandelbrot" },
-  cosinus:    { formule: "cos(z)+c",         rayon: 4,  mode: "mandelbrot" },
-  biomorphe:  { formule: "z^2+z/c",          rayon: 4,  mode: "mandelbrot" },
-  tricorne:   { formule: "conj(z)*conj(z)+c", rayon: 2, mode: "mandelbrot" },
+  mandelbrot: { formule: "z*z+c",              rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
+  julia:      { formule: "z*z+c",              rayon: 2,  mode: "julia",      a: 0,    b: 0    },
+  cubique:    { formule: "z^3+c",              rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
+  sinus:      { formule: "sin(z)+c",           rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
+  cosinus:    { formule: "cos(z)+c",           rayon: 4,  mode: "mandelbrot", a: 0,    b: 0    },
+  biomorphe:  { formule: "z^2+z/c",            rayon: 4,  mode: "mandelbrot", a: 0,    b: 0    },
+  tricorne:   { formule: "conj(z)^2+c",        rayon: 2,  mode: "mandelbrot", a: 0,    b: 0    },
+  perturbe:   { formule: "z^2+c+a*sin(z)",     rayon: 3,  mode: "mandelbrot", a: 0.25, b: 0    },
+  rationnel:  { formule: "z^2+c+a/(z^2+b)",    rayon: 8,  mode: "mandelbrot", a: 0.2,  b: 0.4  },
+  exponentiel:{ formule: "exp(z)+c-a",         rayon: 12, mode: "mandelbrot", a: 1,    b: 0    },
+  tangente:   { formule: "tan(z)+c*a",         rayon: 8,  mode: "mandelbrot", a: 0.6,  b: 0    },
+  norme:      { formule: "z^2+c-a*norm(z)",    rayon: 6,  mode: "mandelbrot", a: 0.08, b: 0    },
 };
 
 const STORAGE_FORMULE_SAVES = "fractales_formule_sauvegardes";
@@ -256,7 +264,6 @@ export function initialiserExploration({
     clearLSystemProposal,
     applyFormuleProposal,
     clearFormuleProposal,
-    compilerFormule,
     lineFractals,
   } = dependencies;
 
@@ -523,11 +530,13 @@ export function initialiserExploration({
     remplirListeSauvegardes(list, items, "ls");
   }
 
-  function lirePropositionFormule() {
+function lirePropositionFormule() {
     return {
       formule: document.getElementById("formule-iteration-input")?.value.trim() || "z*z+c",
       rayon: parseFloat(document.getElementById("formule-escape-radius-input")?.value || "2"),
       mode: document.getElementById("formule-mode-select")?.value || "mandelbrot",
+      paramA: parseFloat(document.getElementById("formule-param-a-input")?.value || "0"),
+      paramB: parseFloat(document.getElementById("formule-param-b-input")?.value || "0"),
     };
   }
 
@@ -556,7 +565,7 @@ export function initialiserExploration({
         const cr = prop.mode === "julia" ? params.juliaCre : qx, ci = prop.mode === "julia" ? params.juliaCim : qy;
         let iter = maxIt;
         for (let n = 0; n < maxIt; n++) {
-          const r = fn(zr, zi, cr, ci); zr = r[0]; zi = r[1];
+          const r = fn(zr, zi, cr, ci, prop.paramA, prop.paramB); zr = r[0]; zi = r[1];
           if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
         }
         const c = getPaletteColor(iter, maxIt, params);
@@ -568,7 +577,7 @@ export function initialiserExploration({
     const readout = document.getElementById("formule-proposal-readout");
     if (readout) {
       const active = getParams().formulePropositionActive ? "appliquée" : "locale";
-      readout.textContent = `Proposition ${active} · ${prop.formule} · rayon ${prop.rayon} · mode ${prop.mode}`;
+      readout.textContent = `Proposition ${active} · ${prop.formule} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode}`;
     }
   }
 
@@ -804,7 +813,7 @@ export function initialiserExploration({
 
   // ── Atelier formule ──────────────────────────────────────────
 
-  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select"].forEach((id) => {
+  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select", "formule-param-a-input", "formule-param-b-input"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updateFormuleProposal);
   });
 
@@ -814,9 +823,13 @@ export function initialiserExploration({
     const fi = document.getElementById("formule-iteration-input");
     const fr = document.getElementById("formule-escape-radius-input");
     const fm = document.getElementById("formule-mode-select");
+    const fa = document.getElementById("formule-param-a-input");
+    const fb = document.getElementById("formule-param-b-input");
     if (fi) fi.value = preset.formule;
     if (fr) fr.value = String(preset.rayon);
     if (fm) fm.value = preset.mode;
+    if (fa) fa.value = String(preset.a ?? 0);
+    if (fb) fb.value = String(preset.b ?? 0);
     updateFormuleProposal();
   });
 
@@ -861,9 +874,13 @@ export function initialiserExploration({
       const fi = document.getElementById("formule-iteration-input");
       const fr = document.getElementById("formule-escape-radius-input");
       const fm = document.getElementById("formule-mode-select");
+      const fa = document.getElementById("formule-param-a-input");
+      const fb = document.getElementById("formule-param-b-input");
       if (fi) fi.value = item.formule || "z*z+c";
       if (fr) fr.value = String(item.rayon ?? 2);
       if (fm) fm.value = item.mode || "mandelbrot";
+      if (fa) fa.value = String(item.paramA ?? 0);
+      if (fb) fb.value = String(item.paramB ?? 0);
       updateFormuleProposal();
     }
     const deleteBtn = event.target.closest("[data-ff-delete]");
@@ -1026,9 +1043,13 @@ export function initialiserExploration({
     const formuleIter = document.getElementById("formule-iteration-input");
     const formuleRadius = document.getElementById("formule-escape-radius-input");
     const formuleMode = document.getElementById("formule-mode-select");
+    const formuleParamA = document.getElementById("formule-param-a-input");
+    const formuleParamB = document.getElementById("formule-param-b-input");
     if (formuleIter) formuleIter.value = params.formuleIteration || "z*z+c";
     if (formuleRadius) formuleRadius.value = String(params.formuleEscapeRadius ?? 2);
     if (formuleMode) formuleMode.value = params.formuleMode || "mandelbrot";
+    if (formuleParamA) formuleParamA.value = String(params.formuleParamA ?? 0);
+    if (formuleParamB) formuleParamB.value = String(params.formuleParamB ?? 0);
     const overlays = activeWeather();
     document.querySelectorAll(".weather-toggle").forEach((input) => {
       input.checked = overlays.has(input.value);

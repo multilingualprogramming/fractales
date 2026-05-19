@@ -26,7 +26,7 @@
           "request": {},
           "response_shape": {
             "schema": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
-            "total": 71,
+                        "total": 73,
             "fractals": [{"id": "mandelbrot", "label": "Mandelbrot", "...": "..."}]
           }
         }
@@ -90,7 +90,7 @@
           "request": {},
           "response_shape": {
             "total_families": 8,
-            "total_fractals": 71,
+                        "total_fractals": 73,
             "families": [
               {"id": "evasion", "label": "Évasion", "count": 15, "fractal_ids": ["mandelbrot", "julia", "..."]}
             ]
@@ -217,13 +217,24 @@
               "rules": {"type": "string"},
               "seed": {"type": "string"}
             }
+          },
+          "formulaProposal": {
+            "type": "object",
+            "description": "Optional applied Atelier formula proposal. Encoded as fpa/ffi/ffe/ffm/ffa/ffb and rendered temporarily through the scalar escape-time pipeline without adding an official catalogue fractal.",
+            "properties": {
+              "iteration": {"type": "string"},
+              "escapeRadius": {"type": "number", "minimum": 1, "maximum": 100},
+              "mode": {"type": "string", "enum": ["mandelbrot", "julia"]},
+              "a": {"type": "number", "minimum": -4, "maximum": 4},
+              "b": {"type": "number", "minimum": -4, "maximum": 4}
+            }
           }
         },
         "required": ["fractal", "centerX", "centerY", "pixelSize"]
       },
       "endpoint": {
         "method": "NONE",
-        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}&ls={lsystemProposal.seed}",
+        "url_template": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaCre}&ji={juliaCim}&cm={coloringMode}&ph={palettePhase}&ov={weatherOverlays}&lp=1&lg={lsystemProposal.generations}&la={lsystemProposal.angle}&lax={lsystemProposal.axiom}&lr={lsystemProposal.rules}&ls={lsystemProposal.seed}&fpa=1&ffi={formulaProposal.iteration}&ffe={formulaProposal.escapeRadius}&ffm={formulaProposal.mode}&ffa={formulaProposal.a}&ffb={formulaProposal.b}",
         "note": "Assemble directly from parameters — no HTTP request required"
       },
       "examples": [
@@ -363,7 +374,7 @@
     },
     {
       "name": "list_exploration_modes",
-      "description": "Return the advanced non-AI exploration modes exposed by the viewer: parameter maps, journey keyframes, palette physics, deep zoom, 3D studio controls, L-system proposal workbench, and mathematical weather overlays. Includes the URL hash fields used to preserve mode state in shareable links.",
+      "description": "Return the advanced non-AI exploration modes exposed by the viewer: parameter maps, journey keyframes, palette physics, deep zoom, 3D studio controls, L-system proposal workbench, formula workbench, and mathematical weather overlays. Includes the URL hash fields used to preserve mode state in shareable links.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -378,7 +389,7 @@
           "description": "List advanced exploration modes",
           "request": {},
           "response_shape": {
-            "total": 7,
+                        "total": 8,
             "modes": [
               {"id": "parametres", "label": "Carte des paramètres", "deeplink_fields": ["jr", "ji"]},
               {"id": "meteo", "label": "Météo mathématique", "deeplink_fields": ["ov"]}

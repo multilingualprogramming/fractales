@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "name": "Fractales",
-  "tagline": "Multilingual WebAssembly fractal explorer — 71 fractals, static GitHub Pages, FAIR open knowledge",
-  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 71 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
+  "tagline": "Multilingual WebAssembly fractal explorer — 73 fractals, static GitHub Pages, FAIR open knowledge",
+  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 73 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
   "base_url": "https://multilingualprogramming.github.io/fractales",
   "viewer_url": "https://multilingualprogramming.github.io/fractales/",
   "repository": "https://github.com/multilingualprogramming/fractales",
@@ -70,15 +70,15 @@
     }
   },
   "fractal_stats": {
-    "total": 71,
+    "total": 73,
     "families": 8,
     "render_modes": ["escape_time", "point_cloud", "line", "webgl_3d"],
     "palettes": 9
     ,
-    "exploration_modes": 7
+        "exploration_modes": 8
   },
   "deeplink_format": {
-    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}",
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}&fpa={formulaProposalActive}",
     "parameters": {
       "f": "Fractal identifier (required)",
       "x": "Center X in complex plane (required)",
@@ -102,7 +102,13 @@
       "la": "Applied L-system proposal angle in degrees (optional)",
       "lax": "Applied L-system proposal axiom (optional)",
       "lr": "Applied L-system proposal rewrite rules, including optional weighted stochastic alternatives (optional)",
-      "ls": "Applied L-system proposal deterministic seed (optional)"
+      "ls": "Applied L-system proposal deterministic seed (optional)",
+      "fpa": "Applied Atelier formula proposal flag, 1 when enabled (optional)",
+      "ffi": "Applied formula iteration expression (optional)",
+      "ffe": "Applied formula escape radius (optional)",
+      "ffm": "Applied formula mode: mandelbrot or julia (optional)",
+      "ffa": "Applied formula numeric parameter a (optional)",
+      "ffb": "Applied formula numeric parameter b (optional)"
     }
   },
   "source_access": {
@@ -117,10 +123,11 @@
       "fractales_lsystem",
       "fractales_magnetiques",
       "fractales_lisse",
-      "fractales_orbitrap",
-      "fractales_export",
-      "fractales_navigation"
-    ]
+            "fractales_orbitrap",
+            "fractales_export",
+            "fractales_navigation",
+            "fractales_formule"
+        ]
   },
   "agent_guidance": {
     "recommended_workflow": "1. Fetch /api/families.json to understand available categories. 2. Fetch /api/families/{id}.json or /api/fractals.json to find a specific fractal. 3. Call construct_deeplink to generate a viewer URL. 4. Optionally fetch the source code at the module URL.",

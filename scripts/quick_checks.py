@@ -19,9 +19,11 @@ COMMANDS = [
     ["node", "--check", "public/js/renderer-export.js"],
     ["node", "--check", "public/js/renderer-exploration.js"],
     ["node", "--check", "public/js/renderer-lsystem.js"],
+    ["node", "--check", "public/js/renderer-formule.js"],
     ["node", "--check", "public/js/renderer3d.js"],
     ["node", "--test", "tests/navigation.test.js"],
     ["node", "--test", "tests/lsystem.test.js"],
+    ["node", "--test", "tests/formule.test.js"],
     [sys.executable, "scripts/js_backend_contract_checks.py"],
     [sys.executable, "scripts/ui_smoke_checks.py"],
 ]

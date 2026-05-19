@@ -381,6 +381,11 @@
                   <option value="cosinus">cos(z)+c</option>
                   <option value="biomorphe">z²+z/c (Biomorphe)</option>
                   <option value="tricorne">conj(z)²+c (Tricorne)</option>
+                  <option value="perturbe">z²+c+a·sin(z)</option>
+                  <option value="rationnel">Rationnelle paramétrée</option>
+                  <option value="exponentiel">exp(z)+c−a</option>
+                  <option value="tangente">tan(z)+a·c</option>
+                  <option value="norme">Norme perturbée</option>
                 </select>
               </label>
               <label class="exploration-field" for="formule-mode-select">Mode
@@ -395,15 +400,25 @@
               <label class="exploration-field" for="formule-escape-radius-input">Rayon d'évasion
                 <input id="formule-escape-radius-input" type="number" min="1" max="100" step="0.5" value="2" />
               </label>
+              <div class="exploration-grid-2">
+                <label class="exploration-field" for="formule-param-a-input">Paramètre a
+                  <input id="formule-param-a-input" type="range" min="-4" max="4" step="0.01" value="0" />
+                </label>
+                <label class="exploration-field" for="formule-param-b-input">Paramètre b
+                  <input id="formule-param-b-input" type="range" min="-4" max="4" step="0.01" value="0" />
+                </label>
+              </div>
               <details class="lsystem-legend">
                 <summary>Opérateurs et fonctions</summary>
                 <div class="lsystem-legend-grid">
                   <span><code>z</code> variable</span><span><code>c</code> paramètre</span>
+                  <span><code>a b</code> curseurs</span><span><code>pi</code> constante</span>
                   <span><code>i</code> imaginaire</span><span><code>e</code> Euler</span>
                   <span><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>^</code> ops</span>
-                  <span><code>sin</code> <code>cos</code> complexes</span>
+                  <span><code>sin</code> <code>cos</code> <code>tan</code></span>
                   <span><code>abs</code> module</span><span><code>conj</code> conjugué</span>
                   <span><code>exp</code> exponentielle</span><span><code>log</code> logarithme</span>
+                  <span><code>re</code> <code>im</code></span><span><code>norm</code> <code>arg</code></span>
                 </div>
               </details>
               <canvas id="formule-proposal-canvas" width="200" height="130"

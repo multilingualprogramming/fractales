@@ -94,6 +94,62 @@ déf formule_abs_re(x, y):
         r = (g + r2 / g) / 2.0
     retour r
 
+déf formule_norme(x, y):
+    retour x * x + y * y
+
+déf formule_conj_re(x, y):
+    retour x
+
+déf formule_conj_im(x, y):
+    retour -y
+
+déf formule_exp_re(x, y):
+    soit ex = 2.718281828459045 ^ x
+    retour ex * cosinus_formule(y)
+
+déf formule_exp_im(x, y):
+    soit ex = 2.718281828459045 ^ x
+    retour ex * sinus_formule(y)
+
+déf log_formule(x):
+    si x <= 0.0:
+        retour -69.0
+    soit k = 0.0
+    soit y = x
+    tantque y > 2.0:
+        y = y / 2.0
+        k = k + 1.0
+    tantque y < 1.0:
+        y = y * 2.0
+        k = k - 1.0
+    soit u = (y - 1.0) / (y + 1.0)
+    soit u2 = u * u
+    soit serie = u * (1.0 + u2 / 3.0 + (u2 * u2) / 5.0 + (u2 * u2 * u2) / 7.0)
+    retour 2.0 * serie + k * 0.6931471805599453
+
+déf formule_log_re(x, y):
+    retour log_formule(formule_abs_re(x, y))
+
+déf formule_arg(x, y):
+    si x == 0.0:
+        si y > 0.0:
+            retour 1.5707963267948966
+        si y < 0.0:
+            retour -1.5707963267948966
+        retour 0.0
+    soit r = y / x
+    soit r2 = r * r
+    soit a = r * (1.0 - r2 / 3.0 + (r2 * r2) / 5.0)
+    si x < 0.0:
+        si y >= 0.0:
+            a = a + 3.141592653589793
+        sinon:
+            a = a - 3.141592653589793
+    retour a
+
+déf formule_log_im(x, y):
+    retour formule_arg(x, y)
+
 # ---------- Sinus complexe : sin(x+iy) = sin(x)cosh(y) + i·cos(x)sinh(y) ----------
 
 déf formule_sin_re(x, y):
@@ -117,6 +173,20 @@ déf formule_cos_im(x, y):
     soit ey = 2.718281828459045 ^ y
     soit sinh_y = (ey - 1.0 / ey) / 2.0
     retour -sinus_formule(x) * sinh_y
+
+déf formule_tan_re(x, y):
+    soit sr = formule_sin_re(x, y)
+    soit sim = formule_sin_im(x, y)
+    soit cr = formule_cos_re(x, y)
+    soit ci = formule_cos_im(x, y)
+    retour formule_div_re(sr, sim, cr, ci)
+
+déf formule_tan_im(x, y):
+    soit sr = formule_sin_re(x, y)
+    soit sim = formule_sin_im(x, y)
+    soit cr = formule_cos_re(x, y)
+    soit ci = formule_cos_im(x, y)
+    retour formule_div_im(sr, sim, cr, ci)
 
 # ---------- Preréglages compilés en WASM ----------
 # Ces fonctions correspondent aux preréglages de l'Atelier formule.

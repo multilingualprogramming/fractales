@@ -168,6 +168,14 @@ EXPLORATION_MODES: list[dict] = [
         "canonical_status": "temporary_user_proposal",
     },
     {
+        "id": "formule",
+        "label": "Atelier formule",
+        "description": "Local complex-iteration formula workbench with strict parser diagnostics, a/b numeric parameters, richer complex functions, preview, share links, and temporary rendering through the scalar escape-time pipeline. Proposals are not official fractals until promoted to src/*.multi and the registries.",
+        "applies_to_render_mode": "escape_time",
+        "deeplink_fields": ["fpa", "ffi", "ffe", "ffm", "ffa", "ffb"],
+        "canonical_status": "temporary_user_proposal",
+    },
+    {
         "id": "meteo",
         "label": "Météo mathématique",
         "description": "Composable mathematical overlays: grid/axes, iteration contours, and captured orbit path.",

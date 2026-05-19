@@ -91,6 +91,12 @@ describe("share: encoderEtat", () => {
       lsystemAxiom: "F",
       lsystemRules: "F=F+F--F+F",
       lsystemSeed: "13",
+      formulePropositionActive: true,
+      formuleIteration: "z^2+c+a*sin(z)",
+      formuleEscapeRadius: 3,
+      formuleMode: "mandelbrot",
+      formuleParamA: 0.25,
+      formuleParamB: -0.5,
     };
     const hash = encoderEtat(defaultView, params);
     assert.ok(hash.includes("cm=phase"), "coloring mode");
@@ -107,6 +113,12 @@ describe("share: encoderEtat", () => {
     assert.ok(hash.includes("ls=13"), "L-system seed");
     assert.ok(hash.includes("lax=F"), "L-system axiom");
     assert.ok(hash.includes("lr=F%3DF%2BF--F%2BF"), "L-system rules");
+    assert.ok(hash.includes("fpa=1"), "formula proposal flag");
+    assert.ok(hash.includes("ffi=z%5E2%2Bc%2Ba*sin%28z%29"), "formula expression");
+    assert.ok(hash.includes("ffe=3"), "formula radius");
+    assert.ok(hash.includes("ffm=mandelbrot"), "formula mode");
+    assert.ok(hash.includes("ffa=0.25"), "formula parameter a");
+    assert.ok(hash.includes("ffb=-0.5"), "formula parameter b");
   });
 });
 
@@ -183,7 +195,7 @@ describe("share: decoderEtat", () => {
   });
 
   test("parses advanced exploration mode state", () => {
-    const result = decoderEtat("#f=mandelbrot&x=0&y=0&ps=0.003&i=256&cm=contours&ph=0.2&pc=1&azi=1&q=extreme&mat=contours&fog=0.5&ov=grille,orbite&lp=1&lg=5&la=45&lax=FX&lr=F%3DFF&ls=plante-7");
+    const result = decoderEtat("#f=mandelbrot&x=0&y=0&ps=0.003&i=256&cm=contours&ph=0.2&pc=1&azi=1&q=extreme&mat=contours&fog=0.5&ov=grille,orbite&lp=1&lg=5&la=45&lax=FX&lr=F%3DFF&ls=plante-7&fpa=1&ffi=z%5E2%2Bc%2Ba*sin(z)&ffe=3&ffm=julia&ffa=0.25&ffb=-0.5");
     assert.equal(result.coloringMode, "contours");
     assert.equal(result.palettePhase, 0.2);
     assert.equal(result.paletteContours, true);
@@ -198,6 +210,12 @@ describe("share: decoderEtat", () => {
     assert.equal(result.lsystemAxiom, "FX");
     assert.equal(result.lsystemRules, "F=FF");
     assert.equal(result.lsystemSeed, "plante-7");
+    assert.equal(result.formulePropositionActive, true);
+    assert.equal(result.formuleIteration, "z^2+c+a*sin(z)");
+    assert.equal(result.formuleEscapeRadius, 3);
+    assert.equal(result.formuleMode, "julia");
+    assert.equal(result.formuleParamA, 0.25);
+    assert.equal(result.formuleParamB, -0.5);
   });
 });
 

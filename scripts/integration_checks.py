@@ -150,6 +150,9 @@ REQUIRED_EXPORTS = {
     "easer_cubique",
     "interpoler_pixelsize_nav",
     "interpoler_angle_nav",
+    "evaluer_affine_x",
+    "evaluer_affine_y",
+    "choisir_transformee_ifs",
 }
 
 
@@ -322,6 +325,9 @@ def check_renderer_contract() -> None:
         "tetraedre_etape_z",
         "vicsek_etape_x",
         "vicsek_etape_y",
+        "evaluer_affine_x",
+        "evaluer_affine_y",
+        "choisir_transformee_ifs",
     }
     registered_fractals = REQUIRED_EXPORTS - special_non_fractal_exports
 

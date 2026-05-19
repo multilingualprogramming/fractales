@@ -4,11 +4,18 @@ import {
   decrireReglesLSysteme,
   dessinerPropositionLSysteme,
   genererPropositionLSysteme,
-} from "./renderer-lsystem.js?v=app";
+} from "./renderer-lsystem.js?v=20260520-formule-preview";
 import {
   analyserFormule,
   compilerFormule,
-} from "./renderer-formule.js?v=app";
+} from "./renderer-formule.js?v=20260520-formule-preview";
+import {
+  jeuDuChaosIFS,
+  arreterJeuDuChaos,
+  decrireTableauIFS,
+  fractaleDePresetIFS,
+  TABLEAU_IFS_BARNSLEY,
+} from "./renderer-ifs.js?v=app";
 
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
@@ -20,6 +27,7 @@ const TITRES_MODES = {
   formule: ["Atelier formule", "Définir votre propre fonction d'itération complexe"],
   meteo: ["Météo mathématique", "Surcouches d'analyse visuelle"],
   transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
+  ifs: ["Atelier IFS", "Jeu du chaos — systèmes de fonctions itérées affines"],
 };
 
 const PARAMETRES_FORMULE_DEFAUT = {
@@ -263,12 +271,14 @@ export function initialiserExploration({
     parameterReadout,
     lsystemCanvas,
     formuleCanvas,
+    ifsCanvas,
   } = elements;
 
   const {
     getView,
     getParams,
     getWasmFunctions,
+    getWasmExportFunctions,
     getActiveCanvas,
     getPaletteColor,
     setJuliaC,
@@ -286,6 +296,7 @@ export function initialiserExploration({
     clearLSystemProposal,
     applyFormuleProposal,
     clearFormuleProposal,
+    naviguerVersFractale,
     lineFractals,
   } = dependencies;
 
@@ -423,6 +434,7 @@ export function initialiserExploration({
   }
 
   function setMode(mode) {
+    if (activeMode === "ifs") arreterJeuDuChaos();
     activeMode = activeMode === mode && !panel.classList.contains("hidden") ? null : mode;
     panel.classList.toggle("hidden", !activeMode);
     dock.querySelectorAll(".exploration-mode-btn").forEach((button) => {
@@ -437,6 +449,7 @@ export function initialiserExploration({
       if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
       if (activeMode === "formule") { updateFormuleProposal(); updateFormuleSaveList(); }
       if (activeMode === "transforms") updateTransformReadout();
+      if (activeMode === "ifs") updateIFSProposal();
     }
   }
 
@@ -590,9 +603,10 @@ export function initialiserExploration({
       if (readout) readout.textContent = `Formule invalide · ${compiled?.error ?? "erreur de syntaxe"}`;
       return;
     }
-    const fn = compiled.fn, R2 = prop.rayon ** 2, maxIt = 32;
+    const fn = compiled.fn, R2 = prop.rayon ** 2, maxIt = 64;
     const params = getParams();
     const img = ctx.createImageData(w, h);
+    let signature = 0;
     for (let py = 0; py < h; py++) {
       for (let px = 0; px < w; px++) {
         const qx = -2.0 + px / w * 4.0, qy = 1.5 - py / h * 3.0;
@@ -604,6 +618,7 @@ export function initialiserExploration({
           if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
         }
         const c = getPaletteColor(iter, maxIt, params);
+        signature = (signature + ((px + 1) * 17 + (py + 1) * 31) * (iter + 1)) % 100000;
         const ii = (py * w + px) * 4;
         img.data[ii] = c[0]; img.data[ii + 1] = c[1]; img.data[ii + 2] = c[2]; img.data[ii + 3] = 255;
       }
@@ -614,7 +629,7 @@ export function initialiserExploration({
       const active = getParams().formulePropositionActive ? "appliquée" : "locale";
       const funcs = analyse?.fonctions?.length ? ` · fonctions ${analyse.fonctions.join(", ")}` : "";
       const warnings = analyse?.avertissements?.length ? ` · ${analyse.avertissements[0]}` : "";
-      readout.textContent = `Proposition ${active} · ${prop.formule} · ${analyse?.tokens.length ?? 0} jetons, complexité ${analyse?.niveau ?? "simple"}${funcs} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode}${warnings}`;
+      readout.textContent = `Proposition ${active} · ${prop.formule} · ${analyse?.tokens.length ?? 0} jetons, complexité ${analyse?.niveau ?? "simple"}${funcs} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode} · aperçu ${String(signature).padStart(5, "0")}${warnings}`;
     }
   }
 
@@ -688,6 +703,25 @@ export function initialiserExploration({
       document.getElementById("formule-param-b-value"),
       parametres.b,
     );
+  }
+
+  function actualiserValeursParametresFormule() {
+    const aInput = document.getElementById("formule-param-a-input");
+    const bInput = document.getElementById("formule-param-b-input");
+    const aOutput = document.getElementById("formule-param-a-value");
+    const bOutput = document.getElementById("formule-param-b-value");
+    if (aOutput) aOutput.textContent = formatNombre(parseFloat(aInput?.value || "0"), 2);
+    if (bOutput) bOutput.textContent = formatNombre(parseFloat(bInput?.value || "0"), 2);
+  }
+
+  function rafraichirFormuleDepuisInterface({ appliquerSiActive = false } = {}) {
+    actualiserValeursParametresFormule();
+    updateFormuleProposal();
+    if (appliquerSiActive && getParams().formulePropositionActive) {
+      const prop = lirePropositionFormule();
+      applyFormuleProposal?.(prop);
+      updateHash();
+    }
   }
 
   dock.addEventListener("click", (event) => {
@@ -918,11 +952,16 @@ export function initialiserExploration({
 
   // ── Atelier formule ──────────────────────────────────────────
 
-  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select", "formule-param-a-input", "formule-param-b-input"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      appliquerParametresFormulePreset(FORMULE_PRESETS[document.getElementById("formule-preset-select")?.value]);
-      updateFormuleProposal();
-    });
+  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select"].forEach((id) => {
+    const element = document.getElementById(id);
+    element?.addEventListener("input", () => rafraichirFormuleDepuisInterface());
+    element?.addEventListener("change", () => rafraichirFormuleDepuisInterface());
+  });
+
+  ["formule-param-a-input", "formule-param-b-input"].forEach((id) => {
+    const element = document.getElementById(id);
+    element?.addEventListener("input", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: true }));
+    element?.addEventListener("change", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: true }));
   });
 
   document.getElementById("formule-preset-select")?.addEventListener("change", (event) => {
@@ -939,7 +978,11 @@ export function initialiserExploration({
     appliquerParametresFormulePreset(preset, true);
     if (fa) fa.value = String(preset.parametres.a.defaut);
     if (fb) fb.value = String(preset.parametres.b.defaut);
-    updateFormuleProposal();
+    rafraichirFormuleDepuisInterface({ appliquerSiActive: true });
+  });
+
+  document.getElementById("btn-formule-preview")?.addEventListener("click", () => {
+    rafraichirFormuleDepuisInterface();
   });
 
   document.getElementById("btn-formule-apply")?.addEventListener("click", () => {
@@ -1139,6 +1182,68 @@ export function initialiserExploration({
     updateHash();
   });
 
+  // ── Atelier IFS ─────────────────────────────────────────────
+
+  function lireConfigIFS() {
+    const preset = document.getElementById("ifs-preset-select")?.value || "barnsley";
+    const iterations = parseInt(document.getElementById("ifs-iterations-slider")?.value || "50", 10);
+    const colorMode = document.getElementById("ifs-color-select")?.value || "densite";
+    const tableauPersonnalise = document.getElementById("ifs-custom-input")?.value || TABLEAU_IFS_BARNSLEY;
+    return { preset, iterations, colorMode, tableauPersonnalise };
+  }
+
+  function updateIFSProposal() {
+    if (!ifsCanvas) return;
+    const config = lireConfigIFS();
+    const customGroup = document.getElementById("ifs-custom-group");
+    if (customGroup) customGroup.classList.toggle("hidden", config.preset !== "personnalise");
+    jeuDuChaosIFS(ifsCanvas, config, getWasmExportFunctions?.(), (msg) => {
+      const readout = document.getElementById("ifs-proposal-readout");
+      if (readout) readout.textContent = msg;
+    });
+  }
+
+  document.getElementById("ifs-preset-select")?.addEventListener("change", () => {
+    const config = lireConfigIFS();
+    const customGroup = document.getElementById("ifs-custom-group");
+    if (customGroup) customGroup.classList.toggle("hidden", config.preset !== "personnalise");
+    updateIFSProposal();
+  });
+
+  document.getElementById("ifs-iterations-slider")?.addEventListener("input", () => {
+    const v = document.getElementById("ifs-iterations-slider")?.value || "50";
+    const out = document.getElementById("ifs-iterations-value");
+    if (out) out.textContent = v;
+  });
+
+  document.getElementById("ifs-color-select")?.addEventListener("change", updateIFSProposal);
+
+  document.getElementById("ifs-custom-input")?.addEventListener("input", () => {
+    const texte = document.getElementById("ifs-custom-input")?.value || "";
+    const desc = decrireTableauIFS(texte);
+    const readout = document.getElementById("ifs-proposal-readout");
+    if (!readout) return;
+    if (desc.diagnostics.length > 0) {
+      readout.textContent = desc.diagnostics[0];
+    } else {
+      const contraction = desc.contractante ? "contractante" : "attention : non contractante";
+      readout.textContent = `${desc.count} transformée(s) · ${contraction} · appuyez sur Démarrer`;
+    }
+  });
+
+  document.getElementById("btn-ifs-demarrer")?.addEventListener("click", updateIFSProposal);
+
+  document.getElementById("btn-ifs-naviguer")?.addEventListener("click", () => {
+    const preset = document.getElementById("ifs-preset-select")?.value;
+    const fractale = fractaleDePresetIFS(preset);
+    if (!fractale) {
+      updateStatusBar("Navigation non disponible pour l'IFS personnalisé", true);
+      return;
+    }
+    naviguerVersFractale?.(fractale);
+    updateStatusBar(`Navigation vers ${fractale}`, true);
+  });
+
   function syncFromParams() {
     const params = getParams();
     const coloringMode = document.getElementById("coloring-mode-select");
@@ -1195,6 +1300,8 @@ export function initialiserExploration({
     if (activeMode === "lsysteme") { updateLSystemProposal(); updateLSystemSaveList(); }
     if (activeMode === "formule") { updateFormuleProposal(); updateFormuleSaveList(); }
     if (activeMode === "transforms") updateTransformReadout();
+    const ifsIterValue = document.getElementById("ifs-iterations-value");
+    if (ifsIterValue) ifsIterValue.textContent = document.getElementById("ifs-iterations-slider")?.value || "50";
     drawWeather();
   }
 

@@ -112,6 +112,9 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "renderer3d.js:genererNuage3D": {
         "browser_only": "fills WebGL typed arrays from canonical fractal generators"
     },
+    "renderer-ifs.js:projeter3DIFS": {
+        "browser_only": "isometric view projection combining camera/perspective settings — mirrors renderer.js:projeterPoint3D"
+    },
     "renderer-exploration.js:calculerOrbite": {
         "backend_refs": [
             "mandelbrot",

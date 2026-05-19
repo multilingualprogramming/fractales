@@ -72,6 +72,7 @@ def main() -> None:
         "formule-param-b-value",
         "formule-proposal-canvas",
         "formule-proposal-readout",
+        "btn-formule-preview",
         "btn-formule-manifest",
         "formule-save-name",
         "formule-save-list",
@@ -99,6 +100,10 @@ def main() -> None:
     require(r"analyserFormule\?\.\(prop\.formule\)", exploration, "formula studio must use analyzer diagnostics")
     require(r"PARAMETRES_FORMULE_DEFAUT", exploration, "formula studio must define default parameter metadata")
     require(r"appliquerParametresFormulePreset", exploration, "formula studio must apply named preset parameters")
+    require(r"rafraichirFormuleDepuisInterface", exploration, "formula studio must refresh preview from parameter inputs")
+    require(r"appliquerSiActive:\s*true", exploration, "formula parameter sliders must refresh the active applied formula")
+    require(r'getElementById\("btn-formule-preview"\).*rafraichirFormuleDepuisInterface\(\)', exploration, "formula preview button must refresh the preview")
+    require(r"aperçu.*signature", exploration, "formula preview readout must expose a parameter-sensitive signature")
     require(r"creerManifesteFormule", exploration, "formula studio must expose a promotion manifest")
     require(r"nom:\s*\"amplitude sinus\"", exploration, "formula presets must expose French parameter labels")
     require_block(
@@ -112,7 +117,7 @@ def main() -> None:
         exploration,
         'document.getElementById("formule-preset-select")',
         'document.getElementById("btn-formule-apply")',
-        r"appliquerParametresFormulePreset\(preset,\s*true\).*updateFormuleProposal\(\)",
+        r"appliquerParametresFormulePreset\(preset,\s*true\).*rafraichirFormuleDepuisInterface\(\{\s*appliquerSiActive:\s*true\s*\}\)",
         "formula preset handler must update named parameters and preview",
     )
     require(r"z absent.*c absent", formule, "formula analyzer must warn about missing z/c variables")

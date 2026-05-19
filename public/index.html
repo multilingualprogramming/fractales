@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/style.css" />
 
     <!-- Préchargement des ressources critiques -->
-    <link rel="preload" href="mandelbrot.wasm?v=app" as="fetch" crossorigin />
+    <link rel="preload" href="mandelbrot.wasm?v=20260520-formule-preview" as="fetch" crossorigin />
     <link rel="preload" href="benchmark.json" as="fetch" crossorigin />
   </head>
 
@@ -194,6 +194,8 @@
             title="Météo mathématique">☷</button>
           <button class="exploration-mode-btn" type="button" data-mode="transforms" aria-label="Transformations du plan"
             title="Transformations du plan">◈</button>
+          <button class="exploration-mode-btn" type="button" data-mode="ifs" aria-label="Atelier IFS"
+            title="Atelier IFS — jeu du chaos">⁂</button>
         </nav>
 
         <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
@@ -433,6 +435,7 @@
                 aria-label="Prévisualisation de la formule"></canvas>
               <div id="formule-proposal-readout" class="exploration-readout">Entrez une formule ci-dessus.</div>
               <div class="exploration-actions">
+                <button id="btn-formule-preview" class="btn btn-secondary" type="button">Aperçu</button>
                 <button id="btn-formule-apply" class="btn" type="button">Appliquer</button>
                 <button id="btn-formule-share" class="btn btn-secondary" type="button">Copier le lien</button>
                 <button id="btn-formule-manifest" class="btn btn-secondary" type="button">Copier le manifeste</button>
@@ -493,6 +496,53 @@
                 <button id="btn-transform-reset" class="btn btn-secondary" type="button">Désactiver</button>
               </div>
             </section>
+
+            <!-- ── Atelier IFS ──────────────────────────────────────── -->
+            <section class="exploration-view hidden" data-view="ifs">
+              <label class="exploration-field" for="ifs-preset-select">
+                <span>Préréglage IFS</span>
+                <select id="ifs-preset-select">
+                  <option value="barnsley">Fougère de Barnsley</option>
+                  <option value="sierpinski">Triangle de Sierpiński</option>
+                  <option value="tapis_sierpinski">Tapis de Sierpiński</option>
+                  <option value="vicsek">Fractale de Vicsek</option>
+                  <option value="menger_sponge">Éponge de Menger (proj. iso.)</option>
+                  <option value="tetraedre_sierpinski">Tétraèdre de Sierpiński (proj. iso.)</option>
+                  <option value="personnalise">— personnalisé —</option>
+                </select>
+              </label>
+              <label class="exploration-field" for="ifs-iterations-slider">
+                <span>Points : <output id="ifs-iterations-value">50</output> × 10³</span>
+                <input id="ifs-iterations-slider" type="range" min="5" max="300" step="5" value="50" />
+              </label>
+              <label class="exploration-field" for="ifs-color-select">
+                <span>Coloration</span>
+                <select id="ifs-color-select">
+                  <option value="densite">Densité (heatmap)</option>
+                  <option value="ordre">Spectre (géométrie)</option>
+                  <option value="monochrome">Monochrome</option>
+                </select>
+              </label>
+              <div id="ifs-custom-group" class="hidden">
+                <label class="exploration-field" for="ifs-custom-input">
+                  <span>Transformées affines (a b c d e f p)</span>
+                  <textarea id="ifs-custom-input" rows="5" spellcheck="false"
+                    placeholder="a  b  c  d  e  f  p&#10;0.85  0.04  -0.04  0.85  0  1.6  0.85"> 0      0      0     0.16   0     0     0.01
+ 0.85   0.04  -0.04  0.85   0     1.6   0.85
+ 0.20  -0.26   0.23  0.22   0     1.6   0.07
+-0.15   0.28   0.26  0.24   0     0.44  0.07</textarea>
+                </label>
+                <div class="exploration-readout">Format : a b c d e f p — matrice (a b / c d) + translation (e f) + poids p</div>
+              </div>
+              <canvas id="ifs-proposal-canvas" width="280" height="220"
+                aria-label="Aperçu du jeu du chaos IFS"></canvas>
+              <div id="ifs-proposal-readout" class="exploration-readout">Sélectionnez un préréglage et démarrez.</div>
+              <div class="exploration-actions">
+                <button id="btn-ifs-demarrer" class="btn" type="button">Démarrer</button>
+                <button id="btn-ifs-naviguer" class="btn btn-secondary" type="button">Naviguer vers</button>
+              </div>
+            </section>
+
           </div>
         </section>
 
@@ -735,7 +785,7 @@
     <!-- ============================================================
      SCRIPT PRINCIPAL (module ES)
      ============================================================ -->
-    <script type="module" src="js/renderer.js?v=app"></script>
+    <script type="module" src="js/renderer.js?v=20260520-formule-preview"></script>
 
   </body>
 

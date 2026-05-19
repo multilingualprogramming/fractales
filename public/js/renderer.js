@@ -11,30 +11,30 @@
 
 import {
   initialiserExports,
-} from "./renderer-export.js?v=app";
+} from "./renderer-export.js?v=20260520-formule-preview";
 import {
   initialiserSignets,
-} from "./renderer-bookmarks.js?v=app";
+} from "./renderer-bookmarks.js?v=20260520-formule-preview";
 import {
   initialiserPanneauSource,
-} from "./renderer-source-panel.js?v=app";
+} from "./renderer-source-panel.js?v=20260520-formule-preview";
 import {
   animerVersVue,
   decoderEtat,
   initialiserPartage,
   mettreAJourHash,
-} from "./renderer-navigation.js?v=app";
+} from "./renderer-navigation.js?v=20260520-formule-preview";
 import {
   initialiserExploration,
-} from "./renderer-exploration.js?v=app";
+} from "./renderer-exploration.js?v=20260520-formule-preview";
 import {
   pointsPropositionLSysteme,
-} from "./renderer-lsystem.js?v=app";
+} from "./renderer-lsystem.js?v=20260520-formule-preview";
 import {
   compilerFormule,
-} from "./renderer-formule.js?v=app";
+} from "./renderer-formule.js?v=20260520-formule-preview";
 
-const WASM_URL = "mandelbrot.wasm?v=app";
+const WASM_URL = "mandelbrot.wasm?v=20260520-formule-preview";
 const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profondeur", "orientation"]);
 
 // ============================================================
@@ -305,6 +305,7 @@ const parameterMapCanvas = document.getElementById("parameter-map-canvas");
 const parameterMapReadout = document.getElementById("parameter-map-readout");
 const lsystemProposalCanvas = document.getElementById("lsystem-proposal-canvas");
 const formuleProposalCanvas = document.getElementById("formule-proposal-canvas");
+const ifsProposalCanvas = document.getElementById("ifs-proposal-canvas");
 
 let familySelectCompact = null;
 let fractalSelectCompact = null;
@@ -643,7 +644,7 @@ import {
   reinitialiserVue3DActive,
   zoomerVue3D,
   deplacerVue3D,
-} from "./renderer3d.js?v=app";
+} from "./renderer3d.js?v=20260520-formule-preview";
 
 /**
  * Retourne la couleur [r, g, b] pour une valeur d'itération.
@@ -3024,6 +3025,9 @@ async function loadWasm() {
       mandelbox_etape_x: typeof exports.mandelbox_etape_x === "function" ? exports.mandelbox_etape_x : null,
       mandelbox_etape_y: typeof exports.mandelbox_etape_y === "function" ? exports.mandelbox_etape_y : null,
       mandelbox_etape_z: typeof exports.mandelbox_etape_z === "function" ? exports.mandelbox_etape_z : null,
+      evaluer_affine_x: typeof exports.evaluer_affine_x === "function" ? exports.evaluer_affine_x : null,
+      evaluer_affine_y: typeof exports.evaluer_affine_y === "function" ? exports.evaluer_affine_y : null,
+      choisir_transformee_ifs: typeof exports.choisir_transformee_ifs === "function" ? exports.choisir_transformee_ifs : null,
     };
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
@@ -4066,11 +4070,13 @@ explorationModes = initialiserExploration({
     parameterReadout: parameterMapReadout,
     lsystemCanvas: lsystemProposalCanvas,
     formuleCanvas: formuleProposalCanvas,
+    ifsCanvas: ifsProposalCanvas,
   },
   dependencies: {
     getView: () => view,
     getParams: () => params,
     getWasmFunctions: () => wasmFunctions,
+    getWasmExportFunctions: () => wasmExportFunctions,
     getActiveCanvas: obtenirCanvasActif,
     getPaletteColor: getColor,
     setJuliaC: (re, im) => {
@@ -4101,6 +4107,7 @@ explorationModes = initialiserExploration({
     clearLSystemProposal: effacerPropositionLSysteme,
     applyFormuleProposal: appliquerFormuleProposition,
     clearFormuleProposal: effacerFormuleProposition,
+    naviguerVersFractale: setActiveFractal,
     lineFractals: LINE_FRACTALS,
   },
 });

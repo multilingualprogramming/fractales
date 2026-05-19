@@ -577,6 +577,34 @@ déf mandelbox(cx, cy, max_iter):
 
     retour iter
 
+# ============================================================
+# ATELIER IFS — évaluation des transformées affines personnalisées
+# ============================================================
+
+déf evaluer_affine_x(a, b, e, x, y):
+    retour a * x + b * y + e
+
+déf evaluer_affine_y(c, d, f, x, y):
+    retour c * x + d * y + f
+
+déf choisir_transformee_ifs(tirage, p0, p1, p2, p3, p4, p5):
+    soit cumul = p0
+    si tirage < cumul:
+        retour 0.0
+    cumul = cumul + p1
+    si tirage < cumul:
+        retour 1.0
+    cumul = cumul + p2
+    si tirage < cumul:
+        retour 2.0
+    cumul = cumul + p3
+    si tirage < cumul:
+        retour 3.0
+    cumul = cumul + p4
+    si tirage < cumul:
+        retour 4.0
+    retour 5.0
+
 déf lichtenberg_figures(cx, cy, max_iter):
     soit x = 0.0
     soit y = 0.0

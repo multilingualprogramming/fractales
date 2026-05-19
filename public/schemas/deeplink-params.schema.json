@@ -67,6 +67,12 @@
       "enum": ["1"],
       "description": "Set to 1 to reinforce iteration contour lines in Palette Physics."
     },
+    "lc": {
+      "type": "string",
+      "enum": ["uniforme", "progression", "profondeur", "orientation"],
+      "description": "L-system line coloring mode for applied Atelier L-system proposals. Default: progression.",
+      "default": "progression"
+    },
     "azi": {
       "type": "string",
       "enum": ["1"],

@@ -111,25 +111,27 @@ export function pointsPropositionLSysteme(config, options = {}) {
   let angle = 0.0;
   let angleSign = 1;
   const stack = [];
-  const points = [{ x, y, move: true }];
+  let profondeur = 0;
+  const points = [{ x, y, move: true, profondeur, angle }];
   for (const ch of sequence) {
     if (ch === "F" || ch === "G") {
       x += Math.cos(angle);
       y += Math.sin(angle);
-      points.push({ x, y });
+      points.push({ x, y, profondeur, angle });
     } else if (ch === "f") {
       x += Math.cos(angle);
       y += Math.sin(angle);
-      points.push({ x, y, move: true });
+      points.push({ x, y, move: true, profondeur, angle });
     } else if (ch === "+") {
       angle += angleStep * angleSign;
     } else if (ch === "-") {
       angle -= angleStep * angleSign;
     } else if (ch === "[") {
-      stack.push([x, y, angle, angleSign]);
+      stack.push([x, y, angle, angleSign, profondeur]);
+      profondeur += 1;
     } else if (ch === "]" && stack.length > 0) {
-      [x, y, angle, angleSign] = stack.pop();
-      points.push({ x, y, move: true });
+      [x, y, angle, angleSign, profondeur] = stack.pop();
+      points.push({ x, y, move: true, profondeur, angle });
     } else if (ch === "|") {
       angle += Math.PI;
     } else if (ch === "!") {

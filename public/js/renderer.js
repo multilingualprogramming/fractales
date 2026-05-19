@@ -35,6 +35,7 @@ import {
 } from "./renderer-formule.js?v=app";
 
 const WASM_URL = "mandelbrot.wasm?v=app";
+const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profondeur", "orientation"]);
 
 // ============================================================
 // ÉTAT DE L'APPLICATION
@@ -64,6 +65,7 @@ const params = {
   coloringMode: "standard",
   palettePhase: 0.0,
   paletteContours: false,
+  lsystemLineColor: "progression",
   deepZoomAutoIterations: false,
   deepZoomQuality: "standard",
   studio3dMaterial: "lumineux",
@@ -229,6 +231,8 @@ const customPaletteStops = document.getElementById("custom-palette-stops");
 const addPaletteStopButton = document.getElementById("btn-add-palette-stop");
 const paletteBackgroundInput = document.getElementById("palette-background");
 const paletteInteriorInput = document.getElementById("palette-interior");
+const lsystemLineColorGroup = document.getElementById("lsystem-line-color-group");
+const lsystemLineColorSelect = document.getElementById("lsystem-line-color-select");
 const btnReset = document.getElementById("btn-reset");
 const btnPanUp = document.getElementById("btn-pan-up");
 const btnPanLeft = document.getElementById("btn-pan-left");
@@ -830,13 +834,21 @@ function definirVisibiliteEditeurPalette(forceOuverture) {
 }
 
 function synchroniserControlePalette() {
+  if (!MODES_COULEUR_TRAITS_LSYSTEME.has(params.lsystemLineColor)) params.lsystemLineColor = "progression";
   paletteSelect.value = params.palette;
   if (paletteSelectCompact) paletteSelectCompact.value = params.palette;
+  if (lsystemLineColorSelect) lsystemLineColorSelect.value = params.lsystemLineColor || "progression";
+  mettreAJourVisibiliteCouleurTraits();
   paletteBackgroundInput.value = normaliserHexCouleur(params.paletteBackground, "#020008");
   paletteInteriorInput.value = normaliserHexCouleur(params.paletteInterior, "#fff5b4");
   params.paletteStops = normaliserStopsPalette(params.paletteStops, PALETTES.aurora.stops.map((stop) => rgbVersHex(stop)));
   definirVisibiliteEditeurPalette();
   mettreAJourResumeControles();
+}
+
+function mettreAJourVisibiliteCouleurTraits() {
+  const afficher = Boolean(params.lsystemProposalActive);
+  if (lsystemLineColorGroup) lsystemLineColorGroup.classList.toggle("hidden", !afficher);
 }
 
 function definirVisibiliteOptionsSpecifiques({ labels = [] } = {}) {
@@ -1025,6 +1037,7 @@ function capturerVueCourante() {
     coloringMode: params.coloringMode,
     palettePhase: params.palettePhase,
     paletteContours: params.paletteContours,
+    lsystemLineColor: params.lsystemLineColor,
     deepZoomAutoIterations: params.deepZoomAutoIterations,
     deepZoomQuality: params.deepZoomQuality,
     studio3dMaterial: params.studio3dMaterial,
@@ -1090,6 +1103,7 @@ function clonerParamsExport(source = params) {
     coloringMode: source.coloringMode ?? params.coloringMode,
     palettePhase: source.palettePhase ?? params.palettePhase,
     paletteContours: source.paletteContours ?? params.paletteContours,
+    lsystemLineColor: source.lsystemLineColor ?? params.lsystemLineColor,
     deepZoomAutoIterations: source.deepZoomAutoIterations ?? params.deepZoomAutoIterations,
     deepZoomQuality: source.deepZoomQuality ?? params.deepZoomQuality,
     studio3dMaterial: source.studio3dMaterial ?? params.studio3dMaterial,
@@ -1767,6 +1781,7 @@ function appliquerPropositionLSysteme(config) {
   view.centerY = 0.0;
   view.pixelSize = 2.4 / Math.max(canvas.width, 1);
   view.rotation = 0.0;
+  mettreAJourVisibiliteCouleurTraits();
   mettreAJourOptionsSpecifiques();
   explorationModes?.syncFromParams();
   render();
@@ -1776,6 +1791,7 @@ function appliquerPropositionLSysteme(config) {
 
 function effacerPropositionLSysteme() {
   params.lsystemProposalActive = false;
+  mettreAJourVisibiliteCouleurTraits();
   mettreAJourOptionsSpecifiques();
   explorationModes?.syncFromParams();
   render();
@@ -1988,6 +2004,13 @@ function creerTraceurMonde(ctxCible, w, h, vueCible) {
     lineTo(x, y) {
       ctxCible.lineTo((x - cx0) / vueCible.pixelSize, (y - cy0) / vueCible.pixelSize);
     },
+    segmentColorie(x0, y0, x1, y1, couleur) {
+      ctxCible.beginPath();
+      ctxCible.strokeStyle = "rgb(" + couleur[0] + ", " + couleur[1] + ", " + couleur[2] + ")";
+      ctxCible.moveTo((x0 - cx0) / vueCible.pixelSize, (y0 - cy0) / vueCible.pixelSize);
+      ctxCible.lineTo((x1 - cx0) / vueCible.pixelSize, (y1 - cy0) / vueCible.pixelSize);
+      ctxCible.stroke();
+    },
   };
 }
 
@@ -2098,7 +2121,21 @@ function dessinerCommandeLineaireMonde(traceur, commands, x, y, angle, segment, 
   }
 }
 
-function dessinerPropositionLSystemeMonde(traceur, renduParams) {
+function couleurSegmentLSysteme(segment, index, total, renduParams) {
+  const mode = renduParams.lsystemLineColor || "progression";
+  if (mode === "uniforme") {
+    return getColor(Math.min(renduParams.maxIter * 0.6, renduParams.maxIter - 1), renduParams.maxIter, renduParams);
+  }
+  let t = total <= 1 ? 0 : index / (total - 1);
+  if (mode === "profondeur") {
+    t = Math.min(0.999, (segment.profondeur || 0) / 7);
+  } else if (mode === "orientation") {
+    t = ((segment.angle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI * 2);
+  }
+  return getColorFromRatio(t, renduParams);
+}
+
+function dessinerPropositionLSystemeMonde(traceur, renduParams, couleurParSegment = false) {
   const { points } = pointsPropositionLSysteme({
     axiom: renduParams.lsystemAxiom,
     rules: renduParams.lsystemRules,
@@ -2118,11 +2155,28 @@ function dessinerPropositionLSystemeMonde(traceur, renduParams) {
   const scale = 1.82 / span;
   const centerX = (minX + maxX) * 0.5;
   const centerY = (minY + maxY) * 0.5;
-  points.forEach((point, index) => {
-    const x = (point.x - centerX) * scale;
-    const y = -(point.y - centerY) * scale;
-    if (index === 0 || point.move) traceur.moveTo(x, y);
-    else traceur.lineTo(x, y);
+  const pointsMonde = points.map((point) => ({
+    x: (point.x - centerX) * scale,
+    y: -(point.y - centerY) * scale,
+    move: point.move,
+    profondeur: point.profondeur || 0,
+    angle: point.angle || 0,
+  }));
+  const segments = [];
+  pointsMonde.forEach((point, index) => {
+    const precedent = pointsMonde[index - 1];
+    if (index === 0 || point.move || !precedent) return;
+    segments.push({ x0: precedent.x, y0: precedent.y, x1: point.x, y1: point.y, profondeur: point.profondeur, angle: point.angle });
+  });
+  if (couleurParSegment && typeof traceur.segmentColorie === "function") {
+    segments.forEach((segment, index) => {
+      traceur.segmentColorie(segment.x0, segment.y0, segment.x1, segment.y1, couleurSegmentLSysteme(segment, index, segments.length, renduParams));
+    });
+    return;
+  }
+  pointsMonde.forEach((point, index) => {
+    if (index === 0 || point.move) traceur.moveTo(point.x, point.y);
+    else traceur.lineTo(point.x, point.y);
   });
 }
 
@@ -2355,9 +2409,12 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams, skipBac
   ctxCible.lineWidth = Math.max(1, Math.min(2, w / 800));
   ctxCible.beginPath();
   const traceur = creerTraceurMonde(ctxCible, w, h, vueCible);
+  let renduColorie = false;
 
   if (renduParams.lsystemProposalActive) {
-    dessinerPropositionLSystemeMonde(traceur, renduParams);
+    const contexteCanvas = typeof CanvasRenderingContext2D !== "undefined" && ctxCible instanceof CanvasRenderingContext2D;
+    renduColorie = contexteCanvas && renduParams.lsystemLineColor !== "uniforme";
+    dessinerPropositionLSystemeMonde(traceur, renduParams, renduColorie);
   } else if (renduParams.fractal === "koch") {
     const n = Math.max(0, Math.min(6, Math.floor((renduParams.maxIter - 64) / 128)));
     const commands = kochGenerate(n);
@@ -2406,7 +2463,7 @@ function dessinerFractaleLineaire(ctxCible, w, h, vueCible, renduParams, skipBac
     dessinerBranche(0.0, 1.35, Math.PI / 2, 0.42, profondeur);
   }
 
-  ctxCible.stroke();
+  if (!renduColorie) ctxCible.stroke();
 }
 
 async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) {
@@ -3461,6 +3518,14 @@ if (paletteSelectCompact) {
   });
 }
 
+if (lsystemLineColorSelect) {
+  lsystemLineColorSelect.addEventListener("change", () => {
+    params.lsystemLineColor = lsystemLineColorSelect.value;
+    render();
+    mettreAJourHash(view, params);
+  });
+}
+
 toggleCustomPaletteButton.classList.add("icon-btn");
 toggleCustomPaletteButton.addEventListener("click", () => {
   if (params.palette !== "personnalisee") return;
@@ -3860,6 +3925,7 @@ async function appliquerSignet(signet) {
   params.coloringMode = signet.coloringMode ?? params.coloringMode;
   params.palettePhase = signet.palettePhase ?? params.palettePhase;
   params.paletteContours = signet.paletteContours ?? params.paletteContours;
+  params.lsystemLineColor = signet.lsystemLineColor ?? params.lsystemLineColor;
   params.deepZoomAutoIterations = signet.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
   params.deepZoomQuality = signet.deepZoomQuality ?? params.deepZoomQuality;
   params.studio3dMaterial = signet.studio3dMaterial ?? params.studio3dMaterial;
@@ -4024,6 +4090,7 @@ async function init() {
     params.coloringMode = etatHash.coloringMode ?? params.coloringMode;
     params.palettePhase = etatHash.palettePhase ?? params.palettePhase;
     params.paletteContours = etatHash.paletteContours ?? params.paletteContours;
+    params.lsystemLineColor = etatHash.lsystemLineColor ?? params.lsystemLineColor;
     params.deepZoomAutoIterations = etatHash.deepZoomAutoIterations ?? params.deepZoomAutoIterations;
     params.deepZoomQuality = etatHash.deepZoomQuality ?? params.deepZoomQuality;
     params.studio3dMaterial = etatHash.studio3dMaterial ?? params.studio3dMaterial;

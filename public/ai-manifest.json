@@ -78,7 +78,7 @@
         "exploration_modes": 8
   },
   "deeplink_format": {
-    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}&fpa={formulaProposalActive}",
+    "pattern": "https://multilingualprogramming.github.io/fractales/#f={fractal}&x={centerX}&y={centerY}&ps={pixelSize}&r={rotation}&i={maxIter}&p={palette}&jr={juliaRe}&ji={juliaIm}&cm={coloringMode}&lc={lsystemLineColor}&ov={overlays}&lp={lsystemProposalActive}&ls={lsystemSeed}&fpa={formulaProposalActive}",
     "parameters": {
       "f": "Fractal identifier (required)",
       "x": "Center X in complex plane (required)",
@@ -92,6 +92,7 @@
       "cm": "Palette Physics coloring mode (optional)",
       "ph": "Palette phase offset (optional)",
       "pc": "Palette contour enhancement flag, 1 when enabled (optional)",
+      "lc": "L-system line coloring mode: uniforme, progression, profondeur, orientation (optional)",
       "azi": "Mode Abysses automatic iteration flag, 1 when enabled (optional)",
       "q": "Mode Abysses quality level: standard, fine, extreme (optional)",
       "mat": "Studio 3D material hint (optional)",

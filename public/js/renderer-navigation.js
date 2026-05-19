@@ -42,6 +42,7 @@ export function encoderEtat(view, params) {
   if (params.coloringMode && params.coloringMode !== "standard") p.set("cm", params.coloringMode);
   if (params.palettePhase) p.set("ph", Number(params.palettePhase).toFixed(3));
   if (params.paletteContours) p.set("pc", "1");
+  if (params.lsystemLineColor && params.lsystemLineColor !== "progression") p.set("lc", params.lsystemLineColor);
   if (params.deepZoomAutoIterations) p.set("azi", "1");
   if (params.deepZoomQuality && params.deepZoomQuality !== "standard") p.set("q", params.deepZoomQuality);
   if (params.studio3dMaterial && params.studio3dMaterial !== "lumineux") p.set("mat", params.studio3dMaterial);
@@ -99,6 +100,7 @@ export function decoderEtat(hash) {
     coloringMode: p.get("cm") ?? "standard",
     palettePhase: num("ph") ?? 0,
     paletteContours: p.get("pc") === "1",
+    lsystemLineColor: p.get("lc") ?? "progression",
     deepZoomAutoIterations: p.get("azi") === "1",
     deepZoomQuality: p.get("q") ?? "standard",
     studio3dMaterial: p.get("mat") ?? "lumineux",

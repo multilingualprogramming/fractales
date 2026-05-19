@@ -141,9 +141,10 @@ EXPLORATION_MODES: list[dict] = [
     {
         "id": "palette",
         "label": "Physique de palette",
-        "description": "Additional coloring modes layered on top of existing palettes: histogram, phase, contours, and potential smoothing.",
-        "deeplink_fields": ["cm", "ph", "pc"],
+        "description": "Additional coloring modes layered on top of existing palettes: histogram, phase, contours, potential smoothing, and L-system line gradients.",
+        "deeplink_fields": ["cm", "ph", "pc", "lc"],
         "coloring_modes": ["standard", "histogramme", "phase", "contours", "potentiel"],
+        "lsystem_line_color_modes": ["uniforme", "progression", "profondeur", "orientation"],
     },
     {
         "id": "abysses",
@@ -411,6 +412,7 @@ def main() -> None:
             "default": "aurora",
             "palettes": palettes,
             "coloring_modes": ["standard", "histogramme", "phase", "contours", "potentiel"],
+            "lsystem_line_color_modes": ["uniforme", "progression", "profondeur", "orientation"],
         }
     )
 

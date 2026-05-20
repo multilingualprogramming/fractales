@@ -101,8 +101,32 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "renderer.js:genererGosper": {"backend_refs": ["gosper_curve"]},
     "renderer.js:genererHilbert": {"backend_refs": ["hilbert_curve"]},
     "renderer.js:genererPeano": {"backend_refs": ["peano_curve"]},
+    "renderer.js:iterationsDepuisGenerationLSysteme": {
+        "browser_only": "maps the proposed L-system generation slider to the shared iteration budget"
+    },
+    "renderer-ifs.js:etapePresetIFS": {
+        "backend_refs": [
+            "barnsley_etape_x",
+            "barnsley_etape_y",
+            "sierpinski_etape_x",
+            "sierpinski_etape_y",
+            "tapis_sierpinski_etape_x",
+            "tapis_sierpinski_etape_y",
+            "vicsek_etape_x",
+            "vicsek_etape_y",
+            "menger_etape_x",
+            "menger_etape_y",
+            "menger_etape_z",
+            "tetraedre_etape_x",
+            "tetraedre_etape_y",
+            "tetraedre_etape_z",
+        ]
+    },
     "renderer-lsystem.js:genererPropositionLSysteme": {
         "browser_only": "user-authored L-system preview, not a canonical fractal"
+    },
+    "renderer3d.js:genererMenger": {
+        "backend_refs": ["menger_etape_x", "menger_etape_y", "menger_etape_z"]
     },
     "renderer3d.js:genererTetraedre": {"backend_refs": ["tetraedre_etape", "tetraedre_sierpinski"]},
     "renderer3d.js:etapeJuliaQuaternion": {"backend_refs": ["julia_quaternion"]},

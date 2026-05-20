@@ -26,13 +26,13 @@ import {
 } from "./renderer-navigation.js?v=20260520-formule-preview";
 import {
   initialiserExploration,
-} from "./renderer-exploration.js?v=20260520-formule-preview";
+} from "./renderer-exploration.js?v=20260520-formule-preview-fix";
 import {
   pointsPropositionLSysteme,
 } from "./renderer-lsystem.js?v=20260520-formule-preview";
 import {
   compilerFormule,
-} from "./renderer-formule.js?v=20260520-formule-preview";
+} from "./renderer-formule.js?v=20260520-formule-preview-fix";
 
 const WASM_URL = "mandelbrot.wasm?v=20260520-formule-preview";
 const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profondeur", "orientation"]);

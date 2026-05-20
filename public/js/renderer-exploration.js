@@ -8,7 +8,8 @@ import {
 import {
   analyserFormule,
   compilerFormule,
-} from "./renderer-formule.js?v=20260520-formule-preview";
+  dessinerMiniApercuFormule,
+} from "./renderer-formule.js?v=20260520-formule-mini-preview";
 import {
   jeuDuChaosIFS,
   arreterJeuDuChaos,
@@ -586,51 +587,20 @@ export function initialiserExploration({
   }
 
   function updateFormuleProposal() {
-    if (!formuleCanvas) return;
     const prop = lirePropositionFormule();
-    const compiled = compilerFormule?.(prop.formule);
-    const analyse = analyserFormule?.(prop.formule);
-    const ctx = formuleCanvas.getContext("2d");
-    const w = formuleCanvas.width, h = formuleCanvas.height;
-    ctx.fillStyle = "rgba(2,4,10,0.96)";
-    ctx.fillRect(0, 0, w, h);
-    if (!compiled?.fn) {
-      ctx.fillStyle = "rgba(255,100,80,0.9)";
-      ctx.font = "11px system-ui,sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(compiled?.error ?? "Formule invalide", w / 2, h / 2);
-      const readout = document.getElementById("formule-proposal-readout");
-      if (readout) readout.textContent = `Formule invalide · ${compiled?.error ?? "erreur de syntaxe"}`;
-      return;
-    }
-    const fn = compiled.fn, R2 = prop.rayon ** 2, maxIt = 64;
+    analyserFormule?.(prop.formule); // diagnostics: aperçu signature via dessinerMiniApercuFormule
     const params = getParams();
-    const img = ctx.createImageData(w, h);
-    let signature = 0;
-    for (let py = 0; py < h; py++) {
-      for (let px = 0; px < w; px++) {
-        const qx = -2.0 + px / w * 4.0, qy = 1.5 - py / h * 3.0;
-        let zr = prop.mode === "julia" ? qx : 0, zi = prop.mode === "julia" ? qy : 0;
-        const cr = prop.mode === "julia" ? params.juliaCre : qx, ci = prop.mode === "julia" ? params.juliaCim : qy;
-        let iter = maxIt;
-        for (let n = 0; n < maxIt; n++) {
-          const r = fn(zr, zi, cr, ci, prop.paramA, prop.paramB); zr = r[0]; zi = r[1];
-          if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) { iter = n; break; }
-        }
-        const c = getPaletteColor(iter, maxIt, params);
-        signature = (signature + ((px + 1) * 17 + (py + 1) * 31) * (iter + 1)) % 100000;
-        const ii = (py * w + px) * 4;
-        img.data[ii] = c[0]; img.data[ii + 1] = c[1]; img.data[ii + 2] = c[2]; img.data[ii + 3] = 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    const readout = document.getElementById("formule-proposal-readout");
-    if (readout) {
-      const active = getParams().formulePropositionActive ? "appliquée" : "locale";
-      const funcs = analyse?.fonctions?.length ? ` · fonctions ${analyse.fonctions.join(", ")}` : "";
-      const warnings = analyse?.avertissements?.length ? ` · ${analyse.avertissements[0]}` : "";
-      readout.textContent = `Proposition ${active} · ${prop.formule} · ${analyse?.tokens.length ?? 0} jetons, complexité ${analyse?.niveau ?? "simple"}${funcs} · rayon ${prop.rayon} · a=${formatNombre(prop.paramA, 2)} · b=${formatNombre(prop.paramB, 2)} · mode ${prop.mode} · aperçu ${String(signature).padStart(5, "0")}${warnings}`;
-    }
+    dessinerMiniApercuFormule({
+      canvas: document.getElementById("formule-proposal-canvas"),
+      readout: document.getElementById("formule-proposal-readout"),
+      formule: prop.formule,
+      rayon: prop.rayon,
+      mode: prop.mode,
+      paramA: prop.paramA,
+      paramB: prop.paramB,
+      juliaCre: params.juliaCre,
+      juliaCim: params.juliaCim,
+    });
   }
 
   function updateFormuleSaveList() {
@@ -952,16 +922,10 @@ export function initialiserExploration({
 
   // ── Atelier formule ──────────────────────────────────────────
 
-  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select"].forEach((id) => {
+  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select", "formule-param-a-input", "formule-param-b-input"].forEach((id) => {
     const element = document.getElementById(id);
-    element?.addEventListener("input", () => rafraichirFormuleDepuisInterface());
-    element?.addEventListener("change", () => rafraichirFormuleDepuisInterface());
-  });
-
-  ["formule-param-a-input", "formule-param-b-input"].forEach((id) => {
-    const element = document.getElementById(id);
-    element?.addEventListener("input", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: true }));
-    element?.addEventListener("change", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: true }));
+    element?.addEventListener("input", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: id.endsWith("-a-input") || id.endsWith("-b-input") }));
+    element?.addEventListener("change", () => rafraichirFormuleDepuisInterface({ appliquerSiActive: id.endsWith("-a-input") || id.endsWith("-b-input") }));
   });
 
   document.getElementById("formule-preset-select")?.addEventListener("change", (event) => {

@@ -5,11 +5,24 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { analyserFormule, compilerFormule, tokeniserFormule } from "../public/js/renderer-formule.js";
+import {
+  analyserFormule,
+  compilerFormule,
+  dessinerMiniApercuFormule,
+  normaliserSourceFormule,
+  tokeniserFormule,
+} from "../public/js/renderer-formule.js";
 
 describe("Atelier formule", () => {
   test("tokenizes implicit multiplication", () => {
     assert.deepEqual(tokeniserFormule("2z + a sin(z)"), ["2", "*", "z", "+", "a", "*", "sin", "(", "z", ")"]);
+  });
+
+  test("normalizes French and mathematical input for preview", () => {
+    assert.equal(normaliserSourceFormule("z² + c + 0,25×sin(z)"), "z^2 + c + 0.25*sin(z)");
+    assert.deepEqual(tokeniserFormule("z² + c + 0,25×sin(z)"), [
+      "z", "^", "2", "+", "c", "+", "0.25", "*", "sin", "(", "z", ")",
+    ]);
   });
 
   test("compiles parameterized formulas with a and b", () => {
@@ -52,5 +65,39 @@ describe("Atelier formule", () => {
     const compiled = compilerFormule("sin(z+c");
     assert.equal(compiled.fn, null);
     assert.match(compiled.error, /Parenthèse manquante/);
+  });
+
+  test("reports unsupported characters instead of silently ignoring them", () => {
+    const compiled = compilerFormule("z^2+√c");
+    assert.equal(compiled.fn, null);
+    assert.match(compiled.error, /Jeton inattendu : √/);
+  });
+
+  test("draws the standalone mini preview canvas", () => {
+    let wroteImage = false;
+    const canvas = {
+      width: 12,
+      height: 8,
+      getContext() {
+        return {
+          fillStyle: "",
+          font: "",
+          textAlign: "",
+          textBaseline: "",
+          fillRect() {},
+          fillText() {},
+          createImageData(width, height) {
+            return { data: new Uint8ClampedArray(width * height * 4) };
+          },
+          putImageData(image) {
+            wroteImage = image.data.some((value) => value !== 0);
+          },
+        };
+      },
+    };
+    const readout = { textContent: "" };
+    assert.equal(dessinerMiniApercuFormule({ canvas, readout, formule: "z*z+c" }), true);
+    assert.equal(wroteImage, true);
+    assert.match(readout.textContent, /Proposition locale/);
   });
 });

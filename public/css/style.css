@@ -1619,7 +1619,8 @@ option {
 }
 
 #parameter-map-canvas,
-#lsystem-proposal-canvas {
+#lsystem-proposal-canvas,
+#formule-proposal-canvas {
   width: 100%;
   aspect-ratio: 14 / 9;
   border: 1px solid rgba(255, 255, 255, 0.08);

@@ -3,6 +3,18 @@
 const FONCTIONS_FORMULE = new Set(["sin", "cos", "tan", "abs", "conj", "exp", "log", "re", "im", "norm", "arg"]);
 const VARIABLES_FORMULE = new Set(["z", "c", "i", "e", "pi", "a", "b"]);
 const OPERATEURS_FORMULE = new Set(["+", "-", "*", "/", "^"]);
+const EXPOSANTS_FORMULE = new Map([
+  ["⁰", "0"],
+  ["¹", "1"],
+  ["²", "2"],
+  ["³", "3"],
+  ["⁴", "4"],
+  ["⁵", "5"],
+  ["⁶", "6"],
+  ["⁷", "7"],
+  ["⁸", "8"],
+  ["⁹", "9"],
+]);
 
 function estValeurImpliciteDroite(token) {
   return token === "(" || /^[a-z]+$/i.test(token) || /^\d/.test(token);
@@ -12,8 +24,23 @@ function estValeurImpliciteGauche(token) {
   return token === ")" || /^[a-z]+$/i.test(token) || /^\d/.test(token);
 }
 
+export function normaliserSourceFormule(source) {
+  let resultat = String(source || "")
+    .replace(/−/g, "-")
+    .replace(/[×·]/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/(\d),(\d)/g, "$1.$2");
+  resultat = resultat.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (exposant) => {
+    const chiffres = [...exposant].map((caractere) => EXPOSANTS_FORMULE.get(caractere) ?? "").join("");
+    return `^${chiffres}`;
+  });
+  return resultat;
+}
+
 export function tokeniserFormule(source) {
-  const tokens = String(source || "").match(/\d+(?:\.\d+)?|\.\d+|[a-z]+|[+\-*/^()]/gi) ?? [];
+  const brut = normaliserSourceFormule(source);
+  const tokens = [...brut.matchAll(/\s*(\d+(?:\.\d+)?|\.\d+|[a-z]+|[+\-*/^()]|[^\s])/gi)]
+    .map((match) => match[1]);
   const resultat = [];
   tokens.forEach((token, index) => {
     const valeur = token.toLowerCase();
@@ -192,4 +219,114 @@ export function analyserFormule(source) {
     niveau,
     avertissements,
   };
+}
+
+function couleurMiniApercuFormule(iter, max) {
+  if (iter >= max) return [4, 8, 18];
+  const t = Math.sqrt(Math.max(0, Math.min(1, iter / max)));
+  const r = Math.round(34 + 221 * t);
+  const g = Math.round(210 - 130 * Math.abs(t - 0.45));
+  const b = Math.round(120 + 115 * (1 - t));
+  return [r, g, b];
+}
+
+export function dessinerMiniApercuFormule({
+  canvas,
+  readout = null,
+  formule = "z*z+c",
+  rayon = 2,
+  mode = "mandelbrot",
+  paramA = 0,
+  paramB = 0,
+  juliaCre = -0.8,
+  juliaCim = 0.156,
+} = {}) {
+  if (!canvas) return false;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    if (readout) readout.textContent = "Aperçu indisponible : canvas non initialisé";
+    return false;
+  }
+  const w = Math.max(1, canvas.width | 0);
+  const h = Math.max(1, canvas.height | 0);
+  ctx.fillStyle = "rgba(2,4,10,0.96)";
+  ctx.fillRect(0, 0, w, h);
+
+  const compiled = compilerFormule(formule);
+  const analyse = analyserFormule(formule);
+  if (!compiled.fn) {
+    ctx.fillStyle = "rgba(255,100,80,0.92)";
+    ctx.font = "11px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Formule invalide", w / 2, h / 2 - 8);
+    ctx.fillText(String(compiled.error ?? "erreur de syntaxe").slice(0, 30), w / 2, h / 2 + 8);
+    if (readout) readout.textContent = `Formule invalide · ${compiled.error ?? "erreur de syntaxe"}`;
+    return false;
+  }
+
+  const fn = compiled.fn;
+  const maxIt = 64;
+  const R2 = Math.max(1, Number(rayon) || 2) ** 2;
+  const image = ctx.createImageData(w, h);
+  let signature = 0;
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const qx = -2.0 + px / w * 4.0;
+      const qy = 1.5 - py / h * 3.0;
+      let zr = mode === "julia" ? qx : 0.0;
+      let zi = mode === "julia" ? qy : 0.0;
+      const cr = mode === "julia" ? juliaCre : qx;
+      const ci = mode === "julia" ? juliaCim : qy;
+      let iter = maxIt;
+      for (let n = 0; n < maxIt; n++) {
+        const r = fn(zr, zi, cr, ci, Number(paramA) || 0, Number(paramB) || 0);
+        zr = r[0];
+        zi = r[1];
+        if (!isFinite(zr + zi) || zr * zr + zi * zi > R2) {
+          iter = n;
+          break;
+        }
+      }
+      const color = couleurMiniApercuFormule(iter, maxIt);
+      signature = (signature + ((px + 1) * 17 + (py + 1) * 31) * (iter + 1)) % 100000;
+      const index = (py * w + px) * 4;
+      image.data[index] = color[0];
+      image.data[index + 1] = color[1];
+      image.data[index + 2] = color[2];
+      image.data[index + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  if (readout) {
+    const funcs = analyse.fonctions.length ? ` · fonctions ${analyse.fonctions.join(", ")}` : "";
+    const warnings = analyse.avertissements.length ? ` · ${analyse.avertissements[0]}` : "";
+    readout.textContent = `Proposition locale · ${formule} · ${analyse.tokens.length} jetons, complexité ${analyse.niveau}${funcs} · rayon ${rayon} · a=${(Number(paramA) || 0).toFixed(2)} · b=${(Number(paramB) || 0).toFixed(2)} · mode ${mode} · aperçu ${String(signature).padStart(5, "0")}${warnings}`;
+  }
+  return true;
+}
+
+export function initialiserMiniApercuFormuleDOM(documentRef = globalThis.document) {
+  if (!documentRef) return false;
+  const canvas = documentRef.getElementById("formule-proposal-canvas");
+  if (!canvas || canvas.dataset.formuleMiniPreviewReady === "1") return Boolean(canvas);
+  canvas.dataset.formuleMiniPreviewReady = "1";
+  const lire = () => ({
+    canvas,
+    readout: documentRef.getElementById("formule-proposal-readout"),
+    formule: documentRef.getElementById("formule-iteration-input")?.value.trim() || "z*z+c",
+    rayon: parseFloat(documentRef.getElementById("formule-escape-radius-input")?.value || "2"),
+    mode: documentRef.getElementById("formule-mode-select")?.value || "mandelbrot",
+    paramA: parseFloat(documentRef.getElementById("formule-param-a-input")?.value || "0"),
+    paramB: parseFloat(documentRef.getElementById("formule-param-b-input")?.value || "0"),
+  });
+  const refresh = () => dessinerMiniApercuFormule(lire());
+  ["formule-iteration-input", "formule-escape-radius-input", "formule-mode-select", "formule-param-a-input", "formule-param-b-input"].forEach((id) => {
+    const element = documentRef.getElementById(id);
+    element?.addEventListener("input", refresh);
+    element?.addEventListener("change", refresh);
+  });
+  documentRef.getElementById("btn-formule-preview")?.addEventListener("click", refresh);
+  refresh();
+  return true;
 }

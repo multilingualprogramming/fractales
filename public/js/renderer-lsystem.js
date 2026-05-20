@@ -1,7 +1,7 @@
 "use strict";
 
-const LIMITE_SEQUENCE_APERCU = 14000;
-const LIMITE_SEQUENCE_RENDU = 28000;
+const LIMITE_SEQUENCE_APERCU = 70000;
+const LIMITE_SEQUENCE_RENDU = 320000;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -91,20 +91,24 @@ export function genererPropositionLSysteme(config, options = {}) {
   let sequence = String(config.axiom || "F").slice(0, 96);
   const generations = clamp(Number(config.generations) | 0, 0, 8);
   const limit = options.limit ?? LIMITE_SEQUENCE_RENDU;
+  let truncated = false;
   for (let i = 0; i < generations; i++) {
     let next = "";
     for (const ch of sequence) {
       const rule = rules.get(ch);
       next += rule ? choisirAlternativeLSysteme(rule, hasard) : ch;
-      if (next.length > limit) break;
+      if (next.length > limit) {
+        truncated = true;
+        break;
+      }
     }
     sequence = next.slice(0, limit);
   }
-  return { sequence, diagnostics };
+  return { sequence, diagnostics, truncated, limit };
 }
 
 export function pointsPropositionLSysteme(config, options = {}) {
-  const { sequence, diagnostics } = genererPropositionLSysteme(config, options);
+  const { sequence, diagnostics, truncated, limit } = genererPropositionLSysteme(config, options);
   const angleStep = (Number(config.angle) || 60) * Math.PI / 180;
   let x = 0.0;
   let y = 0.0;
@@ -138,7 +142,7 @@ export function pointsPropositionLSysteme(config, options = {}) {
       angleSign = -angleSign;
     }
   }
-  return { points, sequence, diagnostics };
+  return { points, sequence, diagnostics, truncated, limit };
 }
 
 export function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, generations, seed = 1) {
@@ -149,14 +153,14 @@ export function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, 
   ctx.fillStyle = "rgba(2, 4, 10, 0.96)";
   ctx.fillRect(0, 0, w, h);
 
-  const { points, diagnostics } = pointsPropositionLSysteme({
+  const { points, diagnostics, truncated, limit } = pointsPropositionLSysteme({
     axiom,
     rules: rulesText,
     angle: angleDeg,
     generations,
     seed,
   }, { limit: LIMITE_SEQUENCE_APERCU });
-  if (points.length < 2) return { diagnostics, sequence: "", pointsCount: points.length };
+  if (points.length < 2) return { diagnostics, sequence: "", pointsCount: points.length, truncated, limit };
 
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -173,7 +177,7 @@ export function dessinerPropositionLSysteme(canvas, axiom, rulesText, angleDeg, 
     else ctx.lineTo(px, py);
   });
   ctx.stroke();
-  return { diagnostics, pointsCount: points.length };
+  return { diagnostics, pointsCount: points.length, truncated, limit };
 }
 
 export function decrireReglesLSysteme(rulesText) {

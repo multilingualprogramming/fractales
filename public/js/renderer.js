@@ -76,6 +76,7 @@ const params = {
   lsystemRules: "F=F+F--F+F",
   lsystemAngle: 60,
   lsystemGenerations: 4,
+  lsystemPreset: "",
   lsystemSeed: 1,
   lsystemStrokeWidth: 1.35,
   formulePropositionActive: false,
@@ -204,6 +205,24 @@ let imageDataBuffer = null;
 let explorationModes = null;
 let formuleFnCompilee = null;
 
+function attendreRenduCourant() {
+  const tokenInitial = renderToken;
+  return new Promise((resolve) => {
+    function verifier() {
+      if (!rendering && renderToken === tokenInitial) {
+        resolve();
+        return;
+      }
+      if (!rendering && renderToken !== tokenInitial) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(verifier);
+    }
+    requestAnimationFrame(verifier);
+  });
+}
+
 // ============================================================
 // ÉLÉMENTS DOM
 // ============================================================
@@ -242,6 +261,11 @@ const paletteBackgroundInput = document.getElementById("palette-background");
 const paletteInteriorInput = document.getElementById("palette-interior");
 const lsystemLineColorGroup = document.getElementById("lsystem-line-color-group");
 const lsystemLineColorSelect = document.getElementById("lsystem-line-color-select");
+const btnPersonnaliserFamille = document.getElementById("btn-personnaliser-famille");
+const btnPersonnaliserFamilleLabel = document.getElementById("btn-personnaliser-famille-label");
+const atelierActifChip = document.getElementById("atelier-actif-chip");
+const atelierActifChipDetail = document.getElementById("atelier-actif-chip-detail");
+const btnAtelierRevert = document.getElementById("btn-atelier-revert");
 const btnReset = document.getElementById("btn-reset");
 const btnPanUp = document.getElementById("btn-pan-up");
 const btnPanLeft = document.getElementById("btn-pan-left");
@@ -296,6 +320,27 @@ const bookmarkPanel = document.getElementById("bookmark-panel");
 const btnCloseBookmarks = document.getElementById("btn-close-bookmarks");
 const bookmarkList = document.getElementById("bookmark-list");
 const explorationDock = document.getElementById("exploration-dock");
+const btnToggleDockLabels = document.getElementById("btn-toggle-dock-labels");
+
+const STORAGE_DOCK_EXPANDED = "fractales_exploration_dock_expanded";
+function definirEtatLabelsDock(expanded) {
+  if (!explorationDock) return;
+  explorationDock.classList.toggle("expanded", expanded);
+  if (btnToggleDockLabels) {
+    btnToggleDockLabels.setAttribute("aria-expanded", expanded ? "true" : "false");
+    btnToggleDockLabels.setAttribute("aria-label", expanded ? "Masquer les noms des instruments" : "Afficher les noms des instruments");
+    btnToggleDockLabels.title = expanded ? "Masquer les noms" : "Afficher les noms";
+  }
+  try { localStorage.setItem(STORAGE_DOCK_EXPANDED, expanded ? "1" : "0"); } catch {}
+}
+try {
+  if (localStorage.getItem(STORAGE_DOCK_EXPANDED) === "1") definirEtatLabelsDock(true);
+} catch {}
+if (btnToggleDockLabels) {
+  btnToggleDockLabels.addEventListener("click", () => {
+    definirEtatLabelsDock(!explorationDock?.classList.contains("expanded"));
+  });
+}
 const explorationPanel = document.getElementById("exploration-panel");
 const btnCloseExploration = document.getElementById("btn-close-exploration");
 const explorationTitle = document.getElementById("exploration-panel-title");
@@ -514,6 +559,12 @@ const FRACTAL_FAMILIES = [
       ["buddhabrot", "Buddhabrot"],
       ["burning_julia", "Burning Julia"],
       ["biomorphe", "Biomorphe de Pickover"],
+    ],
+  },
+  {
+    id: "formule",
+    label: "Formule libre",
+    fractales: [
       ["formule_cosinus_c", "Formule cosinus"],
       ["formule_biomorphe", "Formule biomorphe"],
       ["formule_tricorne", "Formule tricorne"],
@@ -629,6 +680,15 @@ const FRACTAL_FAMILIES = [
 const FRACTAL_FAMILY_BY_NAME = Object.fromEntries(
   FRACTAL_FAMILIES.flatMap((famille) => famille.fractales.map(([nom]) => [nom, famille.id]))
 );
+
+const LSYSTEM_PRESET_TO_FRACTAL = {
+  koch: "koch",
+  dragon: "dragon_heighway",
+  levy: "courbe_levy_c",
+  gosper: "gosper_curve",
+  hilbert: "hilbert_curve",
+  peano: "peano_curve",
+};
 
 import {
   activerMode3D,
@@ -879,7 +939,12 @@ function definirVisibiliteOptionsSpecifiques({ labels = [] } = {}) {
 }
 
 function mettreAJourResumeControles() {
-  if (controlsSummaryFractal) controlsSummaryFractal.textContent = params.fractal;
+  if (controlsSummaryFractal) {
+    let nomFractale = params.fractal;
+    if (params.formulePropositionActive) nomFractale = `Formule libre · ${String(params.formuleIteration || "z*z+c").slice(0, 24)}`;
+    else if (params.lsystemProposalActive) nomFractale = `L-système · proposition locale`;
+    controlsSummaryFractal.textContent = nomFractale;
+  }
   const morceaux = [`${params.maxIter} itérations`, paletteSelect?.selectedOptions?.[0]?.textContent?.trim() || params.palette];
   if (!controlsSpecific?.classList.contains("hidden") && fractalOptionsSummary) {
     const resumeSpecifique = fractalOptionsSummary.textContent?.trim();
@@ -1028,6 +1093,39 @@ function coloriserDensite(data, densites, maxDensite, palette, lumieres = null) 
   }
 }
 
+function coloriserDensiteIFS(data, densites, maxDensite, palette) {
+  const fond = getPaletteBackground(palette);
+  if (maxDensite <= 0) {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = fond[0];
+      data[i + 1] = fond[1];
+      data[i + 2] = fond[2];
+      data[i + 3] = 255;
+    }
+    return;
+  }
+  const logMax = Math.log(1 + maxDensite);
+  for (let i = 0; i < densites.length; i++) {
+    const densite = densites[i];
+    const base = i * 4;
+    if (densite <= 0) {
+      data[base] = fond[0];
+      data[base + 1] = fond[1];
+      data[base + 2] = fond[2];
+      data[base + 3] = 255;
+      continue;
+    }
+    const ratio = Math.log(1 + densite) / logMax;
+    const ratioVisible = Math.min(0.96, 0.10 + Math.pow(ratio, 0.72) * 0.76);
+    let [r, g, b] = getColorFromRatio(ratioVisible, palette);
+    const crisp = Math.min(1.0, 0.62 + ratio * 0.48);
+    data[base] = Math.min(255, Math.round(r * crisp + 18));
+    data[base + 1] = Math.min(255, Math.round(g * crisp + 18));
+    data[base + 2] = Math.min(255, Math.round(b * crisp + 18));
+    data[base + 3] = 255;
+  }
+}
+
 function ajusterIterationsExport(largeur, hauteur, maxIter) {
   const fn = wasmExportFunctions.ajuster_iterations_export;
   return fn ? Math.max(maxIter, Math.round(fn(largeur, hauteur, maxIter))) : Math.max(maxIter, Math.round(maxIter * (1 + (largeur * hauteur) / 480000 * 0.35)));
@@ -1067,6 +1165,7 @@ function capturerVueCourante() {
     lsystemRules: params.lsystemRules,
     lsystemAngle: params.lsystemAngle,
     lsystemGenerations: params.lsystemGenerations,
+    lsystemPreset: params.lsystemPreset,
     lsystemSeed: params.lsystemSeed,
     formulePropositionActive: params.formulePropositionActive,
     formuleIteration: params.formuleIteration,
@@ -1134,6 +1233,7 @@ function clonerParamsExport(source = params) {
     lsystemRules: source.lsystemRules ?? params.lsystemRules,
     lsystemAngle: source.lsystemAngle ?? params.lsystemAngle,
     lsystemGenerations: source.lsystemGenerations ?? params.lsystemGenerations,
+    lsystemPreset: source.lsystemPreset ?? params.lsystemPreset,
     lsystemSeed: source.lsystemSeed ?? params.lsystemSeed,
     formulePropositionActive: source.formulePropositionActive ?? params.formulePropositionActive,
     formuleIteration: source.formuleIteration ?? params.formuleIteration,
@@ -1155,7 +1255,10 @@ function formaterNomExport(suffixe, extension) {
     String(date.getMinutes()).padStart(2, "0"),
     String(date.getSeconds()).padStart(2, "0"),
   ].join("");
-  return `${params.fractal}_${suffixe}_${morceaux}.${extension}`;
+  const nomFractale = params.lsystemProposalActive
+    ? `lsysteme_${params.lsystemPreset || "local"}`
+    : params.fractal;
+  return `${nomFractale}_${suffixe}_${morceaux}.${extension}`;
 }
 
 function telechargerBlob(blob, nomFichier) {
@@ -1186,12 +1289,6 @@ function makeRng(seed) {
 }
 
 function barnsleyStep(x, y, r) {
-  if (wasmExportFunctions.barnsley_etape_x && wasmExportFunctions.barnsley_etape_y) {
-    return [
-      wasmExportFunctions.barnsley_etape_x(x, y, r),
-      wasmExportFunctions.barnsley_etape_y(x, y, r),
-    ];
-  }
   if (r < 0.01) return [0.0, 0.16 * y];
   if (r < 0.86) return [0.85 * x + 0.04 * y, -0.04 * x + 0.85 * y + 1.6];
   if (r < 0.93) return [0.2 * x - 0.26 * y, 0.23 * x + 0.22 * y + 1.6];
@@ -1199,24 +1296,12 @@ function barnsleyStep(x, y, r) {
 }
 
 function sierpinskiStep(x, y, r) {
-  if (wasmExportFunctions.sierpinski_etape_x && wasmExportFunctions.sierpinski_etape_y) {
-    return [
-      wasmExportFunctions.sierpinski_etape_x(x, y, r),
-      wasmExportFunctions.sierpinski_etape_y(x, y, r),
-    ];
-  }
   if (r < 1 / 3) return [0.5 * x, 0.5 * y];
   if (r < 2 / 3) return [0.5 * x + 0.5, 0.5 * y];
   return [0.5 * x + 0.25, 0.5 * y + 0.43301270189];
 }
 
 function etapeTapisSierpinski(x, y, r) {
-  if (wasmExportFunctions.tapis_sierpinski_etape_x && wasmExportFunctions.tapis_sierpinski_etape_y) {
-    return [
-      wasmExportFunctions.tapis_sierpinski_etape_x(x, y, r),
-      wasmExportFunctions.tapis_sierpinski_etape_y(x, y, r),
-    ];
-  }
   const cellules = [
     [-1, -1], [0, -1], [1, -1],
     [-1, 0], [1, 0],
@@ -1239,17 +1324,6 @@ const MENGER_OFFSETS = [
 ];
 
 function etapeMengerSponge(x, y, z, r) {
-  if (
-    wasmExportFunctions.menger_etape_x &&
-    wasmExportFunctions.menger_etape_y &&
-    wasmExportFunctions.menger_etape_z
-  ) {
-    return [
-      wasmExportFunctions.menger_etape_x(x, y, z, r),
-      wasmExportFunctions.menger_etape_y(x, y, z, r),
-      wasmExportFunctions.menger_etape_z(x, y, z, r),
-    ];
-  }
   const index = Math.min(MENGER_OFFSETS.length - 1, (r * MENGER_OFFSETS.length) | 0);
   const [dx, dy, dz] = MENGER_OFFSETS[index];
   return [x / 3 + dx / 3, y / 3 + dy / 3, z / 3 + dz / 3];
@@ -1261,12 +1335,6 @@ function projeterMengerSponge(x, y, z) {
 }
 
 function etapeVicsekFractal(x, y, r) {
-  if (wasmExportFunctions.vicsek_etape_x && wasmExportFunctions.vicsek_etape_y) {
-    return [
-      wasmExportFunctions.vicsek_etape_x(x, y, r),
-      wasmExportFunctions.vicsek_etape_y(x, y, r),
-    ];
-  }
   if (r < 0.2) return [x / 3, y / 3];
   if (r < 0.4) return [x / 3 - 2 / 3, y / 3];
   if (r < 0.6) return [x / 3 + 2 / 3, y / 3];
@@ -1343,17 +1411,6 @@ function projeterMandelbulb(x, y, z) {
 
 // Tétraèdre de Sierpiński — SFI à 4 contractions (3D)
 function etapeTetraedre(x, y, z, r) {
-  if (
-    wasmExportFunctions.tetraedre_etape_x &&
-    wasmExportFunctions.tetraedre_etape_y &&
-    wasmExportFunctions.tetraedre_etape_z
-  ) {
-    return [
-      wasmExportFunctions.tetraedre_etape_x(x, y, z, r),
-      wasmExportFunctions.tetraedre_etape_y(x, y, z, r),
-      wasmExportFunctions.tetraedre_etape_z(x, y, z, r),
-    ];
-  }
   const k = Math.min(3, (r * 4) | 0);
   if (k === 0) return [x * 0.5, y * 0.5, z * 0.5];
   if (k === 1) return [x * 0.5 + 0.5, y * 0.5, z * 0.5];
@@ -1764,6 +1821,21 @@ function synchroniserControlesJulia() {
   if (juliaCImValue) juliaCImValue.textContent = params.juliaCim.toFixed(3);
 }
 
+function generationLSystemeDepuisIterations(maxIter) {
+  return Math.max(1, Math.min(8, Math.round((Number(maxIter) || 128) / 128)));
+}
+
+function iterationsDepuisGenerationLSysteme(generation) {
+  return Math.max(64, Math.min(1024, Math.round(Number(generation) || 1) * 128));
+}
+
+function synchroniserGenerationLSystemeDepuisIterations() {
+  if (!params.lsystemProposalActive) return;
+  params.lsystemGenerations = generationLSystemeDepuisIterations(params.maxIter);
+  const lsystemGeneration = document.getElementById("lsystem-generation-slider");
+  if (lsystemGeneration) lsystemGeneration.value = String(params.lsystemGenerations);
+}
+
 function appliquerPresetJulia(fractalName) {
   const preset = JULIA_C_PRESETS[fractalName];
   if (!preset) return;
@@ -1775,6 +1847,10 @@ function appliquerPresetJulia(fractalName) {
 function setActiveFractal(fractalName) {
   params.fractal = fractalName;
   params.lsystemProposalActive = false;
+  if (params.formulePropositionActive) {
+    params.formulePropositionActive = false;
+    formuleFnCompilee = null;
+  }
   syncSelectors(fractalName);
   appliquerPresetJulia(params.fractal);
   mettreAJourAideInteraction();
@@ -1787,21 +1863,30 @@ function setActiveFractal(fractalName) {
 
 function appliquerPropositionLSysteme(config) {
   params.lsystemProposalActive = true;
+  params.lsystemPreset = String(config.presetKey || config.preset || "").slice(0, 40);
   params.lsystemAxiom = String(config.axiom || "F").slice(0, 96);
   params.lsystemRules = String(config.rules || "F=F+F--F+F").slice(0, 600);
   params.lsystemAngle = Math.max(1, Math.min(179, Number(config.angle) || 60));
   params.lsystemGenerations = Math.max(0, Math.min(8, Number(config.generations) | 0));
+  params.maxIter = iterationsDepuisGenerationLSysteme(params.lsystemGenerations);
+  iterSlider.value = String(params.maxIter);
+  iterValue.textContent = String(params.maxIter);
+  if (iterSliderCompact) iterSliderCompact.value = String(params.maxIter);
+  if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
   params.lsystemSeed = String(config.seed ?? params.lsystemSeed ?? 1).slice(0, 40);
   params.lsystemStrokeWidth = Math.max(0.5, Math.min(6, Number(config.strokeWidth) || params.lsystemStrokeWidth || 1.35));
-  if (!LINE_FRACTALS.has(params.fractal)) {
-    params.fractal = "koch";
+  const fractaleSupport = LSYSTEM_PRESET_TO_FRACTAL[params.lsystemPreset] || (LINE_FRACTALS.has(params.fractal) ? params.fractal : "koch");
+  if (params.fractal !== fractaleSupport) {
+    params.fractal = fractaleSupport;
     syncSelectors(params.fractal);
     loadSources(params.fractal);
   }
-  view.centerX = 0.0;
-  view.centerY = 0.0;
-  view.pixelSize = 2.4 / Math.max(canvas.width, 1);
-  view.rotation = 0.0;
+  if (!config.preserveView) {
+    view.centerX = 0.0;
+    view.centerY = 0.0;
+    view.pixelSize = 2.4 / Math.max(canvas.width, 1);
+    view.rotation = 0.0;
+  }
   mettreAJourVisibiliteCouleurTraits();
   mettreAJourOptionsSpecifiques();
   explorationModes?.syncFromParams();
@@ -1812,6 +1897,7 @@ function appliquerPropositionLSysteme(config) {
 
 function effacerPropositionLSysteme() {
   params.lsystemProposalActive = false;
+  params.lsystemPreset = "";
   mettreAJourVisibiliteCouleurTraits();
   mettreAJourOptionsSpecifiques();
   explorationModes?.syncFromParams();
@@ -2228,12 +2314,13 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
   const estFeigenbaum = params.fractal === "feigenbaum_tree";
   const estDuffing = params.fractal === "duffing_attractor";
   const estBuddhabrot = params.fractal === "buddhabrot";
+  const estIFSCrisp = isBarnsley || estSierpinski || estTapis || estVicsek;
   const rng = makeRng(0x9e3779b9 ^ (params.maxIter << 7) ^ params.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, params.maxIter * 70)
-    : (estJuliaQuaternion ? Math.max(150000, params.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? Math.max(140000, params.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900))));
+    : (estJuliaQuaternion ? Math.max(150000, params.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? Math.max(140000, params.maxIter * 1800) : (estMenger ? Math.max(60000, params.maxIter * 650) : ((estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, params.maxIter * 1200) : Math.max(30000, params.maxIter * 900)))));
   const burnIn = isBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estDuffing) ? 140 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
-  const pointsPerFrame = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000)));
+  const pointsPerFrame = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? 30000 : (estMenger ? 36000 : ((estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000))));
   let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz || estRossler || estAizawa || estDuffing) ? 0.1 : (estSprott ? 0.2 : (estHenon ? 0.1 : 0.0)))))));
   let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estAizawa || estDuffing) ? 0.1 : (estSprott ? 0.1 : (estHenon ? 0.0 : 0.0)))))));
   let z = (estMenger || estMandelbulb || estTetraedre) ? 0.10 : (estMandelbox ? 0.3 : ((estSprott ? 0.1 : 0.0)));
@@ -2382,13 +2469,14 @@ function renderPointFractal(w, h, data, cx0, cy0, ps, token) {
           px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
           py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
         }
-        const poids = est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1;
+        const poids = estIFSCrisp ? 1 : (est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1);
         const lumiere = est3D ? Math.round(120 + projection.proximite * 880) : 0;
-        putPoint(px, py, poids, projection.rayon || 0, lumiere);
+        putPoint(px, py, poids, estIFSCrisp ? 0 : (projection.rayon || 0), lumiere);
         emitted += 1;
       }
     }
-    coloriserDensite(data, tampon.densites, tampon.maxDensite, params, tampon.lumieres);
+    if (estIFSCrisp) coloriserDensiteIFS(data, tampon.densites, tampon.maxDensite, params);
+    else coloriserDensite(data, tampon.densites, tampon.maxDensite, params, tampon.lumieres);
     if (token !== renderToken) return;
     ctx.putImageData(imageDataBuffer, 0, 0);
     if (emitted < pointsTarget) {
@@ -2514,10 +2602,11 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const estFeigenbaum = renduParams.fractal === "feigenbaum_tree";
   const estDuffing = renduParams.fractal === "duffing_attractor";
   const estBuddhabrot = renduParams.fractal === "buddhabrot";
+  const estIFSCrisp = estBarnsley || estSierpinski || estTapis || estVicsek;
   const rng = makeRng(0x9e3779b9 ^ (renduParams.maxIter << 7) ^ renduParams.fractal.length);
   const pointsTarget = estBuddhabrot
     ? Math.max(8000, renduParams.maxIter * 70)
-    : (estJuliaQuaternion ? Math.max(150000, renduParams.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? Math.max(140000, renduParams.maxIter * 1800) : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900))));
+    : (estJuliaQuaternion ? Math.max(150000, renduParams.maxIter * 2400) : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estFeigenbaum || estDuffing) ? Math.max(140000, renduParams.maxIter * 1800) : (estMenger ? Math.max(60000, renduParams.maxIter * 650) : ((estMandelbulb || estTetraedre || estMandelbox) ? Math.max(80000, renduParams.maxIter * 1200) : Math.max(30000, renduParams.maxIter * 900)))));
   const burnIn = estBarnsley ? 80 : (estBuddhabrot ? 0 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estRossler || estAizawa || estSprott || estDuffing) ? 140 : ((estMenger || estTetraedre || estMandelbox) ? 60 : 40)));
   let x = (estMenger || estMandelbulb) ? 0.11 : (estTetraedre ? 0.25 : (estMandelbox ? 0.2 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estLorenz || estRossler || estAizawa || estDuffing) ? 0.1 : (estSprott ? 0.2 : 0.0))))));
   let y = (estMenger || estMandelbulb) ? -0.17 : (estTetraedre ? 0.20 : (estMandelbox ? 0.0 : (estTapis ? -0.7 : (estIkeda ? 0.1 : ((estClifford || estPeterDeJong || estAizawa || estDuffing) ? 0.1 : (estSprott ? 0.1 : 0.0))))));
@@ -2531,7 +2620,7 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   const centerX = cx0 + (w / 2) * ps;
   const centerY = cy0 + (h / 2) * ps;
 
-  const pointsParBloc = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum || estDuffing) ? 30000 : ((estMenger || estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000)));
+  const pointsParBloc = estBuddhabrot ? 400 : (estJuliaQuaternion ? 18000 : ((estClifford || estPeterDeJong || estIkeda || estHenon || estLorenz || estFeigenbaum || estDuffing) ? 30000 : (estMenger ? 36000 : ((estMandelbulb || estTetraedre || estMandelbox) ? 26000 : 25000))));
   while (emitted < pointsTarget) {
     const blocFin = Math.min(emitted + pointsParBloc, pointsTarget);
     while (emitted < blocFin) {
@@ -2657,9 +2746,9 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
         px = ((ddx * cosR + ddy * sinR) / ps + w / 2) | 0;
         py = ((-ddx * sinR + ddy * cosR) / ps + h / 2) | 0;
       }
-      const poids = est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1;
+      const poids = estIFSCrisp ? 1 : (est3D ? Math.max(1, Math.min(7, 1 + Math.round(projection.proximite * 6))) : 1);
       const lumiere = est3D ? Math.round(120 + projection.proximite * 880) : 0;
-      ajouterPointPonctuel(tampon, px, py, poids, projection.rayon || 0, lumiere);
+      ajouterPointPonctuel(tampon, px, py, poids, estIFSCrisp ? 0 : (projection.rayon || 0), lumiere);
       if (estIkeda || estLorenz) {
         ajouterPointPonctuel(tampon, px + 1, py, poids, 0, lumiere);
         ajouterPointPonctuel(tampon, px, py + 1, poids, 0, lumiere);
@@ -2670,7 +2759,8 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
     await attendre(0);
   }
 
-  coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams, tampon.lumieres);
+  if (estIFSCrisp) coloriserDensiteIFS(data, tampon.densites, tampon.maxDensite, renduParams);
+  else coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams, tampon.lumieres);
 }
 
 function appliquerTransforme(x, y, renduParams) {
@@ -2775,7 +2865,10 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
 
 async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
   if (estFractale3D(renduParams.fractal)) {
-    rendre3DSurCanvas(canvasCible, renduParams.fractal, renduParams.maxIter, getPaletteComplete(renduParams), vueCible?.vue3d ?? obtenirVue3DActive());
+    rendre3DSurCanvas(canvasCible, renduParams.fractal, renduParams.maxIter, getPaletteComplete(renduParams), vueCible?.vue3d ?? obtenirVue3DActive(), {
+      matiere: renduParams.studio3dMaterial,
+      brume: renduParams.studio3dFog,
+    });
     return;
   }
   const ctxCible = canvasCible.getContext("2d", { willReadFrequently: false });
@@ -3104,7 +3197,10 @@ function render() {
   updateStatusBar("Rendu en cours…");
 
   if (fractaleActiveEst3D()) {
-    render3D(params.fractal, params.maxIter, getPaletteComplete(params));
+    render3D(params.fractal, params.maxIter, getPaletteComplete(params), {
+      matiere: params.studio3dMaterial,
+      brume: params.studio3dFog,
+    });
     rendering = false;
     canvas.parentElement.classList.remove("rendering");
     explorationModes?.afterRender();
@@ -3125,6 +3221,7 @@ function render() {
     const modeJulia = params.formuleMode === "julia";
     const R2 = (params.formuleEscapeRadius || 2) ** 2;
     const fFn = formuleFnCompilee;
+    const useTransform = params.coordTransform && params.coordTransform !== "aucune";
     let row = 0;
     function stepFormule() {
       if (token !== renderToken) return;
@@ -3134,8 +3231,10 @@ function render() {
         const base = py * w * 4;
         for (let px = 0; px < w; px++) {
           const dx = (px - w * 0.5) * ps;
-          const qx = view.centerX + dx * cosR - dy * sinR;
-          const qy = view.centerY + dx * sinR + dy * cosR;
+          const rawQx = view.centerX + dx * cosR - dy * sinR;
+          const rawQy = view.centerY + dx * sinR + dy * cosR;
+          let qx = rawQx, qy = rawQy;
+          if (useTransform) [qx, qy] = appliquerTransforme(rawQx, rawQy, params);
           let zr = modeJulia ? qx : 0, zi = modeJulia ? qy : 0;
           const cr = modeJulia ? params.juliaCre : qx, ci = modeJulia ? params.juliaCim : qy;
           let iter = max;
@@ -3180,6 +3279,7 @@ function render() {
   const estFractaleMagnetique = params.fractal === "magnet1" || params.fractal === "magnet2" || params.fractal === "magnet3" || params.fractal === "lambda_fractale" || params.fractal === "lambda_cubique" || params.fractal === "magnet_cosinus" || params.fractal === "magnet_sinus" || params.fractal === "nova_magnetique";
   const estFractaleOrbitrap = params.fractal === "mandelbrot_piege_cercle" || params.fractal === "mandelbrot_piege_croix" || params.fractal === "mandelbrot_piege_ligne" || params.fractal === "julia_piege_cercle";
   const estFractaleLisse = params.fractal === "mandelbrot_lisse" || params.fractal === "julia_lisse" || params.fractal === "burning_ship_lisse" || params.fractal === "tricorn_lisse";
+  const useTransform = params.coordTransform && params.coordTransform !== "aucune";
 
   function step() {
     if (token !== renderToken) return;
@@ -3189,8 +3289,10 @@ function render() {
       const base = py * w * 4;
       for (let px = 0; px < w; px++) {
         const dx = (px - w * 0.5) * ps;
-        const cx = view.centerX + dx * cosR - dy * sinR;
-        const cy = view.centerY + dx * sinR + dy * cosR;
+        const rawCx = view.centerX + dx * cosR - dy * sinR;
+        const rawCy = view.centerY + dx * sinR + dy * cosR;
+        let cx = rawCx, cy = rawCy;
+        if (useTransform) [cx, cy] = appliquerTransforme(rawCx, rawCy, params);
         let iter;
         if (params.fractal === "julia" || params.fractal === "burning_julia" || params.fractal === "julia_lisse" || params.fractal === "julia_piege_cercle") {
           iter = fn(cx, cy, params.juliaCre, params.juliaCim, max);
@@ -3466,6 +3568,7 @@ canvas.addEventListener("touchend", () => { lastPinchDist = null; });
 
 iterSlider.addEventListener("input", () => {
   params.maxIter = parseInt(iterSlider.value, 10);
+  synchroniserGenerationLSystemeDepuisIterations();
   iterValue.textContent = params.maxIter;
   if (iterSliderCompact) iterSliderCompact.value = String(params.maxIter);
   if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
@@ -3477,6 +3580,7 @@ iterSlider.addEventListener("input", () => {
 if (iterSliderCompact) {
   iterSliderCompact.addEventListener("input", () => {
     params.maxIter = parseInt(iterSliderCompact.value, 10);
+    synchroniserGenerationLSystemeDepuisIterations();
     iterSlider.value = String(params.maxIter);
     iterValue.textContent = params.maxIter;
     if (iterValueCompact) iterValueCompact.textContent = String(params.maxIter);
@@ -3507,6 +3611,23 @@ if (fractalSelectCompact) {
   fractalSelectCompact.addEventListener("change", () => {
     fractalSelect.value = fractalSelectCompact.value;
     setActiveFractal(fractalSelectCompact.value);
+  });
+}
+
+if (btnPersonnaliserFamille) {
+  btnPersonnaliserFamille.addEventListener("click", () => {
+    const mode = btnPersonnaliserFamille.dataset.mode;
+    if (mode) explorationModes?.setMode(mode);
+  });
+}
+
+if (btnAtelierRevert) {
+  btnAtelierRevert.addEventListener("click", () => {
+    if (params.formulePropositionActive) {
+      effacerFormuleProposition();
+    } else if (params.lsystemProposalActive) {
+      effacerPropositionLSysteme();
+    }
   });
 }
 
@@ -3899,6 +4020,39 @@ function mettreAJourAideInteraction() {
 // JULIA C SLIDERS
 // ============================================================
 
+const IFS_ATELIER_FRACTALS = new Set([
+  "barnsley",
+  "sierpinski",
+  "tapis_sierpinski",
+  "vicsek_fractal",
+  "menger_sponge",
+  "tetraedre_sierpinski",
+]);
+
+const FORMULE_ATELIER_FRACTALS = new Set([
+  "formule_cosinus_c",
+  "formule_biomorphe",
+  "formule_tricorne",
+  "formule_perturbee_canonique",
+  "formule_rationnelle_canonique",
+  "formule_exponentielle_canonique",
+  "formule_tangente_canonique",
+  "formule_norme_canonique",
+]);
+
+function configPersonnalisationActive() {
+  if (LINE_FRACTALS.has(params.fractal)) {
+    return { mode: "lsysteme", label: "Personnaliser la grammaire…" };
+  }
+  if (IFS_ATELIER_FRACTALS.has(params.fractal)) {
+    return { mode: "ifs", label: "Personnaliser le système…" };
+  }
+  if (FORMULE_ATELIER_FRACTALS.has(params.fractal) || params.formulePropositionActive) {
+    return { mode: "formule", label: "Personnaliser la formule…" };
+  }
+  return null;
+}
+
 function mettreAJourOptionsSpecifiques() {
   const needsC = ["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"].includes(params.fractal);
   const needsPower = params.fractal === "multibrot";
@@ -3910,6 +4064,41 @@ function mettreAJourOptionsSpecifiques() {
   definirVisibiliteOptionsSpecifiques({ labels });
   const needsSVG = LINE_FRACTALS.has(params.fractal);
   if (btnExportSvg) btnExportSvg.classList.toggle("hidden", !needsSVG);
+  mettreAJourPersonnaliserFamille();
+  mettreAJourChipAtelier();
+}
+
+function mettreAJourPersonnaliserFamille() {
+  if (!btnPersonnaliserFamille) return;
+  const config = configPersonnalisationActive();
+  btnPersonnaliserFamille.classList.toggle("hidden", !config);
+  if (config) {
+    btnPersonnaliserFamille.disabled = false;
+    btnPersonnaliserFamille.setAttribute("aria-hidden", "false");
+    btnPersonnaliserFamille.dataset.mode = config.mode;
+    if (btnPersonnaliserFamilleLabel) btnPersonnaliserFamilleLabel.textContent = config.label;
+  } else {
+    btnPersonnaliserFamille.disabled = true;
+    btnPersonnaliserFamille.setAttribute("aria-hidden", "true");
+    delete btnPersonnaliserFamille.dataset.mode;
+  }
+}
+
+function mettreAJourChipAtelier() {
+  if (!atelierActifChip) return;
+  let detail = "";
+  if (params.formulePropositionActive) {
+    detail = `Formule libre · ${String(params.formuleIteration || "z*z+c").slice(0, 36)}`;
+  } else if (params.lsystemProposalActive) {
+    detail = `L-système · proposition locale (gen ${params.lsystemGenerations})`;
+  }
+  if (detail) {
+    atelierActifChip.classList.remove("hidden");
+    if (atelierActifChipDetail) atelierActifChipDetail.textContent = detail;
+  } else {
+    atelierActifChip.classList.add("hidden");
+    if (atelierActifChipDetail) atelierActifChipDetail.textContent = "";
+  }
 }
 
 if (juliaCReSlider) {
@@ -3937,21 +4126,14 @@ if (juliaCImSlider) {
 async function appliquerSignet(signet) {
   params.fractal = signet.fractal;
   syncSelectors(signet.fractal);
+  const cible = signet.vue3d ? null : {
+    centerX: signet.centerX,
+    centerY: signet.centerY,
+    pixelSize: signet.pixelSize,
+    rotation: signet.rotation ?? 0,
+  };
   if (signet.vue3d) {
     definirVue3DActive(signet.fractal, signet.vue3d);
-  } else {
-    const cible = {
-      centerX: signet.centerX,
-      centerY: signet.centerY,
-      pixelSize: signet.pixelSize,
-      rotation: signet.rotation ?? 0,
-    };
-    animerVersVue(cible, {
-      view,
-      wasmNav: wasmExportFunctions,
-      render,
-      onComplete: () => mettreAJourHash(view, params),
-    });
   }
   params.maxIter = signet.maxIter;
   iterSlider.value = signet.maxIter;
@@ -3982,6 +4164,7 @@ async function appliquerSignet(signet) {
   params.lsystemRules = signet.lsystemRules ?? params.lsystemRules;
   params.lsystemAngle = signet.lsystemAngle ?? params.lsystemAngle;
   params.lsystemGenerations = signet.lsystemGenerations ?? params.lsystemGenerations;
+  params.lsystemPreset = signet.lsystemPreset ?? params.lsystemPreset;
   params.lsystemSeed = signet.lsystemSeed ?? params.lsystemSeed;
   params.formulePropositionActive = signet.formulePropositionActive ?? params.formulePropositionActive;
   if (signet.formuleIteration !== undefined) params.formuleIteration = signet.formuleIteration;
@@ -3998,7 +4181,17 @@ async function appliquerSignet(signet) {
   explorationModes?.syncFromParams();
   mettreAJourOptionsSpecifiques();
   await loadSources(params.fractal);
-  render();
+  if (cible) {
+    await animerVersVue(cible, {
+      view,
+      wasmNav: wasmExportFunctions,
+      render,
+      onComplete: () => mettreAJourHash(view, params),
+    });
+  } else {
+    render();
+    mettreAJourHash(view, params);
+  }
 }
 
 const { ajouterSignet, rendreListeSignets } = initialiserSignets({
@@ -4098,6 +4291,7 @@ explorationModes = initialiserExploration({
     updateStatusBar,
     captureView: capturerVueCourante,
     applyCapturedView: appliquerSignet,
+    waitForRenderIdle: attendreRenduCourant,
     is3D: fractaleActiveEst3D,
     set3DView: (patch) => {
       definirVue3DActive(params.fractal, { ...(obtenirVue3DActive() ?? {}), ...patch });
@@ -4125,6 +4319,10 @@ async function init() {
     statut: updateStatusBar,
     obtenirPalette: () => getPaletteComplete(params),
     obtenirMaxIter: () => params.maxIter,
+    obtenirOptions3D: () => ({
+      matiere: params.studio3dMaterial,
+      brume: params.studio3dFog,
+    }),
   });
 
   // Lire l'état depuis le hash URL (lien partagé)
@@ -4151,8 +4349,11 @@ async function init() {
     params.lsystemRules = etatHash.lsystemRules ?? params.lsystemRules;
     params.lsystemAngle = etatHash.lsystemAngle ?? params.lsystemAngle;
     params.lsystemGenerations = etatHash.lsystemGenerations ?? params.lsystemGenerations;
+    params.lsystemPreset = etatHash.lsystemPreset ?? params.lsystemPreset;
     params.lsystemSeed = etatHash.lsystemSeed ?? params.lsystemSeed;
-    if (params.lsystemProposalActive && !LINE_FRACTALS.has(params.fractal)) params.fractal = "koch";
+    if (params.lsystemProposalActive && !LINE_FRACTALS.has(params.fractal)) {
+      params.fractal = LSYSTEM_PRESET_TO_FRACTAL[params.lsystemPreset] || "koch";
+    }
     params.formulePropositionActive = etatHash.formulePropositionActive ?? params.formulePropositionActive;
     if (etatHash.formuleIteration !== undefined) params.formuleIteration = etatHash.formuleIteration;
     if (etatHash.formuleEscapeRadius !== undefined) params.formuleEscapeRadius = etatHash.formuleEscapeRadius;

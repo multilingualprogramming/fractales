@@ -1,14 +1,16 @@
 "use strict";
 
-export const FRACTALES_3D = new Set(["tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
+export const FRACTALES_3D = new Set(["menger_sponge", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
 
 const VUES_3D_PAR_DEFAUT = {
+  menger_sponge: { distance: 4.6, lacet: 0.82, tangage: 0.48, cibleX: 0.0, cibleY: 0.0, cibleZ: 0.0 },
   tetraedre_sierpinski: { distance: 2.8, lacet: 0.82, tangage: 0.56, cibleX: 0.0, cibleY: 0.0, cibleZ: 0.0 },
   julia_quaternion: { distance: 4.4, lacet: 0.95, tangage: 0.34, cibleX: 0.0, cibleY: 0.0, cibleZ: 0.0 },
   mandelbox: { distance: 6.8, lacet: 0.88, tangage: 0.38, cibleX: 0.0, cibleY: 0.0, cibleZ: 0.0 },
 };
 
 const INFOS_FRACTALES_3D = {
+  menger_sponge: { echantillons: 150000, taillePoint: 2.0, rayonPan: 0.0036 },
   tetraedre_sierpinski: { echantillons: 90000, taillePoint: 2.6, rayonPan: 0.0028 },
   julia_quaternion: { echantillons: 130000, taillePoint: 2.1, rayonPan: 0.0032 },
   mandelbox: { echantillons: 125000, taillePoint: 2.4, rayonPan: 0.0042 },
@@ -25,6 +27,7 @@ uniform mat4 uProjection;
 uniform mat4 uVue;
 uniform float uTaillePoint;
 varying float vIntensite;
+varying float vProfondeur;
 
 void main() {
   vec4 positionVue = uVue * vec4(aPosition, 1.0);
@@ -32,6 +35,7 @@ void main() {
   float facteurPerspective = clamp(1.6 / max(0.45, -positionVue.z), 0.35, 3.4);
   gl_PointSize = uTaillePoint * (0.72 + aIntensite * 1.45) * facteurPerspective;
   vIntensite = aIntensite;
+  vProfondeur = clamp((-positionVue.z - 0.6) / 10.0, 0.0, 1.0);
 }
 `;
 
@@ -41,7 +45,11 @@ uniform vec3 uCouleur0;
 uniform vec3 uCouleur1;
 uniform vec3 uCouleur2;
 uniform vec3 uCouleur3;
+uniform vec3 uFond;
+uniform float uModeMatiere;
+uniform float uBrume;
 varying float vIntensite;
+varying float vProfondeur;
 
 vec3 palette(float t) {
   if (t < 0.33) return mix(uCouleur0, uCouleur1, t / 0.33);
@@ -53,10 +61,26 @@ void main() {
   vec2 p = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(p, p);
   if (r2 > 1.0) discard;
-  float halo = exp(-r2 * 2.8);
-  float coeur = smoothstep(1.0, 0.05, r2);
+  float bord = smoothstep(0.54, 0.94, r2);
+  float halo = exp(-r2 * mix(4.8, 1.8, step(1.5, uModeMatiere)));
+  float coeur = 1.0 - smoothstep(0.04, 1.0, r2);
+  float intensite = clamp(0.08 + vIntensite * 0.88, 0.0, 1.0);
+  vec3 couleur = palette(intensite);
   float alpha = min(1.0, halo * 0.58 + coeur * 0.62);
-  vec3 couleur = palette(clamp(0.08 + vIntensite * 0.88, 0.0, 1.0));
+
+  if (uModeMatiere > 0.5 && uModeMatiere < 1.5) {
+    couleur = mix(couleur * 0.55, couleur, coeur);
+    alpha = min(0.95, coeur * 0.88 + halo * 0.18);
+  } else if (uModeMatiere > 1.5 && uModeMatiere < 2.5) {
+    couleur = mix(vec3(0.08, 0.9, 1.0), couleur + vec3(0.2, 0.35, 0.45), intensite * 0.45);
+    alpha = min(0.72, 0.16 + halo * 0.38 + coeur * 0.30);
+  } else if (uModeMatiere > 2.5) {
+    couleur = mix(couleur * 0.24, vec3(1.0), bord);
+    alpha = min(1.0, bord * 0.92 + coeur * 0.20);
+  }
+
+  couleur = mix(couleur, uFond, clamp(uBrume * vProfondeur, 0.0, 0.92));
+  alpha *= 1.0 - clamp(uBrume * vProfondeur * 0.55, 0.0, 0.65);
   gl_FragColor = vec4(couleur, alpha);
 }
 `;
@@ -120,6 +144,9 @@ function creerContexte(canvas) {
       couleur1: gl.getUniformLocation(programme, "uCouleur1"),
       couleur2: gl.getUniformLocation(programme, "uCouleur2"),
       couleur3: gl.getUniformLocation(programme, "uCouleur3"),
+      fond: gl.getUniformLocation(programme, "uFond"),
+      modeMatiere: gl.getUniformLocation(programme, "uModeMatiere"),
+      brume: gl.getUniformLocation(programme, "uBrume"),
     },
     tampons: {
       positions: gl.createBuffer(),
@@ -164,6 +191,42 @@ function rotationPoint(point, lacet, tangage) {
 
 function normaliser(valeur, min, max) {
   return Math.max(min, Math.min(max, valeur));
+}
+
+const MENGER_OFFSETS = [
+  [-1, -1, -1], [-1, -1, 0], [-1, -1, 1],
+  [-1, 0, -1], [-1, 0, 1],
+  [-1, 1, -1], [-1, 1, 0], [-1, 1, 1],
+  [0, -1, -1], [0, -1, 1],
+  [0, 1, -1], [0, 1, 1],
+  [1, -1, -1], [1, -1, 0], [1, -1, 1],
+  [1, 0, -1], [1, 0, 1],
+  [1, 1, -1], [1, 1, 0], [1, 1, 1],
+];
+
+function genererMenger(maxIter) {
+  const rng = creerRng(0x6d3a91 ^ maxIter);
+  const cible = Math.max(100000, Math.min(240000, INFOS_FRACTALES_3D.menger_sponge.echantillons + maxIter * 90));
+  const positions = new Float32Array(cible * 3);
+  const intensites = new Float32Array(cible);
+  let x = 0.11, y = -0.17, z = 0.23;
+  let index = 0;
+  for (let i = 0; i < cible + 80; i++) {
+    const offset = MENGER_OFFSETS[Math.min(MENGER_OFFSETS.length - 1, (rng() * MENGER_OFFSETS.length) | 0)];
+    x = x / 3 + offset[0] / 3;
+    y = y / 3 + offset[1] / 3;
+    z = z / 3 + offset[2] / 3;
+    if (i < 48) continue;
+    const base = index * 3;
+    positions[base] = x * 1.55;
+    positions[base + 1] = y * 1.55;
+    positions[base + 2] = z * 1.55;
+    const shell = Math.max(Math.abs(x), Math.abs(y), Math.abs(z));
+    intensites[index] = normaliser(0.24 + shell * 0.86 + (z + 1.0) * 0.14, 0.12, 1.0);
+    index += 1;
+    if (index >= cible) break;
+  }
+  return { positions, intensites, count: index, taillePoint: INFOS_FRACTALES_3D.menger_sponge.taillePoint };
 }
 
 function genererTetraedre(maxIter) {
@@ -291,7 +354,8 @@ function genererNuage3D(fractale, maxIter) {
   const enCache = cacheNuages.get(cle);
   if (enCache) return enCache;
   let nuage;
-  if (fractale === "tetraedre_sierpinski") nuage = genererTetraedre(maxIter);
+  if (fractale === "menger_sponge") nuage = genererMenger(maxIter);
+  else if (fractale === "tetraedre_sierpinski") nuage = genererTetraedre(maxIter);
   else if (fractale === "julia_quaternion") nuage = genererJuliaQuaternion(maxIter);
   else nuage = genererMandelbox(maxIter);
   cacheNuages.set(cle, nuage);
@@ -367,6 +431,13 @@ function paletteVersUniformes(palette) {
   });
 }
 
+function modeMatiereVersUniforme(matiere) {
+  if (matiere === "mat") return 1.0;
+  if (matiere === "xray") return 2.0;
+  if (matiere === "contours") return 3.0;
+  return 0.0;
+}
+
 function chargerNuageDansGpu(contexte, fractale, maxIter) {
   const { gl } = contexte;
   const nuage = genererNuage3D(fractale, maxIter);
@@ -380,7 +451,7 @@ function chargerNuageDansGpu(contexte, fractale, maxIter) {
   return nuage;
 }
 
-function dessinerScene(contexte, fractale, maxIter, palette, vue) {
+function dessinerScene(contexte, fractale, maxIter, palette, vue, options = {}) {
   const { gl, programme, attributs, uniformes } = contexte;
   const nuage = chargerNuageDansGpu(contexte, fractale, maxIter);
   gl.viewport(0, 0, contexte.canvas.width, contexte.canvas.height);
@@ -404,6 +475,9 @@ function dessinerScene(contexte, fractale, maxIter, palette, vue) {
   gl.uniform3fv(uniformes.couleur1, couleurs[1]);
   gl.uniform3fv(uniformes.couleur2, couleurs[2]);
   gl.uniform3fv(uniformes.couleur3, couleurs[3]);
+  gl.uniform3fv(uniformes.fond, [fond[0] / 255, fond[1] / 255, fond[2] / 255]);
+  gl.uniform1f(uniformes.modeMatiere, modeMatiereVersUniforme(options.matiere));
+  gl.uniform1f(uniformes.brume, Math.max(0, Math.min(1, options.brume ?? 0)));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, contexte.tampons.positions);
   gl.enableVertexAttribArray(attributs.position);
@@ -429,10 +503,10 @@ function mettreAJourCoordonnees(fractale) {
   moteur.coords.textContent = `Cam ${oeil[0].toFixed(2)} ${oeil[1].toFixed(2)} ${oeil[2].toFixed(2)}`;
 }
 
-function rendreFractale3DInterne(fractale, maxIter, palette) {
+function rendreFractale3DInterne(fractale, maxIter, palette, options = {}) {
   if (!moteur || !moteur.actif) return;
   redimensionnerMoteur3D();
-  dessinerScene(moteur.contexte, fractale, maxIter, palette, obtenirVue3D(fractale));
+  dessinerScene(moteur.contexte, fractale, maxIter, palette, obtenirVue3D(fractale), options);
   mettreAJourHud(fractale);
   mettreAJourCoordonnees(fractale);
 }
@@ -481,7 +555,7 @@ function gererEvenementsCanvas() {
   });
 }
 
-export function initialiserMoteur3D({ canvas, hud, coords, statut, obtenirPalette, obtenirMaxIter }) {
+export function initialiserMoteur3D({ canvas, hud, coords, statut, obtenirPalette, obtenirMaxIter, obtenirOptions3D }) {
   const contexte = creerContexte(canvas);
   moteur = {
     canvas,
@@ -491,9 +565,10 @@ export function initialiserMoteur3D({ canvas, hud, coords, statut, obtenirPalett
     statut,
     obtenirPalette,
     obtenirMaxIter,
+    obtenirOptions3D,
     actif: false,
     fractale: "tetraedre_sierpinski",
-    redessiner: () => rendreFractale3DInterne(moteur.fractale, obtenirMaxIter(), obtenirPalette()),
+    redessiner: () => rendreFractale3DInterne(moteur.fractale, obtenirMaxIter(), obtenirPalette(), obtenirOptions3D?.() ?? {}),
   };
   gererEvenementsCanvas();
 }
@@ -526,10 +601,10 @@ export function redimensionnerMoteur3D() {
   }
 }
 
-export function render3D(fractale, maxIter, palette) {
+export function render3D(fractale, maxIter, palette, options = {}) {
   if (!moteur) return;
   moteur.fractale = fractale;
-  rendreFractale3DInterne(fractale, maxIter, palette);
+  rendreFractale3DInterne(fractale, maxIter, palette, options);
   if (moteur.statut) moteur.statut(`WebGL 3D · ${fractale}`, true);
 }
 
@@ -586,11 +661,11 @@ export function interpolerVue3D(vueA, vueB, t) {
   };
 }
 
-export function rendre3DSurCanvas(canvas, fractale, maxIter, palette, vue) {
+export function rendre3DSurCanvas(canvas, fractale, maxIter, palette, vue, options = {}) {
   const contexte = creerContexte(canvas);
   if (canvas.width === 0 || canvas.height === 0) {
     canvas.width = 1;
     canvas.height = 1;
   }
-  dessinerScene(contexte, fractale, maxIter, palette, vue ?? clonerVue3D(fractale));
+  dessinerScene(contexte, fractale, maxIter, palette, vue ?? clonerVue3D(fractale), options);
 }

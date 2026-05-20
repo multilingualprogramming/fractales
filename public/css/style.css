@@ -904,6 +904,59 @@ pre {
   flex-wrap: wrap;
 }
 
+.atelier-chip {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.32);
+  border-radius: var(--radius);
+  background: rgba(0, 212, 255, 0.08);
+  font-size: 11px;
+  color: var(--text-bright);
+}
+
+.atelier-chip.hidden {
+  display: none;
+}
+
+.atelier-chip-label {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--cyan);
+}
+
+.atelier-chip-detail {
+  flex: 1 1 auto;
+  font-family: var(--font-code);
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atelier-chip-revert {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  font-size: 10px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.atelier-chip-revert:hover {
+  border-color: var(--border-glow);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-bright);
+}
+
 .fractal-options-stack {
   position: relative;
   display: flex;
@@ -981,7 +1034,7 @@ pre {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 #custom-palette-controls.hidden {
@@ -1536,18 +1589,87 @@ option {
   backdrop-filter: blur(12px);
 }
 
-.exploration-mode-btn {
-  width: 34px;
-  height: 34px;
+.exploration-dock-toggle {
+  align-self: flex-end;
+  width: 22px;
+  height: 22px;
+  margin-bottom: 2px;
+  padding: 0;
   border: 1px solid rgba(0, 212, 255, 0.22);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-bright);
   cursor: pointer;
   font-family: var(--font-ui);
-  font-size: 17px;
+  font-size: 13px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.exploration-dock-toggle:hover {
+  border-color: var(--border-glow);
+  background: rgba(0, 212, 255, 0.16);
+}
+
+#exploration-dock.expanded .exploration-dock-toggle {
+  align-self: stretch;
+  width: auto;
+}
+
+#exploration-dock.expanded .exploration-dock-toggle span {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
+.exploration-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  width: 34px;
+  padding: 4px;
+  justify-content: center;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-bright);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
   transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.exploration-mode-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+}
+
+.exploration-mode-label {
+  display: none;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+#exploration-dock.expanded .exploration-mode-btn {
+  width: auto;
+  padding: 4px 10px 4px 6px;
+  justify-content: flex-start;
+}
+
+#exploration-dock.expanded .exploration-mode-label {
+  display: inline-block;
 }
 
 .exploration-mode-btn:hover,
@@ -1562,7 +1684,7 @@ option {
   top: 72px;
   left: 70px;
   z-index: 6;
-  width: min(350px, calc(100% - 88px));
+  width: min(360px, calc(100% - 88px));
   max-height: min(620px, calc(100% - 100px));
   display: flex;
   flex-direction: column;
@@ -1575,6 +1697,12 @@ option {
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   overflow: hidden;
+  transition: left var(--transition), width var(--transition);
+}
+
+#app:has(#exploration-dock.expanded) #exploration-panel {
+  left: 170px;
+  width: min(360px, calc(100% - 190px));
 }
 
 #exploration-panel.hidden {

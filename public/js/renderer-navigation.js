@@ -10,7 +10,7 @@
  */
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
-const FRACTALES_3D = new Set(["tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
+const FRACTALES_3D = new Set(["menger_sponge", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
 
 let hashDebounceTimer = null;
 
@@ -56,6 +56,7 @@ export function encoderEtat(view, params) {
     p.set("lax", params.lsystemAxiom ?? "F");
     p.set("lr", params.lsystemRules ?? "F=F+F--F+F");
     p.set("ls", String(params.lsystemSeed ?? 1));
+    if (params.lsystemPreset) p.set("lpr", params.lsystemPreset);
   }
   if (params.coordTransform && params.coordTransform !== "aucune") {
     p.set("ct", params.coordTransform);
@@ -114,6 +115,7 @@ export function decoderEtat(hash) {
     lsystemAxiom: p.get("lax") ?? undefined,
     lsystemRules: p.get("lr") ?? undefined,
     lsystemSeed: p.get("ls") ?? undefined,
+    lsystemPreset: p.get("lpr") ?? undefined,
     coordTransform: p.get("ct") ?? "aucune",
     mobiusPreset: p.get("mp") ?? "inversion_cercle",
     formulePropositionActive: p.get("fpa") === "1",
@@ -149,59 +151,63 @@ export function mettreAJourHash(view, params) {
  * @param {object} opts   — { view, wasmNav, render, onComplete? }
  */
 export function animerVersVue(cible, { view, wasmNav, render, onComplete }) {
-  if (cible.centerX === undefined || cible.pixelSize === undefined) {
-    onComplete?.();
-    return;
-  }
-
-  const startX = view.centerX;
-  const startY = view.centerY;
-  const startPs = view.pixelSize;
-  const startRot = view.rotation ?? 0;
-  const targetRot = cible.rotation ?? startRot;
-
-  const rapport = startPs > 0
-    ? Math.max(startPs, cible.pixelSize) / Math.min(startPs, cible.pixelSize)
-    : 1;
-  const dureeMs = Math.min(2800, 500 + Math.log(Math.max(1, rapport)) * 500);
-
-  // Fonctions mathématiques depuis fractales_navigation.multi via WASM
-  const easer = (t) =>
-    wasmNav?.easer_cubique ? wasmNav.easer_cubique(t) : t * t * (3 - 2 * t);
-
-  const interpPs = (a, b, t) => {
-    if (wasmNav?.interpoler_pixelsize_nav) return wasmNav.interpoler_pixelsize_nav(a, b, t);
-    if (a <= 0) return b;
-    return a * Math.pow(b / a, t);
-  };
-
-  const interpAngle = (a, b, t) => {
-    if (wasmNav?.interpoler_angle_nav) return wasmNav.interpoler_angle_nav(a, b, t);
-    let diff = b - a;
-    const TAU = Math.PI * 2;
-    while (diff > Math.PI) diff -= TAU;
-    while (diff < -Math.PI) diff += TAU;
-    return a + diff * t;
-  };
-
-  const debut = performance.now();
-
-  function frame(now) {
-    const t = Math.min(1, (now - debut) / dureeMs);
-    const te = easer(t);
-    view.centerX = startX + (cible.centerX - startX) * te;
-    view.centerY = startY + (cible.centerY - startY) * te;
-    view.pixelSize = interpPs(startPs, cible.pixelSize, te);
-    view.rotation = interpAngle(startRot, targetRot, te);
-    render();
-    if (t < 1) {
-      requestAnimationFrame(frame);
-    } else {
+  return new Promise((resolve) => {
+    if (cible.centerX === undefined || cible.pixelSize === undefined) {
       onComplete?.();
+      resolve();
+      return;
     }
-  }
 
-  requestAnimationFrame(frame);
+    const startX = view.centerX;
+    const startY = view.centerY;
+    const startPs = view.pixelSize;
+    const startRot = view.rotation ?? 0;
+    const targetRot = cible.rotation ?? startRot;
+
+    const rapport = startPs > 0
+      ? Math.max(startPs, cible.pixelSize) / Math.min(startPs, cible.pixelSize)
+      : 1;
+    const dureeMs = Math.min(2800, 500 + Math.log(Math.max(1, rapport)) * 500);
+
+    // Fonctions mathématiques depuis fractales_navigation.multi via WASM
+    const easer = (t) =>
+      wasmNav?.easer_cubique ? wasmNav.easer_cubique(t) : t * t * (3 - 2 * t);
+
+    const interpPs = (a, b, t) => {
+      if (wasmNav?.interpoler_pixelsize_nav) return wasmNav.interpoler_pixelsize_nav(a, b, t);
+      if (a <= 0) return b;
+      return a * Math.pow(b / a, t);
+    };
+
+    const interpAngle = (a, b, t) => {
+      if (wasmNav?.interpoler_angle_nav) return wasmNav.interpoler_angle_nav(a, b, t);
+      let diff = b - a;
+      const TAU = Math.PI * 2;
+      while (diff > Math.PI) diff -= TAU;
+      while (diff < -Math.PI) diff += TAU;
+      return a + diff * t;
+    };
+
+    const debut = performance.now();
+
+    function frame(now) {
+      const t = Math.min(1, (now - debut) / dureeMs);
+      const te = easer(t);
+      view.centerX = startX + (cible.centerX - startX) * te;
+      view.centerY = startY + (cible.centerY - startY) * te;
+      view.pixelSize = interpPs(startPs, cible.pixelSize, te);
+      view.rotation = interpAngle(startRot, targetRot, te);
+      render();
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        onComplete?.();
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  });
 }
 
 export function initialiserPartage({ getView, getParams, updateStatusBar }) {

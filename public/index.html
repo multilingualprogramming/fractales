@@ -175,27 +175,47 @@
           </div>
         </section>
 
-        <nav id="exploration-dock" aria-label="Modes d'exploration">
+        <nav id="exploration-dock" aria-label="Instruments d'exploration">
+          <button id="btn-toggle-dock-labels" class="exploration-dock-toggle" type="button"
+            aria-expanded="false" aria-controls="exploration-dock"
+            aria-label="Afficher les noms des instruments" title="Afficher les noms">
+            <span aria-hidden="true">›</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="parametres" aria-label="Carte des paramètres"
-            title="Carte des paramètres">⌖</button>
+            title="Carte des paramètres">
+            <span class="exploration-mode-icon" aria-hidden="true">⌖</span>
+            <span class="exploration-mode-label">Paramètres</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="temps" aria-label="Carnet de voyage"
-            title="Carnet de voyage">◴</button>
+            title="Carnet de voyage">
+            <span class="exploration-mode-icon" aria-hidden="true">◴</span>
+            <span class="exploration-mode-label">Voyage</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="palette" aria-label="Physique de palette"
-            title="Physique de palette">◐</button>
+            title="Physique de palette">
+            <span class="exploration-mode-icon" aria-hidden="true">◐</span>
+            <span class="exploration-mode-label">Palette</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="abysses" aria-label="Mode Abysses"
-            title="Mode Abysses">↓</button>
+            title="Mode Abysses">
+            <span class="exploration-mode-icon" aria-hidden="true">↓</span>
+            <span class="exploration-mode-label">Abysses</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="studio3d" aria-label="Studio 3D"
-            title="Studio 3D">◲</button>
-          <button class="exploration-mode-btn" type="button" data-mode="lsysteme" aria-label="Atelier L-système"
-            title="Atelier L-système">⌁</button>
-          <button class="exploration-mode-btn" type="button" data-mode="formule" aria-label="Atelier formule"
-            title="Atelier formule">ƒ</button>
+            title="Studio 3D">
+            <span class="exploration-mode-icon" aria-hidden="true">◲</span>
+            <span class="exploration-mode-label">Studio 3D</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="meteo" aria-label="Météo mathématique"
-            title="Météo mathématique">☷</button>
+            title="Météo mathématique">
+            <span class="exploration-mode-icon" aria-hidden="true">☷</span>
+            <span class="exploration-mode-label">Météo</span>
+          </button>
           <button class="exploration-mode-btn" type="button" data-mode="transforms" aria-label="Transformations du plan"
-            title="Transformations du plan">◈</button>
-          <button class="exploration-mode-btn" type="button" data-mode="ifs" aria-label="Atelier IFS"
-            title="Atelier IFS — jeu du chaos">⁂</button>
+            title="Transformations du plan">
+            <span class="exploration-mode-icon" aria-hidden="true">◈</span>
+            <span class="exploration-mode-label">Transforms</span>
+          </button>
         </nav>
 
         <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
@@ -406,18 +426,19 @@
               <label class="exploration-field" for="formule-escape-radius-input">Rayon d'évasion
                 <input id="formule-escape-radius-input" type="number" min="1" max="100" step="0.5" value="2" />
               </label>
-              <div class="exploration-grid-2">
-                <label class="exploration-field" for="formule-param-a-input">Paramètre a
+              <div id="formule-params-grid" class="exploration-grid-2">
+                <label id="formule-param-a-field" class="exploration-field hidden" for="formule-param-a-input">Paramètre a
                   <span id="formule-param-a-label" class="formula-param-label">a</span>
                   <input id="formule-param-a-input" type="range" min="-4" max="4" step="0.01" value="0" />
                   <output id="formule-param-a-value" class="formula-param-value" for="formule-param-a-input">0.00</output>
                 </label>
-                <label class="exploration-field" for="formule-param-b-input">Paramètre b
+                <label id="formule-param-b-field" class="exploration-field hidden" for="formule-param-b-input">Paramètre b
                   <span id="formule-param-b-label" class="formula-param-label">b</span>
                   <input id="formule-param-b-input" type="range" min="-4" max="4" step="0.01" value="0" />
                   <output id="formule-param-b-value" class="formula-param-value" for="formule-param-b-input">0.00</output>
                 </label>
               </div>
+              <div id="formule-params-hint" class="exploration-readout formule-params-hint hidden"></div>
               <details class="lsystem-legend">
                 <summary>Opérateurs et fonctions</summary>
                 <div class="lsystem-legend-grid">
@@ -619,6 +640,7 @@
               <select id="family-select" aria-label="Choisir une famille de fractales">
                 <option value="evasion">Évasion</option>
                 <option value="dynamique">Dynamique</option>
+                <option value="formule">Formule libre</option>
                 <option value="ifs">IFS</option>
                 <option value="lsystem">L-système</option>
                 <option value="magnetique">Magnétiques</option>
@@ -631,6 +653,18 @@
             <div class="control-group" role="group" aria-label="Type de fractale">
               <label class="control-label" for="fractal-select">Fractale :</label>
               <select id="fractal-select" aria-label="Choisir une fractale"></select>
+              <button id="btn-personnaliser-famille" class="btn btn-secondary hidden" type="button"
+                aria-label="Personnaliser cette famille" aria-hidden="true" disabled>
+                <span class="btn-icon" aria-hidden="true">⚒</span>
+                <span id="btn-personnaliser-famille-label">Personnaliser…</span>
+              </button>
+            </div>
+
+            <div id="atelier-actif-chip" class="atelier-chip hidden" role="status" aria-live="polite">
+              <span class="atelier-chip-label">Atelier actif :</span>
+              <span id="atelier-actif-chip-detail" class="atelier-chip-detail"></span>
+              <button id="btn-atelier-revert" class="atelier-chip-revert" type="button"
+                aria-label="Revenir au canonique">✕ revenir au canonique</button>
             </div>
 
             <div class="control-group" role="group" aria-label="Nombre d'itérations maximum">

@@ -63,6 +63,61 @@ const PROJ3D = {
   tetraedre_sierpinski: { ax: -0.72, ay: 0.88, az: 0.24, perspective: 0.36, camera: 2.6, echelle: 1.10 },
 };
 
+const MENGER_OFFSETS = [
+  [-1, -1, -1], [-1, -1, 0], [-1, -1, 1],
+  [-1, 0, -1], [-1, 0, 1],
+  [-1, 1, -1], [-1, 1, 0], [-1, 1, 1],
+  [0, -1, -1], [0, -1, 1],
+  [0, 1, -1], [0, 1, 1],
+  [1, -1, -1], [1, -1, 0], [1, -1, 1],
+  [1, 0, -1], [1, 0, 1],
+  [1, 1, -1], [1, 1, 0], [1, 1, 1],
+];
+
+function etapePresetIFS(presetKey, x, y, z, r) {
+  if (presetKey === "barnsley") {
+    if (r < 0.01) return [0.0, 0.16 * y, z];
+    if (r < 0.86) return [0.85 * x + 0.04 * y, -0.04 * x + 0.85 * y + 1.6, z];
+    if (r < 0.93) return [0.2 * x - 0.26 * y, 0.23 * x + 0.22 * y + 1.6, z];
+    return [-0.15 * x + 0.28 * y, 0.26 * x + 0.24 * y + 0.44, z];
+  }
+  if (presetKey === "sierpinski") {
+    if (r < 1 / 3) return [0.5 * x, 0.5 * y, z];
+    if (r < 2 / 3) return [0.5 * x + 0.5, 0.5 * y, z];
+    return [0.5 * x + 0.25, 0.5 * y + 0.43301270189, z];
+  }
+  if (presetKey === "tapis_sierpinski") {
+    const cellules = [
+      [-1, -1], [0, -1], [1, -1],
+      [-1, 0], [1, 0],
+      [-1, 1], [0, 1], [1, 1],
+    ];
+    const index = Math.min(cellules.length - 1, (r * cellules.length) | 0);
+    const [dx, dy] = cellules[index];
+    return [x / 3 + dx / 3, y / 3 + dy / 3, z];
+  }
+  if (presetKey === "vicsek") {
+    if (r < 0.2) return [x / 3, y / 3, z];
+    if (r < 0.4) return [x / 3 - 2 / 3, y / 3, z];
+    if (r < 0.6) return [x / 3 + 2 / 3, y / 3, z];
+    if (r < 0.8) return [x / 3, y / 3 - 2 / 3, z];
+    return [x / 3, y / 3 + 2 / 3, z];
+  }
+  if (presetKey === "menger_sponge") {
+    const index = Math.min(MENGER_OFFSETS.length - 1, (r * MENGER_OFFSETS.length) | 0);
+    const [dx, dy, dz] = MENGER_OFFSETS[index];
+    return [x / 3 + dx / 3, y / 3 + dy / 3, z / 3 + dz / 3];
+  }
+  if (presetKey === "tetraedre_sierpinski") {
+    const k = Math.min(3, (r * 4) | 0);
+    if (k === 0) return [x * 0.5, y * 0.5, z * 0.5];
+    if (k === 1) return [x * 0.5 + 0.5, y * 0.5, z * 0.5];
+    if (k === 2) return [x * 0.5 + 0.25, y * 0.5 + 0.433013, z * 0.5];
+    return [x * 0.5 + 0.25, y * 0.5 + 0.144338, z * 0.5 + 0.408248];
+  }
+  return [x, y, z];
+}
+
 function projeter3DIFS(cle, x, y, z) {
   const cfg = PROJ3D[cle];
   if (!cfg) return [x, y];
@@ -260,32 +315,21 @@ export function jeuDuChaosIFS(canvas, config, wex, onReadout) {
         cumul += tr.p;
         if (r < cumul) { t = tr; break; }
       }
-      const nx = wex?.evaluer_affine_x
-        ? wex.evaluer_affine_x(t.a, t.b, t.e, x, y)
-        : t.a * x + t.b * y + t.e;
-      const ny = wex?.evaluer_affine_y
-        ? wex.evaluer_affine_y(t.c, t.d, t.f, x, y)
-        : t.c * x + t.d * y + t.f;
+      const nx = t.a * x + t.b * y + t.e;
+      const ny = t.c * x + t.d * y + t.f;
       x = nx; y = ny;
       return [x, y];
     }
 
     if (est3D) {
-      // Étapes 3D via WASM puis projection isométrique.
-      const nx = wex?.[preset.etapeX] ? wex[preset.etapeX](x, y, z, r) : x;
-      const ny = wex?.[preset.etapeY] ? wex[preset.etapeY](x, y, z, r) : y;
-      const nz = wex?.[preset.etapeZ] ? wex[preset.etapeZ](x, y, z, r) : z;
-      x = nx; y = ny; z = nz;
+      [x, y, z] = etapePresetIFS(config.preset, x, y, z, r);
       const ox = preset.decalageX ?? 0;
       const oy = preset.decalageY ?? 0;
       const oz = preset.decalageZ ?? 0;
       return projeter3DIFS(config.preset, x + ox, y + oy, z + oz);
     }
 
-    // Étapes 2D via WASM.
-    const nx = wex?.[preset.etapeX] ? wex[preset.etapeX](x, y, r) : x;
-    const ny = wex?.[preset.etapeY] ? wex[preset.etapeY](x, y, r) : y;
-    x = nx; y = ny;
+    [x, y, z] = etapePresetIFS(config.preset, x, y, z, r);
     return [x, y];
   }
 

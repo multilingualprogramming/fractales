@@ -236,6 +236,7 @@ function coordToPixel(point, canvas, view) {
 
 function lirePropositionLSysteme() {
   return {
+    presetKey: document.getElementById("lsystem-preset-select")?.value || "",
     axiom: document.getElementById("lsystem-axiom-input")?.value || "F",
     rules: document.getElementById("lsystem-rules-input")?.value || "F=F+F--F+F",
     angle: parseFloat(document.getElementById("lsystem-angle-input")?.value || "60"),
@@ -290,6 +291,7 @@ export function initialiserExploration({
     updateStatusBar,
     captureView,
     applyCapturedView,
+    waitForRenderIdle,
     is3D,
     set3DView,
     get3DView,
@@ -321,6 +323,46 @@ export function initialiserExploration({
     return new Set((getParams().weatherOverlays || "").split(",").filter(Boolean));
   }
 
+  function dessinerContoursDepuisCanvas(ctx, w, h) {
+    const source = getActiveCanvas();
+    if (!source || source === overlayCanvas || source.width <= 0 || source.height <= 0) return;
+    let pixels;
+    try {
+      pixels = source.getContext("2d", { willReadFrequently: true })?.getImageData(0, 0, source.width, source.height);
+    } catch {
+      return;
+    }
+    if (!pixels) return;
+    const data = pixels.data;
+    const pas = Math.max(4, Math.round(Math.min(w, h) / 150));
+    const sx = source.width / w;
+    const sy = source.height / h;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.lineWidth = Math.max(1.2, pas * 0.35);
+    for (let y = pas; y < h - pas; y += pas) {
+      for (let x = pas; x < w - pas; x += pas) {
+        const px = Math.max(1, Math.min(source.width - 2, Math.round(x * sx)));
+        const py = Math.max(1, Math.min(source.height - 2, Math.round(y * sy)));
+        const i = (py * source.width + px) * 4;
+        const ix = (py * source.width + px + 1) * 4;
+        const iy = ((py + 1) * source.width + px) * 4;
+        const l = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        const lx = data[ix] * 0.299 + data[ix + 1] * 0.587 + data[ix + 2] * 0.114;
+        const ly = data[iy] * 0.299 + data[iy + 1] * 0.587 + data[iy + 2] * 0.114;
+        const contraste = Math.max(Math.abs(l - lx), Math.abs(l - ly));
+        if (contraste < 16) continue;
+        const alpha = Math.min(0.72, 0.18 + contraste / 190);
+        ctx.strokeStyle = `rgba(255, 246, 180, ${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(x - pas * 0.42, y);
+        ctx.lineTo(x + pas * 0.42, y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawWeather() {
     if (!overlayCanvas) return;
     resizeOverlay();
@@ -332,9 +374,13 @@ export function initialiserExploration({
     const overlays = activeWeather();
     const view = getView();
     if (overlays.has("grille")) {
-      ctx.strokeStyle = "rgba(0, 212, 255, 0.16)";
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.34)";
       ctx.lineWidth = 1;
       const spacing = Math.max(28, Math.min(120, Math.pow(10, Math.floor(Math.log10(view.pixelSize * w))) / view.pixelSize));
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(190, 245, 255, 0.86)";
       for (let x = ((w / 2 - view.centerX / view.pixelSize) % spacing + spacing) % spacing; x < w; x += spacing) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       }
@@ -342,21 +388,32 @@ export function initialiserExploration({
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
       const origin = coordToPixel({ re: 0, im: 0 }, overlayCanvas, view);
-      ctx.strokeStyle = "rgba(0, 255, 159, 0.45)";
+      ctx.strokeStyle = "rgba(0, 255, 159, 0.92)";
+      ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, h); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(w, origin.y); ctx.stroke();
+      ctx.fillStyle = "rgba(0, 255, 159, 0.95)";
+      if (origin.x >= 0 && origin.x <= w) ctx.fillText("Im", Math.min(w - 24, origin.x + 8), 18);
+      if (origin.y >= 0 && origin.y <= h) ctx.fillText("Re", 10, Math.max(18, origin.y - 8));
+      ctx.restore();
     }
     if (overlays.has("contours")) {
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-      ctx.lineWidth = 1;
+      dessinerContoursDepuisCanvas(ctx, w, h);
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.30)";
+      ctx.lineWidth = 1.4;
       for (let i = 1; i < 10; i++) {
         const r = Math.min(w, h) * i / 22;
         ctx.beginPath();
         ctx.ellipse(w / 2, h / 2, r * 1.35, r, view.rotation ?? 0, 0, Math.PI * 2);
         ctx.stroke();
       }
+      ctx.restore();
     }
     if (overlays.has("orbite") && capturedOrbit.length > 1) {
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
       const n = capturedOrbit.length;
       const visible = capturedOrbit.slice(0, Math.max(1, orbitRevealIndex));
       for (let i = 1; i < visible.length; i++) {
@@ -364,8 +421,8 @@ export function initialiserExploration({
         let r, g, b;
         if (t < 0.5) { r = Math.round(510 * t); g = 230; b = 0; }
         else { r = 230; g = Math.round(230 * (1 - (t - 0.5) * 2)); b = 0; }
-        ctx.strokeStyle = `rgba(${r},${g},${b},0.88)`;
-        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = `rgba(${r},${g},${b},0.96)`;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         const p0 = coordToPixel(visible[i - 1], overlayCanvas, view);
         const p1 = coordToPixel(visible[i], overlayCanvas, view);
@@ -379,12 +436,21 @@ export function initialiserExploration({
       }
       const first = coordToPixel(capturedOrbit[0], overlayCanvas, view);
       ctx.fillStyle = "#00ff9f";
-      ctx.beginPath(); ctx.arc(first.x, first.y, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(first.x, first.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       if (orbitRevealIndex >= n && visible.length > 1) {
         const last = coordToPixel(capturedOrbit[n - 1], overlayCanvas, view);
         ctx.fillStyle = orbitEscaped ? "#ff4444" : "#4488ff";
-        ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(last.x, last.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
+      ctx.restore();
+    } else if (overlays.has("orbite")) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 246, 180, 0.95)";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillText("Cliquez « Capturer une orbite », puis choisissez un point sur l'image.", 14, 24);
+      ctx.restore();
     }
   }
 
@@ -520,12 +586,14 @@ export function initialiserExploration({
       const symbols = description.symboles.length ? ` · symboles ${description.symboles.slice(0, 8).join(" ")}` : "";
       const diagnostic = description.diagnostics.length ? ` · ${description.diagnostics[0]}` : "";
       const points = apercu?.pointsCount ? ` · ${apercu.pointsCount} points` : "";
-      readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°, trait ${formatNombre(proposition.strokeWidth, 2)}${stochastic}${symbols}${points}${diagnostic} · non canonique`;
+      const limite = apercu?.truncated ? ` · limite ${apercu.limit} symboles atteinte` : "";
+      readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°, trait ${formatNombre(proposition.strokeWidth, 2)}${stochastic}${symbols}${points}${limite}${diagnostic} · non canonique`;
     }
     const stringPreview = document.getElementById("lsystem-string-preview");
     if (stringPreview) {
-      const { sequence: seq } = genererPropositionLSysteme(proposition, { limit: 14000 });
-      const display = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles)` : seq + ` (${seq.length} symboles)`;
+      const { sequence: seq, truncated, limit } = genererPropositionLSysteme(proposition, { limit: 70000 });
+      const suffix = truncated ? `, limite ${limit} atteinte` : "";
+      const display = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles${suffix})` : seq + ` (${seq.length} symboles${suffix})`;
       stringPreview.textContent = display;
     }
   }
@@ -588,7 +656,9 @@ export function initialiserExploration({
 
   function updateFormuleProposal() {
     const prop = lirePropositionFormule();
-    analyserFormule?.(prop.formule); // diagnostics: aperçu signature via dessinerMiniApercuFormule
+    // diagnostics: aperçu signature via dessinerMiniApercuFormule + détection des variables a/b
+    const analyse = analyserFormule?.(prop.formule);
+    mettreAJourVisibiliteParametresFormule(analyse);
     const params = getParams();
     dessinerMiniApercuFormule({
       canvas: document.getElementById("formule-proposal-canvas"),
@@ -601,6 +671,29 @@ export function initialiserExploration({
       juliaCre: params.juliaCre,
       juliaCim: params.juliaCim,
     });
+  }
+
+  function mettreAJourVisibiliteParametresFormule(analyse) {
+    const fieldA = document.getElementById("formule-param-a-field");
+    const fieldB = document.getElementById("formule-param-b-field");
+    const grid = document.getElementById("formule-params-grid");
+    const hint = document.getElementById("formule-params-hint");
+    const variables = new Set(analyse?.variables ?? []);
+    const usesA = variables.has("a");
+    const usesB = variables.has("b");
+    if (fieldA) fieldA.classList.toggle("hidden", !usesA);
+    if (fieldB) fieldB.classList.toggle("hidden", !usesB);
+    if (grid) grid.classList.toggle("hidden", !usesA && !usesB);
+    if (hint) {
+      const used = [usesA ? "a" : null, usesB ? "b" : null].filter(Boolean);
+      if (!used.length) {
+        hint.classList.remove("hidden");
+        hint.textContent = "Aucun paramètre libre dans cette formule. Ajoutez « a » ou « b » à l'expression pour exposer un curseur.";
+      } else {
+        hint.classList.add("hidden");
+        hint.textContent = "";
+      }
+    }
   }
 
   function updateFormuleSaveList() {
@@ -749,7 +842,8 @@ export function initialiserExploration({
     const items = lireCarnet();
     for (const item of items) {
       await applyCapturedView(item);
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      await waitForRenderIdle?.();
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   });
 
@@ -800,12 +894,14 @@ export function initialiserExploration({
 
   document.getElementById("studio3d-material-select")?.addEventListener("change", (event) => {
     setParamsPatch({ studio3dMaterial: event.target.value });
+    render();
     updateHash();
     updateStatusBar(`Matière 3D : ${event.target.value}`, true);
   });
 
   document.getElementById("studio3d-fog-slider")?.addEventListener("input", (event) => {
     setParamsPatch({ studio3dFog: parseFloat(event.target.value) });
+    render();
     updateHash();
   });
 
@@ -827,13 +923,21 @@ export function initialiserExploration({
   });
 
   ["lsystem-generation-slider", "lsystem-angle-input", "lsystem-axiom-input", "lsystem-rules-input", "lsystem-seed-input", "lsystem-stroke-width-slider"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", updateLSystemProposal);
+    document.getElementById(id)?.addEventListener("input", () => {
+      updateLSystemProposal();
+      if (getParams().lsystemProposalActive) {
+        applyLSystemProposal?.({ ...lirePropositionLSysteme(), preserveView: true });
+      }
+    });
   });
 
   document.getElementById("btn-lsystem-seed")?.addEventListener("click", () => {
     const seedInput = document.getElementById("lsystem-seed-input");
     if (seedInput) seedInput.value = String(Math.floor(Math.random() * 100000));
     updateLSystemProposal();
+    if (getParams().lsystemProposalActive) {
+      applyLSystemProposal?.({ ...lirePropositionLSysteme(), preserveView: true });
+    }
   });
 
   document.getElementById("lsystem-preset-select")?.addEventListener("change", (event) => {
@@ -853,6 +957,9 @@ export function initialiserExploration({
     if (seedInput) seedInput.value = String(preset.graine ?? 1);
     if (strokeInput) strokeInput.value = String(preset.trait ?? 1.35);
     updateLSystemProposal();
+    if (getParams().lsystemProposalActive) {
+      applyLSystemProposal?.({ ...lirePropositionLSysteme(), preserveView: true });
+    }
   });
 
   document.getElementById("btn-lsystem-apply")?.addEventListener("click", () => {
@@ -904,7 +1011,12 @@ export function initialiserExploration({
       if (genSlider) genSlider.value = String(item.generations ?? 4);
       if (seedInput) seedInput.value = String(item.seed ?? 1);
       if (strokeInput) strokeInput.value = String(item.strokeWidth ?? 1.35);
+      const presetSelect = document.getElementById("lsystem-preset-select");
+      if (presetSelect) presetSelect.value = item.presetKey || "";
       updateLSystemProposal();
+      if (getParams().lsystemProposalActive) {
+        applyLSystemProposal?.({ ...lirePropositionLSysteme(), preserveView: true });
+      }
     }
     const deleteBtn = event.target.closest("[data-ls-delete]");
     if (deleteBtn) {
@@ -1075,6 +1187,14 @@ export function initialiserExploration({
 
   document.getElementById("btn-capture-orbit")?.addEventListener("click", () => {
     captureOrbitPending = true;
+    const values = new Set(activeWeather());
+    values.add("orbite");
+    setParamsPatch({ weatherOverlays: [...values].join(",") });
+    document.querySelectorAll(".weather-toggle").forEach((input) => {
+      input.checked = values.has(input.value);
+    });
+    drawWeather();
+    updateHash();
     updateStatusBar("Cliquez un point du canvas pour capturer son orbite", true);
   });
 
@@ -1126,6 +1246,7 @@ export function initialiserExploration({
     updateTransformReadout();
     render();
     updateHash();
+    updateStatusBar(val === "aucune" ? "Transformation désactivée" : "Transformation du plan appliquée", true);
   });
 
   document.getElementById("mobius-preset-select")?.addEventListener("change", (event) => {
@@ -1133,6 +1254,7 @@ export function initialiserExploration({
     updateTransformReadout();
     render();
     updateHash();
+    updateStatusBar("Préréglage Möbius appliqué", true);
   });
 
   document.getElementById("btn-transform-reset")?.addEventListener("click", () => {
@@ -1144,6 +1266,7 @@ export function initialiserExploration({
     updateTransformReadout();
     render();
     updateHash();
+    updateStatusBar("Transformation désactivée", true);
   });
 
   // ── Atelier IFS ─────────────────────────────────────────────
@@ -1236,6 +1359,8 @@ export function initialiserExploration({
     if (lsystemRules) lsystemRules.value = params.lsystemRules || "F=F+F--F+F";
     if (lsystemSeed) lsystemSeed.value = String(params.lsystemSeed ?? 1);
     if (lsystemStroke) lsystemStroke.value = String(params.lsystemStrokeWidth ?? 1.35);
+    const lsystemPreset = document.getElementById("lsystem-preset-select");
+    if (lsystemPreset) lsystemPreset.value = params.lsystemPreset || "";
     const formuleIter = document.getElementById("formule-iteration-input");
     const formuleRadius = document.getElementById("formule-escape-radius-input");
     const formuleMode = document.getElementById("formule-mode-select");
@@ -1282,5 +1407,6 @@ export function initialiserExploration({
     drawParameterMap,
     drawWeather,
     lineFractals,
+    setMode,
   };
 }

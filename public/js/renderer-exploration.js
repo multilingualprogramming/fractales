@@ -272,7 +272,6 @@ export function initialiserExploration({
     parameterCanvas,
     parameterReadout,
     lsystemCanvas,
-    formuleCanvas,
     ifsCanvas,
   } = elements;
 

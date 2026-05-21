@@ -3,8 +3,10 @@
 import {
   decrireReglesLSysteme,
   dessinerPropositionLSysteme,
-  genererPropositionLSysteme,
 } from "./renderer-lsystem.js?v=20260520-formule-preview";
+import {
+  rafraichirChaineLSystemeWasm,
+} from "./renderer-atelier-lsysteme.js?v=20260521-atelier-meta";
 import {
   analyserFormule,
   compilerFormule,
@@ -588,13 +590,10 @@ export function initialiserExploration({
       const limite = apercu?.truncated ? ` · limite ${apercu.limit} symboles atteinte` : "";
       readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°, trait ${formatNombre(proposition.strokeWidth, 2)}${stochastic}${symbols}${points}${limite}${diagnostic} · non canonique`;
     }
-    const stringPreview = document.getElementById("lsystem-string-preview");
-    if (stringPreview) {
-      const { sequence: seq, truncated, limit } = genererPropositionLSysteme(proposition, { limit: 70000 });
-      const suffix = truncated ? `, limite ${limit} atteinte` : "";
-      const display = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles${suffix})` : seq + ` (${seq.length} symboles${suffix})`;
-      stringPreview.textContent = display;
-    }
+    // Aperçu de la chaîne : l'expansion de la grammaire est désormais calculée
+    // en multilingual (atelier_lsysteme.wasm). Le module WASM lit les champs et
+    // écrit #lsystem-string-preview lui-même via le pont DOM.
+    rafraichirChaineLSystemeWasm(proposition.generations);
   }
 
   function remplirListeSauvegardes(list, items, prefix) {

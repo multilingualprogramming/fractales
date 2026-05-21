@@ -2,6 +2,33 @@
 
 Ce projet suit une convention inspirée de Keep a Changelog.
 
+## [Non publié]
+
+### Ajouts
+
+- **Migration « Meta » — première tranche : Atelier L-système en multilingual.**
+  La logique d'expansion de la grammaire L-système (réécriture simultanée de
+  l'axiome selon les règles), jusqu'ici écrite en JavaScript, est désormais
+  authored en multilingual (`src/atelier_lsysteme.multi`) et compilée vers son
+  propre module WebAssembly (`public/atelier_lsysteme.wasm`). Le module lit
+  lui-même les champs du panneau (`#lsystem-axiom-input`, `#lsystem-rules-input`)
+  et écrit l'aperçu (`#lsystem-string-preview`) via le **pont DOM** de
+  multilingual (`dom_get` / `dom_value_str` / `dom_text`) ; le JavaScript se
+  réduit au **shim hôte généré** (`public/js/atelier_lsysteme_shim.js`) plus un
+  chargeur mince (`public/js/renderer-atelier-lsysteme.js`).
+- Étape `[4b]` du build (`scripts/compile_wasm.multi`) compilant l'Atelier vers
+  WASM et émettant le shim hôte généré ; validation de l'export `rafraichir_lsysteme`.
+- Test de parité `tests/atelier_lsysteme_wasm.test.js` vérifiant que l'expansion
+  WASM reproduit exactement la référence JavaScript (Koch, Dragon, grille, plante).
+
+### Notes
+
+- Cette tranche s'appuie sur des évolutions du langage multilingual (dépôt voisin) :
+  égalité de contenu des chaînes en WAT (`==`/`!=`), listes pré-dimensionnées
+  `[x] * n`, builtin `dom_value_str`, et correction de la table de fonctions vide
+  pour `__dom_dispatch`. Le rendu turtle/canvas reste en JavaScript pour l'instant
+  (prochaine tranche).
+
 ## [0.1.0] - 2026-03-10
 
 Première version publiée de l'Explorateur de Fractales.

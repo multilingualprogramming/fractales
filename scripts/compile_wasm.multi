@@ -19,6 +19,14 @@ soit SORTIE_WASM_RS = DOSSIER_PUBLIC / "wasm_intermediate.rs"
 soit SORTIE_WAT = DOSSIER_PUBLIC / "main.wat"
 soit SORTIE_WASM = DOSSIER_PUBLIC / "mandelbrot.wasm"
 
+# Module « Atelier L-système » — UI authored en multilingual via le pont DOM.
+# Compilé vers son propre WASM (importe ml_dom_*), chargé séparément du noyau
+# de calcul mandelbrot.wasm. Première tranche de la migration Meta.
+soit SOURCE_ATELIER = RACINE / "src" / "atelier_lsysteme.multi"
+soit SORTIE_ATELIER_WAT = DOSSIER_PUBLIC / "atelier_lsysteme.wat"
+soit SORTIE_ATELIER_WASM = DOSSIER_PUBLIC / "atelier_lsysteme.wasm"
+soit SORTIE_ATELIER_SHIM = DOSSIER_PUBLIC / "js" / "atelier_lsysteme_shim.js"
+
 soit TAILLE_BENCH_GRILLE = 200
 soit ITER_BENCH_MAX = 100
 soit SEPARATEUR = "=" * 62
@@ -81,6 +89,32 @@ déf generer_wat_et_wasm_strict(source):
     soit texte_wat = WATCodeGenerator().generate(programme)
     soit octets_wasm = wasmtime.wat2wasm(texte_wat)
     retour (texte_wat, octets_wasm)
+
+déf construire_atelier_lsysteme():
+    # Compile src/atelier_lsysteme.multi vers public/atelier_lsysteme.wasm et
+    # émet le shim hôte JS généré (WASI + pont DOM) vers public/js/.
+    ajouter_depot_multilingual_au_chemin()
+    si non SOURCE_ATELIER.exists():
+        lever RuntimeError(f"Source atelier introuvable: {SOURCE_ATELIER}")
+    soit wat_generator_module = importlib.import_module("multilingualprogramming.codegen.wat_generator")
+    soit WATCodeGenerator = wat_generator_module.WATCodeGenerator
+    soit wasmtime = importlib.import_module("wasmtime")
+
+    soit source = SOURCE_ATELIER.read_text(encoding="utf-8")
+    soit programme = analyser_programme(source)
+    soit texte_wat = WATCodeGenerator().generate(programme)
+    verifier_wat_strict(texte_wat)
+    soit octets_wasm = wasmtime.wat2wasm(texte_wat)
+    SORTIE_ATELIER_WAT.write_text(texte_wat, encoding="utf-8")
+    SORTIE_ATELIER_WASM.write_bytes(octets_wasm)
+    valider_exports_wasm(octets_wasm, ["rafraichir_lsysteme"])
+
+    # Shim hôte JS généré depuis le manifeste ABI (le JS n'est que de la colle).
+    soit manifeste = WATCodeGenerator().generate_abi_manifest(programme)
+    soit shim = WATCodeGenerator().generate_js_host_shim(manifeste)
+    SORTIE_ATELIER_SHIM.parent.mkdir(parents=Vrai, exist_ok=Vrai)
+    SORTIE_ATELIER_SHIM.write_text(shim, encoding="utf-8")
+    retour octets_wasm
 
 déf verifier_wat_strict(texte_wat):
     si ("unsupported call" dans texte_wat):
@@ -229,6 +263,14 @@ déf main():
     soit exports_requises = ["mandelbrot", "julia", "burning_ship", "tricorn", "multibrot", "celtic", "buffalo", "perpendicular_burning_ship", "heart", "perpendicular_mandelbrot", "perpendicular_celtic", "duck", "buddhabrot", "burning_julia", "biomorphe", "formule_cosinus_c", "formule_biomorphe", "formule_tricorne", "formule_perturbee_canonique", "formule_rationnelle_canonique", "formule_exponentielle_canonique", "formule_tangente_canonique", "formule_norme_canonique", "newton", "phoenix", "lyapunov", "lyapunov_multisequence", "bassin_newton_generalise", "orbitale_de_nova", "collatz_complexe", "attracteur_de_clifford", "attracteur_de_clifford_etape_x", "attracteur_de_clifford_etape_y", "attracteur_de_peter_de_jong", "attracteur_de_peter_de_jong_etape_x", "attracteur_de_peter_de_jong_etape_y", "attracteur_ikeda", "attracteur_ikeda_etape_x", "attracteur_ikeda_etape_y", "attracteur_de_henon", "attracteur_de_henon_etape_x", "attracteur_de_henon_etape_y", "lorenz_attractor", "lorenz_attractor_etape_x", "lorenz_attractor_etape_y", "lorenz_attractor_etape_z", "projeter_lorenz_x", "projeter_lorenz_y", "rossler_attractor", "rossler_attractor_etape_x", "rossler_attractor_etape_y", "rossler_attractor_etape_z", "projeter_rossler_x", "projeter_rossler_y", "aizawa_attractor", "aizawa_attractor_etape_x", "aizawa_attractor_etape_y", "aizawa_attractor_etape_z", "projeter_aizawa_x", "projeter_aizawa_y", "sprott_attractor", "sprott_attractor_etape_x", "sprott_attractor_etape_y", "sprott_attractor_etape_z", "projeter_sprott_x", "projeter_sprott_y", "feigenbaum_tree", "duffing_attractor", "duffing_attractor_etape_x", "duffing_attractor_etape_y", "barnsley", "barnsley_etape_x", "barnsley_etape_y", "sierpinski", "sierpinski_etape_x", "sierpinski_etape_y", "tapis_sierpinski", "tapis_sierpinski_etape_x", "tapis_sierpinski_etape_y", "menger_sponge", "menger_etape_x", "menger_etape_y", "menger_etape_z", "mandelbulb", "mandelbulb_etape_x", "mandelbulb_etape_y", "mandelbulb_etape_z", "tetraedre_sierpinski", "tetraedre_etape_x", "tetraedre_etape_y", "tetraedre_etape_z", "julia_quaternion", "julia_quaternion_etape_x", "julia_quaternion_etape_y", "julia_quaternion_etape_z", "mandelbox", "mandelbox_etape_x", "mandelbox_etape_y", "mandelbox_etape_z", "vicsek_fractal", "vicsek_etape_x", "vicsek_etape_y", "lichtenberg_figures", "koch", "dragon_heighway", "courbe_levy_c", "gosper_curve", "cantor_set", "triangle_de_cercles_recursifs", "apollonian_gasket", "t_square_fractal", "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore", "magnet1", "magnet2", "magnet3", "lambda_fractale", "lambda_cubique", "magnet_cosinus", "magnet_sinus", "nova_magnetique", "mandelbrot_lisse", "julia_lisse", "burning_ship_lisse", "tricorn_lisse", "mandelbrot_piege_cercle", "mandelbrot_piege_croix", "mandelbrot_piege_ligne", "julia_piege_cercle", "interpoler_lineaire", "interpoler_logarithmique", "ajuster_iterations_export", "easer_cubique", "interpoler_pixelsize_nav", "interpoler_angle_nav", "mandelbrot_classe", "evaluer_affine_x", "evaluer_affine_y", "choisir_transformee_ifs"]
     valider_exports_wasm(octets_wasm, exports_requises)
     afficher(f"    Exports valides: {', '.join(exports_requises)}")
+
+    afficher("")
+    afficher("[4b] Atelier L-systeme (UI multilingual via pont DOM)")
+    soit octets_atelier = construire_atelier_lsysteme()
+    afficher(f"    WAT  ecrit: {SORTIE_ATELIER_WAT.relative_to(RACINE)}")
+    afficher(f"    WASM ecrit: {SORTIE_ATELIER_WASM.relative_to(RACINE)} ({longueur(octets_atelier):,} octets)")
+    afficher(f"    Shim ecrit: {SORTIE_ATELIER_SHIM.relative_to(RACINE)}")
+    afficher("    Export valide: rafraichir_lsysteme")
 
     afficher("")
     afficher("[5] Benchmark")

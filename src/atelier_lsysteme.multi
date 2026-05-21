@@ -1,0 +1,96 @@
+# Atelier L-système — moteur de réécriture authored en multilingual (français).
+#
+# Première tranche de la migration « Meta » : la logique d'expansion de
+# grammaire L-système, jusqu'ici écrite en JavaScript (renderer-lsystem.js),
+# vit désormais en multilingual et est compilée vers WebAssembly. Le module
+# lit lui-même les champs du panneau via le pont DOM (dom_value_str / dom_text)
+# et écrit l'aperçu de la chaîne ; le JavaScript n'est plus qu'un shim généré.
+#
+# Contraintes du backend WAT exploitées ici :
+#   - les paramètres-chaîne ne portent pas leur longueur → tout vit dans une
+#     seule routine avec des chaînes locales (lookup de règle inliné) ;
+#   - `et` / `ou` ne court-circuitent pas → gardes imbriquées par `si` ;
+#   - matérialisation bornée par CAPACITE pour rester sous le tas linéaire.
+
+# Point d'entrée appelé par le shim JS sur chaque changement du panneau.
+# `generations` est passé comme nombre (les paramètres numériques traversent
+# proprement la frontière WASM, contrairement aux chaînes). Lit l'axiome et
+# les règles via le pont DOM, développe la grammaire, écrit l'aperçu de la
+# chaîne dans #lsystem-string-preview, et renvoie la longueur matérialisée.
+déf rafraichir_lsysteme(generations):
+    soit CAPACITE = 8000        # longueur maximale matérialisée
+    soit APERCU_MAX = 600       # caractères affichés dans l'aperçu
+
+    soit champ_axiome = dom_get("lsystem-axiom-input")
+    soit champ_regles = dom_get("lsystem-rules-input")
+    soit axiome = dom_value_str(champ_axiome)
+    soit regles = dom_value_str(champ_regles)
+
+    soit seq = axiome
+    soit nr = longueur(regles)
+    soit g = 0
+    tantque g < generations:
+        soit suivant = ""
+        soit i = 0
+        soit nseq = longueur(seq)
+        soit plein = 0
+        tantque i < nseq:
+            si plein == 0:
+                soit c = seq[i]
+                # --- lookup de production inliné sur `regles` (chaîne locale) ---
+                soit k = 0
+                soit debut = 1
+                soit prod = ""
+                soit trouve = 0
+                tantque k < nr:
+                    si trouve == 0:
+                        si debut == 1:
+                            si regles[k] == c:
+                                soit ok = 0
+                                si k + 1 < nr:
+                                    si regles[k + 1] == "=":
+                                        ok = 1
+                                si ok == 1:
+                                    soit j = k + 2
+                                    soit fin = nr
+                                    soit ferme = 0
+                                    soit jj = j
+                                    tantque jj < nr:
+                                        si ferme == 0:
+                                            si regles[jj] == "\n":
+                                                fin = jj
+                                                ferme = 1
+                                            si regles[jj] == ";":
+                                                fin = jj
+                                                ferme = 1
+                                        jj = jj + 1
+                                    prod = regles[j:fin]
+                                    trouve = 1
+                        si regles[k] == "\n":
+                            debut = 1
+                        sinon:
+                            si regles[k] == ";":
+                                debut = 1
+                            sinon:
+                                debut = 0
+                    k = k + 1
+                # --- réécriture simultanée ---
+                si trouve == 1:
+                    suivant = suivant + prod
+                sinon:
+                    suivant = suivant + c
+                si longueur(suivant) >= CAPACITE:
+                    plein = 1
+            i = i + 1
+        seq = suivant
+        g = g + 1
+
+    soit n = longueur(seq)
+    soit borne = n
+    si borne > APERCU_MAX:
+        borne = APERCU_MAX
+    soit apercu = seq[0:borne]
+
+    soit cible = dom_get("lsystem-string-preview")
+    dom_text(cible, apercu)
+    retour n

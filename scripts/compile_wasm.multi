@@ -107,7 +107,7 @@ déf construire_atelier_lsysteme():
     soit octets_wasm = wasmtime.wat2wasm(texte_wat)
     SORTIE_ATELIER_WAT.write_text(texte_wat, encoding="utf-8")
     SORTIE_ATELIER_WASM.write_bytes(octets_wasm)
-    valider_exports_wasm(octets_wasm, ["rafraichir_lsysteme"])
+    valider_exports_wasm(octets_wasm, ["tracer_lsysteme"])
 
     # Shim hôte JS généré depuis le manifeste ABI (le JS n'est que de la colle).
     soit manifeste = WATCodeGenerator().generate_abi_manifest(programme)
@@ -270,7 +270,7 @@ déf main():
     afficher(f"    WAT  ecrit: {SORTIE_ATELIER_WAT.relative_to(RACINE)}")
     afficher(f"    WASM ecrit: {SORTIE_ATELIER_WASM.relative_to(RACINE)} ({longueur(octets_atelier):,} octets)")
     afficher(f"    Shim ecrit: {SORTIE_ATELIER_SHIM.relative_to(RACINE)}")
-    afficher("    Export valide: rafraichir_lsysteme")
+    afficher("    Export valide: tracer_lsysteme")
 
     afficher("")
     afficher("[5] Benchmark")

@@ -3,9 +3,10 @@
 import {
   decrireReglesLSysteme,
   dessinerPropositionLSysteme,
+  genererPropositionLSysteme,
 } from "./renderer-lsystem.js?v=20260520-formule-preview";
 import {
-  rafraichirChaineLSystemeWasm,
+  dessinerPropositionLSystemeWasm,
 } from "./renderer-atelier-lsysteme.js?v=20260521-atelier-meta";
 import {
   analyserFormule,
@@ -576,24 +577,44 @@ export function initialiserExploration({
     if (target > params.maxIter) setMaxIter(target);
   }
 
+  // Capacité de matérialisation côté WASM (doit refléter CAPACITE du .multi).
+  const LSYSTEME_WASM_CAPACITE = 8000;
+
   function updateLSystemProposal() {
     const proposition = lirePropositionLSysteme();
-    const apercu = dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
     const description = decrireReglesLSysteme(proposition.rules);
     const readout = document.getElementById("lsystem-proposal-readout");
-    if (readout) {
+
+    function ecrireReadout(pointsCount, truncated, limit) {
+      if (!readout) return;
       const active = getParams().lsystemProposalActive ? "appliquée" : "locale";
       const stochastic = description.stochasticCount > 0 ? ` · ${description.stochasticCount} règle(s) stochastique(s), graine ${proposition.seed}` : "";
       const symbols = description.symboles.length ? ` · symboles ${description.symboles.slice(0, 8).join(" ")}` : "";
       const diagnostic = description.diagnostics.length ? ` · ${description.diagnostics[0]}` : "";
-      const points = apercu?.pointsCount ? ` · ${apercu.pointsCount} points` : "";
-      const limite = apercu?.truncated ? ` · limite ${apercu.limit} symboles atteinte` : "";
+      const points = pointsCount ? ` · ${pointsCount} points` : "";
+      const limite = truncated ? ` · limite ${limit} symboles atteinte` : "";
       readout.textContent = `Proposition ${active} · ${description.ruleCount} règle(s), ${proposition.generations} génération(s), angle ${formatNombre(proposition.angle, 1)}°, trait ${formatNombre(proposition.strokeWidth, 2)}${stochastic}${symbols}${points}${limite}${diagnostic} · non canonique`;
     }
-    // Aperçu de la chaîne : l'expansion de la grammaire est désormais calculée
-    // en multilingual (atelier_lsysteme.wasm). Le module WASM lit les champs et
-    // écrit #lsystem-string-preview lui-même via le pont DOM.
-    rafraichirChaineLSystemeWasm(proposition.generations);
+
+    if (description.stochasticCount > 0) {
+      // Règles stochastiques : conservées côté JS (RNG + alternatives pondérées,
+      // non encore portées en multilingual).
+      const apercu = dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
+      const stringPreview = document.getElementById("lsystem-string-preview");
+      if (stringPreview) {
+        const { sequence: seq, truncated, limit } = genererPropositionLSysteme(proposition, { limit: 70000 });
+        const suffix = truncated ? `, limite ${limit} atteinte` : "";
+        stringPreview.textContent = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles${suffix})` : seq + ` (${seq.length} symboles${suffix})`;
+      }
+      ecrireReadout(apercu?.pointsCount, apercu?.truncated, apercu?.limit);
+    } else {
+      // Règles déterministes : expansion ET tortue calculées en multilingual
+      // (atelier_lsysteme.wasm). Le module lit les champs, écrit l'aperçu texte
+      // (#lsystem-string-preview), et renvoie les sommets tracés ici.
+      ecrireReadout(0, false, 0);
+      dessinerPropositionLSystemeWasm(lsystemCanvas, proposition.generations, proposition.angle)
+        .then((r) => ecrireReadout(r.pointsCount, r.truncated, LSYSTEME_WASM_CAPACITE));
+    }
   }
 
   function remplirListeSauvegardes(list, items, prefix) {

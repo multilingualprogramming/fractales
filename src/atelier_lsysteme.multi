@@ -1,31 +1,36 @@
-# Atelier L-système — moteur de réécriture authored en multilingual (français).
+# Atelier L-système — moteur de réécriture ET tortue, authored en multilingual.
 #
-# Première tranche de la migration « Meta » : la logique d'expansion de
-# grammaire L-système, jusqu'ici écrite en JavaScript (renderer-lsystem.js),
-# vit désormais en multilingual et est compilée vers WebAssembly. Le module
-# lit lui-même les champs du panneau via le pont DOM (dom_value_str / dom_text)
-# et écrit l'aperçu de la chaîne ; le JavaScript n'est plus qu'un shim généré.
+# Tranche « Meta » : la grammaire L-système (réécriture simultanée de l'axiome)
+# ET l'interprétation tortue (géométrie : cos/sin, branchement [ ], accumulation
+# des sommets), jusqu'ici en JavaScript, vivent désormais en multilingual et sont
+# compilées vers WebAssembly. Le module lit lui-même les champs du panneau via le
+# pont DOM et écrit l'aperçu ; le JavaScript se réduit au shim généré plus le
+# tracé canvas (préoccupation hôte) à partir des sommets renvoyés.
 #
-# Contraintes du backend WAT exploitées ici :
+# Contraintes du backend WAT exploitées :
 #   - les paramètres-chaîne ne portent pas leur longueur → tout vit dans une
 #     seule routine avec des chaînes locales (lookup de règle inliné) ;
 #   - `et` / `ou` ne court-circuitent pas → gardes imbriquées par `si` ;
-#   - matérialisation bornée par CAPACITE pour rester sous le tas linéaire.
+#   - allocateur bump sans libération → l'hôte appelle __ml_reset avant chaque
+#     appel ; matérialisation bornée par CAPACITE.
+#
+# Sortie : une liste pré-dimensionnée `sommets` dont l'élément [0] porte le
+# nombre de sommets np, suivie de triplets (x, y, déplacer) — `déplacer` = 1.0
+# pour un moveTo (début de sous-tracé), 0.0 pour un lineTo. L'hôte lit np puis
+# 3*np valeurs et trace en mettant à l'échelle selon le canvas.
 
-# Point d'entrée appelé par le shim JS sur chaque changement du panneau.
-# `generations` est passé comme nombre (les paramètres numériques traversent
-# proprement la frontière WASM, contrairement aux chaînes). Lit l'axiome et
-# les règles via le pont DOM, développe la grammaire, écrit l'aperçu de la
-# chaîne dans #lsystem-string-preview, et renvoie la longueur matérialisée.
-déf rafraichir_lsysteme(generations):
-    soit CAPACITE = 8000        # longueur maximale matérialisée
+déf tracer_lsysteme(generations, angle_deg):
+    soit CAPACITE = 8000        # longueur maximale matérialisée de la chaîne
     soit APERCU_MAX = 600       # caractères affichés dans l'aperçu
+    soit MAXPTS = 8016          # capacité du tampon de sommets (>= CAPACITE + 16)
+    soit MAXPILE = 4096         # profondeur max de la pile de branchement
 
     soit champ_axiome = dom_get("lsystem-axiom-input")
     soit champ_regles = dom_get("lsystem-rules-input")
     soit axiome = dom_value_str(champ_axiome)
     soit regles = dom_value_str(champ_regles)
 
+    # ----- expansion de la grammaire (réécriture simultanée, bornée) -----
     soit seq = axiome
     soit nr = longueur(regles)
     soit g = 0
@@ -37,7 +42,6 @@ déf rafraichir_lsysteme(generations):
         tantque i < nseq:
             si plein == 0:
                 soit c = seq[i]
-                # --- lookup de production inliné sur `regles` (chaîne locale) ---
                 soit k = 0
                 soit debut = 1
                 soit prod = ""
@@ -74,7 +78,6 @@ déf rafraichir_lsysteme(generations):
                             sinon:
                                 debut = 0
                     k = k + 1
-                # --- réécriture simultanée ---
                 si trouve == 1:
                     suivant = suivant + prod
                 sinon:
@@ -86,11 +89,90 @@ déf rafraichir_lsysteme(generations):
         g = g + 1
 
     soit n = longueur(seq)
+
+    # ----- aperçu textuel (écrit dans le DOM par le module lui-même) -----
     soit borne = n
     si borne > APERCU_MAX:
         borne = APERCU_MAX
     soit apercu = seq[0:borne]
-
     soit cible = dom_get("lsystem-string-preview")
     dom_text(cible, apercu)
-    retour n
+
+    # ----- interprétation tortue → sommets (x, y, déplacer) -----
+    soit pas = angle_deg * 3.141592653589793 / 180.0
+    soit sommets = [0.0] * (1 + 3 * MAXPTS)
+    soit px = [0.0] * MAXPILE
+    soit py = [0.0] * MAXPILE
+    soit pa = [0.0] * MAXPILE
+    soit pgn = [0.0] * MAXPILE
+    soit sp = 0
+
+    soit x = 0.0
+    soit y = 0.0
+    soit ang = 0.0
+    soit signe = 1.0
+
+    # point initial (moveTo)
+    sommets[1] = x
+    sommets[2] = y
+    sommets[3] = 1.0
+    soit np = 1
+
+    soit t = 0
+    tantque t < n:
+        soit ch = seq[t]
+        si ch == "F":
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 3 * np] = x
+                sommets[2 + 3 * np] = y
+                sommets[3 + 3 * np] = 0.0
+                np = np + 1
+        si ch == "G":
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 3 * np] = x
+                sommets[2 + 3 * np] = y
+                sommets[3 + 3 * np] = 0.0
+                np = np + 1
+        si ch == "f":
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 3 * np] = x
+                sommets[2 + 3 * np] = y
+                sommets[3 + 3 * np] = 1.0
+                np = np + 1
+        si ch == "+":
+            ang = ang + pas * signe
+        si ch == "-":
+            ang = ang - pas * signe
+        si ch == "[":
+            si sp < MAXPILE:
+                px[sp] = x
+                py[sp] = y
+                pa[sp] = ang
+                pgn[sp] = signe
+                sp = sp + 1
+        si ch == "]":
+            si sp > 0:
+                sp = sp - 1
+                x = px[sp]
+                y = py[sp]
+                ang = pa[sp]
+                signe = pgn[sp]
+                si np < MAXPTS:
+                    sommets[1 + 3 * np] = x
+                    sommets[2 + 3 * np] = y
+                    sommets[3 + 3 * np] = 1.0
+                    np = np + 1
+        si ch == "|":
+            ang = ang + 3.141592653589793
+        si ch == "!":
+            signe = -signe
+        t = t + 1
+
+    sommets[0] = np
+    retour sommets

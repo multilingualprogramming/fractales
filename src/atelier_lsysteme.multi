@@ -1,45 +1,46 @@
 # Atelier L-système — moteur de réécriture ET tortue, authored en multilingual.
 #
-# Tranche « Meta » : la grammaire L-système (réécriture simultanée de l'axiome)
-# ET l'interprétation tortue (géométrie : cos/sin, branchement [ ], accumulation
-# des sommets), jusqu'ici en JavaScript, vivent désormais en multilingual et sont
-# compilées vers WebAssembly. Le module lit lui-même les champs du panneau via le
-# pont DOM et écrit l'aperçu ; le JavaScript se réduit au shim généré plus le
-# tracé canvas (préoccupation hôte) à partir des sommets renvoyés.
+# Tranche « Meta » : la grammaire L-système ET l'interprétation tortue vivent en
+# multilingual et sont compilées vers WebAssembly. Le module lit lui-même les
+# champs du panneau via le pont DOM, écrit l'aperçu texte, et renvoie les sommets
+# tracés (avec profondeur et angle pour la coloration par segment du canvas
+# principal). Le JavaScript se réduit au shim généré plus le tracé canvas.
 #
-# Contraintes du backend WAT exploitées :
-#   - les paramètres-chaîne ne portent pas leur longueur → tout vit dans une
-#     seule routine avec des chaînes locales (lookup de règle inliné) ;
-#   - `et` / `ou` ne court-circuitent pas → gardes imbriquées par `si` ;
-#   - allocateur bump sans libération → l'hôte appelle __ml_reset avant chaque
-#     appel ; matérialisation bornée par CAPACITE.
+# La tortue utilise un parcours en PROFONDEUR explicite (pile de tâches
+# (code, génération restante)) qui n'instancie jamais la chaîne complète :
+# coût O(nombre de sommets), borné par MAXPTS — pas de coût O(n²) ni de plafond
+# de matérialisation. Les symboles sont stockés comme codes d'octet (ord()).
 #
-# Sortie : une liste pré-dimensionnée `sommets` dont l'élément [0] porte le
-# nombre de sommets np, suivie de triplets (x, y, déplacer) — `déplacer` = 1.0
-# pour un moveTo (début de sous-tracé), 0.0 pour un lineTo. L'hôte lit np puis
-# 3*np valeurs et trace en mettant à l'échelle selon le canvas.
+# Contraintes du backend WAT : chaînes locales seulement (params sans longueur) ;
+# `et`/`ou` sans court-circuit (gardes imbriquées) ; allocateur bump réinitialisé
+# par l'hôte (__ml_reset) avant chaque appel.
+#
+# Sortie : liste `sommets` ; [0] = nombre de sommets np, puis np quintuplets
+# (x, y, déplacer, profondeur, angle). déplacer = 1.0 pour moveTo, 0.0 pour lineTo.
 
 déf tracer_lsysteme(generations, angle_deg):
-    soit CAPACITE = 8000        # longueur maximale matérialisée de la chaîne
-    soit APERCU_MAX = 600       # caractères affichés dans l'aperçu
-    soit MAXPTS = 8016          # capacité du tampon de sommets (>= CAPACITE + 16)
-    soit MAXPILE = 4096         # profondeur max de la pile de branchement
+    soit CAP_TEXTE = 2000        # matérialisation bornée pour l'aperçu texte
+    soit APERCU_MAX = 600        # caractères affichés
+    soit MAXPTS = 200000         # capacité du tampon de sommets
+    soit MAXTASK = 8192          # profondeur max de la pile de tâches DFS
+    soit MAXPILE = 8192          # profondeur max de la pile de branchement [ ]
 
     soit champ_axiome = dom_get("lsystem-axiom-input")
     soit champ_regles = dom_get("lsystem-rules-input")
     soit axiome = dom_value_str(champ_axiome)
     soit regles = dom_value_str(champ_regles)
-
-    # ----- expansion de la grammaire (réécriture simultanée, bornée) -----
-    soit seq = axiome
     soit nr = longueur(regles)
+    soit naxe = longueur(axiome)
+
+    # ---------- aperçu texte (expansion concaténée, bornée) ----------
+    soit seq = axiome
     soit g = 0
     tantque g < generations:
         soit suivant = ""
         soit i = 0
-        soit nseq = longueur(seq)
+        soit ns = longueur(seq)
         soit plein = 0
-        tantque i < nseq:
+        tantque i < ns:
             si plein == 0:
                 soit c = seq[i]
                 soit k = 0
@@ -82,97 +83,177 @@ déf tracer_lsysteme(generations, angle_deg):
                     suivant = suivant + prod
                 sinon:
                     suivant = suivant + c
-                si longueur(suivant) >= CAPACITE:
+                si longueur(suivant) >= CAP_TEXTE:
                     plein = 1
             i = i + 1
         seq = suivant
         g = g + 1
 
-    soit n = longueur(seq)
-
-    # ----- aperçu textuel (écrit dans le DOM par le module lui-même) -----
-    soit borne = n
+    soit borne = longueur(seq)
     si borne > APERCU_MAX:
         borne = APERCU_MAX
-    soit apercu = seq[0:borne]
-    soit cible = dom_get("lsystem-string-preview")
-    dom_text(cible, apercu)
+    dom_text(dom_get("lsystem-string-preview"), seq[0:borne])
 
-    # ----- interprétation tortue → sommets (x, y, déplacer) -----
+    # ---------- tortue : parcours DFS sans matérialisation ----------
     soit pas = angle_deg * 3.141592653589793 / 180.0
-    soit sommets = [0.0] * (1 + 3 * MAXPTS)
-    soit px = [0.0] * MAXPILE
-    soit py = [0.0] * MAXPILE
-    soit pa = [0.0] * MAXPILE
-    soit pgn = [0.0] * MAXPILE
+    soit sommets = [0.0] * (1 + 5 * MAXPTS)
+    soit ts_code = [0.0] * MAXTASK
+    soit ts_dep = [0.0] * MAXTASK
     soit sp = 0
+    soit bx = [0.0] * MAXPILE
+    soit by = [0.0] * MAXPILE
+    soit ba = [0.0] * MAXPILE
+    soit bsg = [0.0] * MAXPILE
+    soit bpf = [0.0] * MAXPILE
+    soit bsp = 0
 
     soit x = 0.0
     soit y = 0.0
     soit ang = 0.0
     soit signe = 1.0
+    soit prof = 0.0
 
     # point initial (moveTo)
     sommets[1] = x
     sommets[2] = y
     sommets[3] = 1.0
+    sommets[4] = 0.0
+    sommets[5] = 0.0
     soit np = 1
 
-    soit t = 0
-    tantque t < n:
-        soit ch = seq[t]
-        si ch == "F":
-            x = x + math.cos(ang)
-            y = y + math.sin(ang)
-            si np < MAXPTS:
-                sommets[1 + 3 * np] = x
-                sommets[2 + 3 * np] = y
-                sommets[3 + 3 * np] = 0.0
-                np = np + 1
-        si ch == "G":
-            x = x + math.cos(ang)
-            y = y + math.sin(ang)
-            si np < MAXPTS:
-                sommets[1 + 3 * np] = x
-                sommets[2 + 3 * np] = y
-                sommets[3 + 3 * np] = 0.0
-                np = np + 1
-        si ch == "f":
-            x = x + math.cos(ang)
-            y = y + math.sin(ang)
-            si np < MAXPTS:
-                sommets[1 + 3 * np] = x
-                sommets[2 + 3 * np] = y
-                sommets[3 + 3 * np] = 1.0
-                np = np + 1
-        si ch == "+":
-            ang = ang + pas * signe
-        si ch == "-":
-            ang = ang - pas * signe
-        si ch == "[":
-            si sp < MAXPILE:
-                px[sp] = x
-                py[sp] = y
-                pa[sp] = ang
-                pgn[sp] = signe
-                sp = sp + 1
-        si ch == "]":
-            si sp > 0:
-                sp = sp - 1
-                x = px[sp]
-                y = py[sp]
-                ang = pa[sp]
-                signe = pgn[sp]
-                si np < MAXPTS:
-                    sommets[1 + 3 * np] = x
-                    sommets[2 + 3 * np] = y
-                    sommets[3 + 3 * np] = 1.0
-                    np = np + 1
-        si ch == "|":
-            ang = ang + 3.141592653589793
-        si ch == "!":
-            signe = -signe
-        t = t + 1
+    # empiler l'axiome à l'envers (codes d'octet) à la profondeur de génération
+    soit a = naxe - 1
+    tantque a >= 0:
+        si sp < MAXTASK:
+            ts_code[sp] = ord(axiome[a])
+            ts_dep[sp] = generations
+            sp = sp + 1
+        a = a - 1
+
+    tantque sp > 0:
+        si np >= MAXPTS:
+            sp = 0
+        sinon:
+            sp = sp - 1
+            soit code = ts_code[sp]
+            soit dep = ts_dep[sp]
+
+            # chercher une production (par octet) si dep > 0
+            soit dispo = 0
+            soit pj = 0
+            soit pfin = 0
+            si dep > 0:
+                soit k = 0
+                soit debut = 1
+                soit trouve = 0
+                tantque k < nr:
+                    si trouve == 0:
+                        si debut == 1:
+                            si ord(regles[k]) == code:
+                                soit ok = 0
+                                si k + 1 < nr:
+                                    si regles[k + 1] == "=":
+                                        ok = 1
+                                si ok == 1:
+                                    soit j = k + 2
+                                    soit fin = nr
+                                    soit ferme = 0
+                                    soit jj = j
+                                    tantque jj < nr:
+                                        si ferme == 0:
+                                            si regles[jj] == "\n":
+                                                fin = jj
+                                                ferme = 1
+                                            si regles[jj] == ";":
+                                                fin = jj
+                                                ferme = 1
+                                        jj = jj + 1
+                                    pj = j
+                                    pfin = fin
+                                    dispo = 1
+                                    trouve = 1
+                        si regles[k] == "\n":
+                            debut = 1
+                        sinon:
+                            si regles[k] == ";":
+                                debut = 1
+                            sinon:
+                                debut = 0
+                    k = k + 1
+
+            si dispo == 1:
+                # empiler les caractères de la production à l'envers (dep - 1)
+                soit m = pfin - 1
+                tantque m >= pj:
+                    si sp < MAXTASK:
+                        ts_code[sp] = ord(regles[m])
+                        ts_dep[sp] = dep - 1
+                        sp = sp + 1
+                    m = m - 1
+            sinon:
+                # feuille : interpréter la tortue pour ce code d'octet
+                si code == 70:           # 'F'
+                    x = x + math.cos(ang)
+                    y = y + math.sin(ang)
+                    si np < MAXPTS:
+                        sommets[1 + 5 * np] = x
+                        sommets[2 + 5 * np] = y
+                        sommets[3 + 5 * np] = 0.0
+                        sommets[4 + 5 * np] = prof
+                        sommets[5 + 5 * np] = ang
+                        np = np + 1
+                si code == 71:           # 'G'
+                    x = x + math.cos(ang)
+                    y = y + math.sin(ang)
+                    si np < MAXPTS:
+                        sommets[1 + 5 * np] = x
+                        sommets[2 + 5 * np] = y
+                        sommets[3 + 5 * np] = 0.0
+                        sommets[4 + 5 * np] = prof
+                        sommets[5 + 5 * np] = ang
+                        np = np + 1
+                si code == 102:          # 'f'
+                    x = x + math.cos(ang)
+                    y = y + math.sin(ang)
+                    si np < MAXPTS:
+                        sommets[1 + 5 * np] = x
+                        sommets[2 + 5 * np] = y
+                        sommets[3 + 5 * np] = 1.0
+                        sommets[4 + 5 * np] = prof
+                        sommets[5 + 5 * np] = ang
+                        np = np + 1
+                si code == 43:           # '+'
+                    ang = ang + pas * signe
+                si code == 45:           # '-'
+                    ang = ang - pas * signe
+                si code == 91:           # '['
+                    si bsp < MAXPILE:
+                        bx[bsp] = x
+                        by[bsp] = y
+                        ba[bsp] = ang
+                        bsg[bsp] = signe
+                        bpf[bsp] = prof
+                        bsp = bsp + 1
+                    prof = prof + 1.0
+                si code == 93:           # ']'
+                    si bsp > 0:
+                        bsp = bsp - 1
+                        x = bx[bsp]
+                        y = by[bsp]
+                        ang = ba[bsp]
+                        signe = bsg[bsp]
+                        prof = bpf[bsp]
+                        si np < MAXPTS:
+                            sommets[1 + 5 * np] = x
+                            sommets[2 + 5 * np] = y
+                            sommets[3 + 5 * np] = 1.0
+                            sommets[4 + 5 * np] = prof
+                            sommets[5 + 5 * np] = ang
+                            np = np + 1
+                si code == 124:          # '|'
+                    ang = ang + 3.141592653589793
+                si code == 33:           # '!'
+                    signe = -signe
 
     sommets[0] = np
     retour sommets

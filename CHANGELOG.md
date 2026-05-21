@@ -17,8 +17,15 @@ Ce projet suit une convention inspirée de Keep a Changelog.
   `dom_value_str` / `dom_text`), puis renvoie les sommets ; le JavaScript se réduit
   au **shim hôte généré** (`public/js/atelier_lsysteme_shim.js`) plus un chargeur
   mince qui trace les sommets sur le canvas (`public/js/renderer-atelier-lsysteme.js`).
+- La tortue utilise un **parcours en profondeur sans matérialisation** (symboles
+  stockés comme codes via `ord()`), supprimant l'ancien plafond de 8000 caractères :
+  l'aperçu couvre désormais toute la plage de générations (ex. Koch génération 7 =
+  16 385 sommets) et émet `profondeur` + `angle` par sommet (coloration par segment).
 - Les règles **stochastiques** (RNG + alternatives pondérées) restent traitées côté
   JavaScript ; le chemin multilingual couvre les grammaires déterministes.
+- Le rendu **canvas principal** (renderer.js) reste en JavaScript : y porter le WASM
+  proprement nécessite de passer axiome/règles en paramètres (les paramètres-chaîne
+  WAT ne portent pas leur longueur) — bloqué sur les chaînes à longueur préfixée.
 - Étape `[4b]` du build (`scripts/compile_wasm.multi`) compilant l'Atelier vers
   WASM et émettant le shim hôte généré ; validation de l'export `tracer_lsysteme`.
 - Test de parité `tests/atelier_lsysteme_wasm.test.js` vérifiant que l'expansion ET

@@ -64,6 +64,9 @@ async function instancier(axiom, rules) {
   return { exports: instance.exports, elements, memoryRef };
 }
 
+// Disposition : [0] = np, puis np quintuplets (x, y, move, profondeur, angle).
+const PAS = 5;
+
 function lireSommets(exports, memoryRef, generations, angle) {
   exports.__ml_reset();
   const ptr = exports.tracer_lsysteme(generations, angle);
@@ -72,10 +75,13 @@ function lireSommets(exports, memoryRef, generations, angle) {
   const np = view.getFloat64(base + 8, true);
   const pts = [];
   for (let k = 0; k < np; k++) {
+    const o = base + 8 + 8 * (1 + PAS * k);
     pts.push({
-      x: view.getFloat64(base + 8 + 8 * (1 + 3 * k), true),
-      y: view.getFloat64(base + 8 + 8 * (2 + 3 * k), true),
-      move: view.getFloat64(base + 8 + 8 * (3 + 3 * k), true),
+      x: view.getFloat64(o, true),
+      y: view.getFloat64(o + 8, true),
+      move: view.getFloat64(o + 16, true),
+      profondeur: view.getFloat64(o + 24, true),
+      angle: view.getFloat64(o + 32, true),
     });
   }
   return { np, pts };
@@ -84,10 +90,12 @@ function lireSommets(exports, memoryRef, generations, angle) {
 // Grammaires déterministes ; générations bornées à 8 (plage du curseur) et
 // choisies pour rester sous la capacité de matérialisation (8000).
 const CAS = [
-  { nom: "Koch", axiom: "F", rules: "F=F+F--F+F", angle: 60, gens: [1, 2, 3, 5] },
+  // gen 7 (16385 sommets) dépasse l'ancien plafond de 8000 : vérifie l'absence
+  // de régression grâce à la tortue DFS sans matérialisation.
+  { nom: "Koch", axiom: "F", rules: "F=F+F--F+F", angle: 60, gens: [1, 2, 3, 5, 7] },
   { nom: "Dragon de Heighway", axiom: "FX", rules: "X=X+YF+;Y=-FX-Y", angle: 90, gens: [1, 4, 8] },
   { nom: "grille", axiom: "F", rules: "F=F+F+F+F", angle: 90, gens: [1, 2, 3] },
-  { nom: "plante (déterministe)", axiom: "X", rules: "X=F-[[X]+X]+F[+FX]-X;F=FF", angle: 25, gens: [1, 2, 3, 4] },
+  { nom: "plante (déterministe)", axiom: "X", rules: "X=F-[[X]+X]+F[+FX]-X;F=FF", angle: 25, gens: [1, 2, 3, 5] },
 ];
 
 describe("Atelier L-systeme — parité WASM ↔ JS", () => {
@@ -104,10 +112,10 @@ describe("Atelier L-systeme — parité WASM ↔ JS", () => {
         );
       });
 
-      test(`${nom} génération ${g} — tortue (sommets)`, async () => {
+      test(`${nom} génération ${g} — tortue (sommets, profondeur)`, async () => {
         const ref = pointsPropositionLSysteme(
           { axiom, rules, angle, generations: g, seed: 1 },
-          { limit: 70000 },
+          { limit: 200000 },
         ).points;
         const { exports, memoryRef } = await instancier(axiom, rules);
         const { np, pts } = lireSommets(exports, memoryRef, g, angle);
@@ -116,6 +124,7 @@ describe("Atelier L-systeme — parité WASM ↔ JS", () => {
         for (let i = 0; i < np; i++) {
           const expectedMove = i === 0 || ref[i].move ? 1 : 0;
           assert.equal(pts[i].move, expectedMove, `drapeau move au point ${i}`);
+          assert.equal(pts[i].profondeur, ref[i].profondeur || 0, `profondeur au point ${i}`);
           maxDelta = Math.max(maxDelta, Math.abs(pts[i].x - ref[i].x), Math.abs(pts[i].y - ref[i].y));
         }
         // Trigonométrie WASM = approximation polynomiale (~1e-6), accumulée.

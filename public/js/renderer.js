@@ -29,7 +29,12 @@ import {
 } from "./renderer-exploration.js?v=20260520-formule-preview-fix";
 import {
   pointsPropositionLSysteme,
+  parserReglesLSysteme,
 } from "./renderer-lsystem.js?v=20260520-formule-preview";
+import {
+  chargerAtelierLSysteme,
+  sommetsGrammaireWasmSync,
+} from "./renderer-atelier-lsysteme.js?v=20260521-atelier-meta";
 import {
   compilerFormule,
 } from "./renderer-formule.js?v=20260520-formule-preview-fix";
@@ -2243,10 +2248,33 @@ function couleurSegmentLSysteme(segment, index, total, renduParams) {
   return getColorFromRatio(t, renduParams);
 }
 
-function dessinerPropositionLSystemeMonde(traceur, renduParams, couleurParSegment = false) {
-  if (traceur.ctx) {
-    const baseWidth = Math.max(0.5, Math.min(6, Number(renduParams.lsystemStrokeWidth) || 1.35));
-    traceur.ctx.lineWidth = baseWidth;
+// Détecte si une grammaire contient au moins une règle stochastique
+// (alternatives pondérées `|`). Ces grammaires restent sur le chemin JS car le
+// RNG (FNV + mulberry32) n'est pas encore porté en multilingual.
+function grammaireEstStochastique(reglesTexte) {
+  try {
+    const { rules } = parserReglesLSysteme(reglesTexte);
+    for (const regle of rules.values()) {
+      if (regle.stochastique) return true;
+    }
+    return false;
+  } catch {
+    return true; // en cas de doute, rester sur le chemin JS éprouvé
+  }
+}
+
+// Sommets de la proposition L-système pour le rendu du canvas principal.
+// Chemin déterministe : tortue authored en multilingual (WASM), axiome/règles
+// passés comme PARAMÈTRES chaîne (tampons à longueur préfixée). Repli JS pour
+// les grammaires stochastiques ou tant que le module WASM n'est pas chargé.
+function sommetsLSystemePourRendu(renduParams) {
+  const generations = Math.max(0, Math.min(8, Number(renduParams.lsystemGenerations) | 0));
+  const axiome = String(renduParams.lsystemAxiom || "F").slice(0, 96);
+  if (!grammaireEstStochastique(renduParams.lsystemRules)) {
+    const sommets = sommetsGrammaireWasmSync(
+      axiome, renduParams.lsystemRules, generations, renduParams.lsystemAngle,
+    );
+    if (sommets && sommets.length >= 2) return sommets;
   }
   const { points } = pointsPropositionLSysteme({
     axiom: renduParams.lsystemAxiom,
@@ -2255,6 +2283,15 @@ function dessinerPropositionLSystemeMonde(traceur, renduParams, couleurParSegmen
     generations: renduParams.lsystemGenerations,
     seed: renduParams.lsystemSeed,
   });
+  return points;
+}
+
+function dessinerPropositionLSystemeMonde(traceur, renduParams, couleurParSegment = false) {
+  if (traceur.ctx) {
+    const baseWidth = Math.max(0.5, Math.min(6, Number(renduParams.lsystemStrokeWidth) || 1.35));
+    traceur.ctx.lineWidth = baseWidth;
+  }
+  const points = sommetsLSystemePourRendu(renduParams);
   if (points.length < 2) return;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const point of points) {
@@ -4312,6 +4349,9 @@ explorationModes = initialiserExploration({
 
 async function init() {
   resizeCanvas();
+  // Préchargement (sans attente) du module WASM de l'Atelier L-système : rend le
+  // chemin tortue déterministe disponible pour le rendu du canvas principal.
+  chargerAtelierLSysteme().catch(() => {});
   initialiserMoteur3D({
     canvas: canvas3d,
     hud: nav3dHud,

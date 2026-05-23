@@ -23,13 +23,21 @@ Ce projet suit une convention inspirée de Keep a Changelog.
   16 385 sommets) et émet `profondeur` + `angle` par sommet (coloration par segment).
 - Les règles **stochastiques** (RNG + alternatives pondérées) restent traitées côté
   JavaScript ; le chemin multilingual couvre les grammaires déterministes.
-- Le rendu **canvas principal** (renderer.js) reste en JavaScript : y porter le WASM
-  proprement nécessite de passer axiome/règles en paramètres (les paramètres-chaîne
-  WAT ne portent pas leur longueur) — bloqué sur les chaînes à longueur préfixée.
+- **Rendu du canvas principal porté en WASM (grammaires déterministes).** Désormais
+  débloqué par les **chaînes à longueur préfixée** de multilingual : la tortue est
+  scindée en `tortue_lsysteme(axiome, regles, generations, angle_deg)` (tortue pure,
+  axiome/règles passés comme **paramètres chaîne**, sans DOM) ; `tracer_lsysteme`
+  (chemin aperçu) lit le DOM, écrit l'aperçu, puis **délègue** à `tortue_lsysteme`.
+  Côté hôte, `renderer.js` marshalle l'axiome et les règles en tampons à longueur
+  préfixée via le nouvel export `__ml_str_alloc(len)` et appelle `tortue_lsysteme`
+  (chemin synchrone `sommetsGrammaireWasmSync`, module préchargé) ; repli JS si la
+  grammaire est stochastique ou si le module n'est pas encore chargé.
 - Étape `[4b]` du build (`scripts/compile_wasm.multi`) compilant l'Atelier vers
   WASM et émettant le shim hôte généré ; validation de l'export `tracer_lsysteme`.
-- Test de parité `tests/atelier_lsysteme_wasm.test.js` vérifiant que l'expansion ET
-  la tortue WASM reproduisent les références JavaScript (Koch, Dragon, grille, plante).
+- Test de parité `tests/atelier_lsysteme_wasm.test.js` (45 cas) vérifiant que
+  l'expansion, la tortue DOM (`tracer_lsysteme`) ET la tortue par arguments chaîne
+  (`tortue_lsysteme`, chemin du canvas principal) reproduisent les références
+  JavaScript (Koch, Dragon, grille, plante).
 
 ### Notes
 

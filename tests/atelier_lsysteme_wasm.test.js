@@ -133,3 +133,61 @@ describe("Atelier L-systeme — parité WASM ↔ JS", () => {
     }
   }
 });
+
+// Chemin du CANVAS PRINCIPAL : tortue_lsysteme(axiome, regles, gen, angle) prend
+// l'axiome et les règles comme PARAMÈTRES chaîne (tampons à longueur préfixée,
+// en-tête à ptr-4), marshallés par l'hôte via __ml_str_alloc — sans DOM. Doit
+// reproduire la tortue JS exactement comme le chemin DOM tracer_lsysteme.
+const encodeurArgs = new TextEncoder();
+
+function lireSommetsArgs(exports, memoryRef, axiom, rules, generations, angle) {
+  exports.__ml_reset();
+  const ecrire = (s) => {
+    const b = encodeurArgs.encode(String(s ?? ""));
+    const p = exports.__ml_str_alloc(b.length);
+    if (b.length) new Uint8Array(memoryRef.current.buffer, p, b.length).set(b);
+    return p;
+  };
+  const axPtr = ecrire(axiom);
+  const ruPtr = ecrire(rules);
+  const ptr = exports.tortue_lsysteme(axPtr, ruPtr, generations, angle);
+  const base = Math.trunc(ptr);
+  const view = new DataView(memoryRef.current.buffer);
+  const np = view.getFloat64(base + 8, true);
+  const pts = [];
+  for (let k = 0; k < np; k++) {
+    const o = base + 8 + 8 * (1 + PAS * k);
+    pts.push({
+      x: view.getFloat64(o, true),
+      y: view.getFloat64(o + 8, true),
+      move: view.getFloat64(o + 16, true),
+      profondeur: view.getFloat64(o + 24, true),
+      angle: view.getFloat64(o + 32, true),
+    });
+  }
+  return { np, pts };
+}
+
+describe("Atelier L-systeme — tortue par arguments chaîne (canvas principal)", () => {
+  for (const { nom, axiom, rules, angle, gens } of CAS) {
+    for (const g of gens) {
+      test(`${nom} génération ${g} — tortue_lsysteme(axiome, regles)`, async () => {
+        const ref = pointsPropositionLSysteme(
+          { axiom, rules, angle, generations: g, seed: 1 },
+          { limit: 200000 },
+        ).points;
+        const { exports, memoryRef } = await instancier(axiom, rules);
+        const { np, pts } = lireSommetsArgs(exports, memoryRef, axiom, rules, g, angle);
+        assert.equal(np, ref.length, "nombre de sommets");
+        let maxDelta = 0;
+        for (let i = 0; i < np; i++) {
+          const expectedMove = i === 0 || ref[i].move ? 1 : 0;
+          assert.equal(pts[i].move, expectedMove, `drapeau move au point ${i}`);
+          assert.equal(pts[i].profondeur, ref[i].profondeur || 0, `profondeur au point ${i}`);
+          maxDelta = Math.max(maxDelta, Math.abs(pts[i].x - ref[i].x), Math.abs(pts[i].y - ref[i].y));
+        }
+        assert.ok(maxDelta < 1e-2, `écart de coordonnées trop grand : ${maxDelta}`);
+      });
+    }
+  }
+});

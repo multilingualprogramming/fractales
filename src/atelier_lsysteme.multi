@@ -1,100 +1,36 @@
 # Atelier L-système — moteur de réécriture ET tortue, authored en multilingual.
 #
 # Tranche « Meta » : la grammaire L-système ET l'interprétation tortue vivent en
-# multilingual et sont compilées vers WebAssembly. Le module lit lui-même les
-# champs du panneau via le pont DOM, écrit l'aperçu texte, et renvoie les sommets
-# tracés (avec profondeur et angle pour la coloration par segment du canvas
-# principal). Le JavaScript se réduit au shim généré plus le tracé canvas.
+# multilingual et sont compilées vers WebAssembly. Deux entrées :
+#   - tortue_lsysteme(axiome, regles, generations, angle_deg) : tortue pure, sans
+#     DOM, prenant l'axiome et les règles comme PARAMÈTRES chaîne. Utilisée par le
+#     rendu du canvas principal (proposition L-système déterministe).
+#   - tracer_lsysteme(generations, angle_deg) : lit les champs du panneau via le
+#     pont DOM, écrit l'aperçu texte, puis DÉLÈGUE à tortue_lsysteme. Utilisée par
+#     l'aperçu de l'Atelier.
+#
+# Les paramètres chaîne traversent désormais la frontière d'appel (tampons à
+# longueur préfixée : en-tête à ptr-4) — d'où le découpage en deux fonctions.
 #
 # La tortue utilise un parcours en PROFONDEUR explicite (pile de tâches
 # (code, génération restante)) qui n'instancie jamais la chaîne complète :
 # coût O(nombre de sommets), borné par MAXPTS — pas de coût O(n²) ni de plafond
 # de matérialisation. Les symboles sont stockés comme codes d'octet (ord()).
 #
-# Contraintes du backend WAT : chaînes locales seulement (params sans longueur) ;
-# `et`/`ou` sans court-circuit (gardes imbriquées) ; allocateur bump réinitialisé
-# par l'hôte (__ml_reset) avant chaque appel.
+# Contraintes du backend WAT : `et`/`ou` sans court-circuit (gardes imbriquées) ;
+# allocateur bump réinitialisé par l'hôte (__ml_reset) avant chaque appel.
 #
 # Sortie : liste `sommets` ; [0] = nombre de sommets np, puis np quintuplets
 # (x, y, déplacer, profondeur, angle). déplacer = 1.0 pour moveTo, 0.0 pour lineTo.
 
-déf tracer_lsysteme(generations, angle_deg):
-    soit CAP_TEXTE = 2000        # matérialisation bornée pour l'aperçu texte
-    soit APERCU_MAX = 600        # caractères affichés
+déf tortue_lsysteme(axiome: chaîne, regles: chaîne, generations, angle_deg):
     soit MAXPTS = 200000         # capacité du tampon de sommets
     soit MAXTASK = 8192          # profondeur max de la pile de tâches DFS
     soit MAXPILE = 8192          # profondeur max de la pile de branchement [ ]
 
-    soit champ_axiome = dom_get("lsystem-axiom-input")
-    soit champ_regles = dom_get("lsystem-rules-input")
-    soit axiome = dom_value_str(champ_axiome)
-    soit regles = dom_value_str(champ_regles)
     soit nr = longueur(regles)
     soit naxe = longueur(axiome)
 
-    # ---------- aperçu texte (expansion concaténée, bornée) ----------
-    soit seq = axiome
-    soit g = 0
-    tantque g < generations:
-        soit suivant = ""
-        soit i = 0
-        soit ns = longueur(seq)
-        soit plein = 0
-        tantque i < ns:
-            si plein == 0:
-                soit c = seq[i]
-                soit k = 0
-                soit debut = 1
-                soit prod = ""
-                soit trouve = 0
-                tantque k < nr:
-                    si trouve == 0:
-                        si debut == 1:
-                            si regles[k] == c:
-                                soit ok = 0
-                                si k + 1 < nr:
-                                    si regles[k + 1] == "=":
-                                        ok = 1
-                                si ok == 1:
-                                    soit j = k + 2
-                                    soit fin = nr
-                                    soit ferme = 0
-                                    soit jj = j
-                                    tantque jj < nr:
-                                        si ferme == 0:
-                                            si regles[jj] == "\n":
-                                                fin = jj
-                                                ferme = 1
-                                            si regles[jj] == ";":
-                                                fin = jj
-                                                ferme = 1
-                                        jj = jj + 1
-                                    prod = regles[j:fin]
-                                    trouve = 1
-                        si regles[k] == "\n":
-                            debut = 1
-                        sinon:
-                            si regles[k] == ";":
-                                debut = 1
-                            sinon:
-                                debut = 0
-                    k = k + 1
-                si trouve == 1:
-                    suivant = suivant + prod
-                sinon:
-                    suivant = suivant + c
-                si longueur(suivant) >= CAP_TEXTE:
-                    plein = 1
-            i = i + 1
-        seq = suivant
-        g = g + 1
-
-    soit borne = longueur(seq)
-    si borne > APERCU_MAX:
-        borne = APERCU_MAX
-    dom_text(dom_get("lsystem-string-preview"), seq[0:borne])
-
-    # ---------- tortue : parcours DFS sans matérialisation ----------
     soit pas = angle_deg * 3.141592653589793 / 180.0
     soit sommets = [0.0] * (1 + 5 * MAXPTS)
     soit ts_code = [0.0] * MAXTASK
@@ -257,3 +193,79 @@ déf tracer_lsysteme(generations, angle_deg):
 
     sommets[0] = np
     retour sommets
+
+
+déf tracer_lsysteme(generations, angle_deg):
+    soit CAP_TEXTE = 2000        # matérialisation bornée pour l'aperçu texte
+    soit APERCU_MAX = 600        # caractères affichés
+
+    soit champ_axiome = dom_get("lsystem-axiom-input")
+    soit champ_regles = dom_get("lsystem-rules-input")
+    soit axiome = dom_value_str(champ_axiome)
+    soit regles = dom_value_str(champ_regles)
+    soit nr = longueur(regles)
+
+    # ---------- aperçu texte (expansion concaténée, bornée) ----------
+    soit seq = axiome
+    soit g = 0
+    tantque g < generations:
+        soit suivant = ""
+        soit i = 0
+        soit ns = longueur(seq)
+        soit plein = 0
+        tantque i < ns:
+            si plein == 0:
+                soit c = seq[i]
+                soit k = 0
+                soit debut = 1
+                soit prod = ""
+                soit trouve = 0
+                tantque k < nr:
+                    si trouve == 0:
+                        si debut == 1:
+                            si regles[k] == c:
+                                soit ok = 0
+                                si k + 1 < nr:
+                                    si regles[k + 1] == "=":
+                                        ok = 1
+                                si ok == 1:
+                                    soit j = k + 2
+                                    soit fin = nr
+                                    soit ferme = 0
+                                    soit jj = j
+                                    tantque jj < nr:
+                                        si ferme == 0:
+                                            si regles[jj] == "\n":
+                                                fin = jj
+                                                ferme = 1
+                                            si regles[jj] == ";":
+                                                fin = jj
+                                                ferme = 1
+                                        jj = jj + 1
+                                    prod = regles[j:fin]
+                                    trouve = 1
+                        si regles[k] == "\n":
+                            debut = 1
+                        sinon:
+                            si regles[k] == ";":
+                                debut = 1
+                            sinon:
+                                debut = 0
+                    k = k + 1
+                si trouve == 1:
+                    suivant = suivant + prod
+                sinon:
+                    suivant = suivant + c
+                si longueur(suivant) >= CAP_TEXTE:
+                    plein = 1
+            i = i + 1
+        seq = suivant
+        g = g + 1
+
+    soit borne = longueur(seq)
+    si borne > APERCU_MAX:
+        borne = APERCU_MAX
+    dom_text(dom_get("lsystem-string-preview"), seq[0:borne])
+
+    # ---------- tortue : déléguée à tortue_lsysteme (params chaîne) ----------
+    retour tortue_lsysteme(axiome, regles, generations, angle_deg)

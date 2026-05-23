@@ -66,6 +66,60 @@ export function chargerAtelierLSysteme() {
 // (x, y, déplacer, profondeur, angle). Pas de 5 valeurs par sommet.
 const PAS_SOMMET = 5;
 
+const encodeurUtf8 = new TextEncoder();
+
+/**
+ * Écrit *texte* en mémoire WASM comme tampon à longueur préfixée (en-tête à
+ * ptr-4) via __ml_str_alloc, et renvoie le pointeur vers les octets. Le module
+ * doit déjà être instancié (exports/memoryRef renseignés).
+ */
+function ecrireChaineWasm(exports, texte) {
+  const octets = encodeurUtf8.encode(String(texte ?? ""));
+  const ptr = exports.__ml_str_alloc(octets.length);
+  if (octets.length > 0) {
+    new Uint8Array(memoryRef.current.buffer, ptr, octets.length).set(octets);
+  }
+  return ptr;
+}
+
+/**
+ * Calcule les sommets de la tortue DIRECTEMENT depuis une grammaire passée en
+ * arguments (axiome/règles comme chaînes), sans toucher au DOM. SYNCHRONE :
+ * renvoie null si le module WASM n'est pas encore chargé (l'appelant doit alors
+ * se rabattre sur le chemin JS). À appeler après chargerAtelierLSysteme().
+ *
+ * Renvoie un tableau de sommets { x, y, move, profondeur, angle } compatible
+ * avec le chemin JS pointsPropositionLSysteme(), ou null si indisponible.
+ * Réinitialise le tas, marshalle les deux chaînes en tampons à en-tête de
+ * longueur, puis appelle l'export tortue_lsysteme(axiome, regles, gen, angle).
+ */
+export function sommetsGrammaireWasmSync(axiom, rules, generations, angleDeg) {
+  const exports = exportsRef.current;
+  if (!exports || !exports.tortue_lsysteme || !exports.__ml_str_alloc) return null;
+  if (!memoryRef.current) return null;
+
+  exports.__ml_reset();
+  const axPtr = ecrireChaineWasm(exports, axiom);
+  const ruPtr = ecrireChaineWasm(exports, rules);
+  const ptr = exports.tortue_lsysteme(axPtr, ruPtr, Number(generations) || 0, Number(angleDeg) || 0);
+
+  const base = Math.trunc(ptr);
+  const view = new DataView(memoryRef.current.buffer);
+  const count = view.getFloat64(base + 8, true); // élément [0] = np
+  const points = new Array(Math.max(0, count));
+  for (let k = 0; k < count; k++) {
+    const o = base + 8 + 8 * (1 + PAS_SOMMET * k);
+    points[k] = {
+      x: view.getFloat64(o, true),
+      y: view.getFloat64(o + 8, true),
+      move: view.getFloat64(o + 16, true) === 1,
+      profondeur: view.getFloat64(o + 24, true),
+      angle: view.getFloat64(o + 32, true),
+    };
+  }
+  return points;
+}
+
 /**
  * Calcule les sommets L-système via WASM (réinitialise le tas au préalable).
  * Renvoie { sommets: Float64Array (x,y,move,prof,angle par sommet), count }

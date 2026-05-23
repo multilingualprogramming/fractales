@@ -1,0 +1,87 @@
+# Partage de vues — sérialisation du hash de lien (#f=…&x=…).
+#
+# encoderEtat/decoderEtat côté JS orchestrent la sélection des champs et la
+# concaténation URL. Les invariants numériques (validation, formatage à
+# précision fixe) vivent ici en multilingual. Le formatage exponentiel reste
+# JS pour l'instant (le backend WAT lit `.Nf` et `:d` mais pas `.Ne`, et le
+# round-trip exact de `toExponential` exigerait une rerouting via la mantisse
+# IEEE-754 — porté ultérieurement).
+#
+# Sorties string : pointer-f64 + longueur via le global `$__last_str_len`
+# multilingual. Lecture côté hôte : `readStringResult(exports, ptr)`.
+
+déf abs_partage(v):
+    si v < 0.0:
+        retour -v
+    retour v
+
+# `n - n != 0` détecte NaN ; tout `f64` fini ou inf passe ce test.
+# Pour exclure ±inf on borne par un seuil très large (au-delà de toute échelle
+# de coordonnée raisonnable, MAX_FINI_PRATIQUE < f64 max ≈ 1.8e308).
+déf est_fini_partage(v):
+    soit MAX_FINI_PRATIQUE = 1.0e300
+    si v - v != 0.0:
+        retour 0.0
+    si abs_partage(v) > MAX_FINI_PRATIQUE:
+        retour 0.0
+    retour 1.0
+
+déf valider_centre(c):
+    # Le centre d'une vue doit être un f64 fini (NaN/±inf rejetés).
+    retour est_fini_partage(c)
+
+déf valider_pixelsize(ps):
+    # pixelSize doit être fini ET strictement positif.
+    si est_fini_partage(ps) < 0.5:
+        retour 0.0
+    si ps <= 0.0:
+        retour 0.0
+    retour 1.0
+
+déf valider_max_iter(n):
+    # max_iter doit être un entier positif (n == floor(n) et n ≥ 1).
+    si est_fini_partage(n) < 0.5:
+        retour 0.0
+    si n < 1.0:
+        retour 0.0
+    si n - math.trunc(n) != 0.0:
+        retour 0.0
+    retour 1.0
+
+déf valider_rotation(r):
+    # rotation : juste finie (peut être négative, peut être grande — modulo
+    # 2π côté JS pour l'affichage uniquement).
+    retour est_fini_partage(r)
+
+déf valider_etat_complet(cx, cy, ps, max_iter, rotation):
+    # Conjonction des validations : 1.0 si l'état entier passe, 0.0 sinon.
+    # Replie les 5 appels en un seul aller-retour WASM côté JS.
+    si valider_centre(cx) < 0.5:
+        retour 0.0
+    si valider_centre(cy) < 0.5:
+        retour 0.0
+    si valider_pixelsize(ps) < 0.5:
+        retour 0.0
+    si valider_max_iter(max_iter) < 0.5:
+        retour 0.0
+    si valider_rotation(rotation) < 0.5:
+        retour 0.0
+    retour 1.0
+
+# Formatage à précision fixe : matche `n.toFixed(N)` côté JS pour N=2..6.
+# Le backend WAT possède le format `{v:.Nf}` (n_decimals 0..9) — round half
+# to even comme toFixed (rounding "bank"). Pour les usages du hash de
+# partage (rotation 5, julia 6, palettePhase 3, lsystemStrokeWidth 2,
+# studio3dFog 2) on cible un sous-ensemble exact.
+
+déf formatter_fixe_2(v):
+    retour f"{v:.2f}"
+
+déf formatter_fixe_3(v):
+    retour f"{v:.3f}"
+
+déf formatter_fixe_5(v):
+    retour f"{v:.5f}"
+
+déf formatter_fixe_6(v):
+    retour f"{v:.6f}"

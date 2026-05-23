@@ -1,0 +1,74 @@
+# Transformations du plan — panneau « ◈ Transformations » de l'Atelier
+# d'exploration. Math pure (complexe → complexe) appliquée par pixel avant
+# l'appel des fractales d'évasion. Une fonction par composante (x, y) pour
+# éviter les retours tuple côté WAT (cf. attracteurs).
+#
+# Modes côté JS :
+#   log_polaire       : z → ln|z| + i·arg(z)
+#   inversion         : z → 1/z̄ = (x − iy)/|z|²  (et même math pour Möbius
+#                       préréglé « inversion_cercle »)
+#   pli_x / pli_y / pli_xy : valeurs absolues (réflexions)
+#   mobius / cayley   : (z − 1)/(z + 1)
+#   mobius / joukowski: (z + 1/z)/2
+
+déf transforme_log_polaire_x(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour x
+    retour 0.5 * math.log(r2)
+
+déf transforme_log_polaire_y(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour y
+    retour math.atan2(y, x)
+
+déf transforme_inversion_x(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour x
+    retour x / r2
+
+déf transforme_inversion_y(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour y
+    retour -y / r2
+
+déf transforme_pli_x(x):
+    si x < 0.0:
+        retour -x
+    retour x
+
+déf transforme_pli_y(y):
+    si y < 0.0:
+        retour -y
+    retour y
+
+déf transforme_cayley_x(x, y):
+    soit den_re = x + 1.0
+    soit den_im = y
+    soit den2 = den_re * den_re + den_im * den_im
+    si den2 < 1.0e-20:
+        retour x
+    retour ((x - 1.0) * den_re + y * den_im) / den2
+
+déf transforme_cayley_y(x, y):
+    soit den_re = x + 1.0
+    soit den_im = y
+    soit den2 = den_re * den_re + den_im * den_im
+    si den2 < 1.0e-20:
+        retour y
+    retour (y * den_re - (x - 1.0) * den_im) / den2
+
+déf transforme_joukowski_x(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour x
+    retour (x + x / r2) * 0.5
+
+déf transforme_joukowski_y(x, y):
+    soit r2 = x * x + y * y
+    si r2 < 1.0e-20:
+        retour y
+    retour (y - y / r2) * 0.5

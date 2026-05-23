@@ -227,6 +227,18 @@ let wasmExportFunctions = {};
 let wasmDeepZoom = null;
 let wasmMemory = null;
 let wasmResetHeap = null;
+/**
+ * Exports des « autres panneaux Meta » authored en multilingual :
+ *   transforms : transforme_log_polaire_x/y, inversion_x/y, pli_x/y,
+ *                cayley_x/y, joukowski_x/y (cf. src/fractales_transforms.multi)
+ *   orbite     : orbite_mandelbrot_famille, orbite_newton, orbite_phoenix
+ *                (cf. src/fractales_orbite.multi)
+ *   partage    : valider_centre, valider_pixelsize, valider_max_iter,
+ *                valider_rotation, valider_etat_complet, formatter_fixe_2/3/5/6
+ *                (cf. src/fractales_partage.multi)
+ *   strLen     : __ml_str_len pour lire les chaînes renvoyées par partage.
+ */
+let wasmMetaPanels = null;
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
 /** Timestamp de début du dernier rendu */
@@ -2860,37 +2872,57 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
   else coloriserDensite(data, tampon.densites, tampon.maxDensite, renduParams, tampon.lumieres);
 }
 
+// Transformations du plan (◈) — math complexe pure définie en multilingual
+// (cf. src/fractales_transforms.multi). Le WASM est canonique ; fallback JS
+// identique si le module n'est pas encore chargé. Note : multilingual atan
+// est une série Taylor 7-termes sans réduction d'intervalle (~3% près de
+// |x|=1), ce qui décale légèrement le mode log_polaire par rapport à la
+// référence JS Math.atan2 — visuellement équivalent.
 function appliquerTransforme(x, y, renduParams) {
   const ct = renduParams.coordTransform;
   if (!ct || ct === "aucune") return [x, y];
+  const t = wasmMetaPanels?.transforms;
   if (ct === "log_polaire") {
+    if (t) return [t.log_polaire_x(x, y), t.log_polaire_y(x, y)];
     const r2 = x * x + y * y;
     if (r2 < 1e-20) return [x, y];
     return [0.5 * Math.log(r2), Math.atan2(y, x)];
   }
   if (ct === "inversion") {
+    if (t) return [t.inversion_x(x, y), t.inversion_y(x, y)];
     const r2 = x * x + y * y;
     if (r2 < 1e-20) return [x, y];
     return [x / r2, -y / r2];
   }
-  if (ct === "pli_x") return [Math.abs(x), y];
-  if (ct === "pli_y") return [x, Math.abs(y)];
-  if (ct === "pli_xy") return [Math.abs(x), Math.abs(y)];
+  if (ct === "pli_x") {
+    if (t) return [t.pli_x(x), y];
+    return [Math.abs(x), y];
+  }
+  if (ct === "pli_y") {
+    if (t) return [x, t.pli_y(y)];
+    return [x, Math.abs(y)];
+  }
+  if (ct === "pli_xy") {
+    if (t) return [t.pli_x(x), t.pli_y(y)];
+    return [Math.abs(x), Math.abs(y)];
+  }
   if (ct === "mobius") {
     const mp = renduParams.mobiusPreset || "inversion_cercle";
     if (mp === "inversion_cercle") {
+      if (t) return [t.inversion_x(x, y), t.inversion_y(x, y)];
       const r2 = x * x + y * y;
       if (r2 < 1e-20) return [x, y];
       return [x / r2, -y / r2];
     }
     if (mp === "cayley") {
-      // z → (z−1)/(z+1)
+      if (t) return [t.cayley_x(x, y), t.cayley_y(x, y)];
       const denRe = x + 1, denIm = y;
       const den2 = denRe * denRe + denIm * denIm;
       if (den2 < 1e-20) return [x, y];
       return [((x - 1) * denRe + y * denIm) / den2, (y * denRe - (x - 1) * denIm) / den2];
     }
     if (mp === "joukowski") {
+      if (t) return [t.joukowski_x(x, y), t.joukowski_y(x, y)];
       const r2 = x * x + y * y;
       if (r2 < 1e-20) return [x, y];
       return [(x + x / r2) * 0.5, (y - y / r2) * 0.5];
@@ -3392,6 +3424,49 @@ async function loadWasm() {
       wasmMemory = null;
       wasmResetHeap = null;
     }
+    // Autres panneaux Meta (transforms / orbite / partage). Bloc unique gardé
+    // par la présence d'au moins une fonction connue de chaque groupe — si le
+    // module a été construit, tous les exports requis sont là (validés au
+    // build par compile_wasm.multi).
+    if (typeof exports.transforme_log_polaire_x === "function"
+        && typeof exports.orbite_mandelbrot_famille === "function"
+        && typeof exports.valider_etat_complet === "function") {
+      wasmMetaPanels = {
+        transforms: {
+          log_polaire_x: exports.transforme_log_polaire_x,
+          log_polaire_y: exports.transforme_log_polaire_y,
+          inversion_x: exports.transforme_inversion_x,
+          inversion_y: exports.transforme_inversion_y,
+          pli_x: exports.transforme_pli_x,
+          pli_y: exports.transforme_pli_y,
+          cayley_x: exports.transforme_cayley_x,
+          cayley_y: exports.transforme_cayley_y,
+          joukowski_x: exports.transforme_joukowski_x,
+          joukowski_y: exports.transforme_joukowski_y,
+        },
+        orbite: {
+          mandelbrot_famille: exports.orbite_mandelbrot_famille,
+          newton: exports.orbite_newton,
+          phoenix: exports.orbite_phoenix,
+        },
+        partage: {
+          valider_centre: exports.valider_centre,
+          valider_pixelsize: exports.valider_pixelsize,
+          valider_max_iter: exports.valider_max_iter,
+          valider_rotation: exports.valider_rotation,
+          valider_etat_complet: exports.valider_etat_complet,
+          formatter_fixe_2: exports.formatter_fixe_2,
+          formatter_fixe_3: exports.formatter_fixe_3,
+          formatter_fixe_5: exports.formatter_fixe_5,
+          formatter_fixe_6: exports.formatter_fixe_6,
+        },
+        memory: exports.memory,
+        reset: exports.__ml_reset,
+        strLen: exports.__ml_str_len ?? null,
+      };
+    } else {
+      wasmMetaPanels = null;
+    }
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
     updateStatusBar("WASM prêt");
@@ -3401,6 +3476,7 @@ async function loadWasm() {
     wasmFunctions = {};
     wasmExportFunctions = {};
     wasmDeepZoom = null;
+    wasmMetaPanels = null;
     wasmMemory = null;
     wasmResetHeap = null;
     wasmAvailable = false;
@@ -4582,6 +4658,7 @@ explorationModes = initialiserExploration({
     getParams: () => params,
     getWasmFunctions: () => wasmFunctions,
     getWasmExportFunctions: () => wasmExportFunctions,
+    getWasmMetaPanels: () => wasmMetaPanels,
     getActiveCanvas: obtenirCanvasActif,
     getPaletteColor: getColor,
     setJuliaC: (re, im) => {
@@ -4725,7 +4802,12 @@ async function init() {
   // Charger sources et benchmark en parallèle
   await Promise.all([loadSources(params.fractal), loadBenchmark()]);
 
-  initialiserPartage({ getView: () => view, getParams: () => params, updateStatusBar });
+  initialiserPartage({
+    getView: () => view,
+    getParams: () => params,
+    updateStatusBar,
+    getWasmMetaPanels: () => wasmMetaPanels,
+  });
 
   mettreAJourAideInteraction();
 

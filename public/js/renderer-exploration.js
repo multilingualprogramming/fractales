@@ -148,7 +148,38 @@ const ORBIT_LINE_FRACTALS = new Set([
   "h_fractal", "hilbert_curve", "peano_curve", "arbre_pythagore",
 ]);
 
-function calculerOrbite(fractal, point, params) {
+// Codes de famille pour orbite_mandelbrot_famille (cf. src/fractales_orbite.multi).
+const CODES_ORBITE_FAMILLE = new Map([
+  ["mandelbrot", 0], ["mandelbrot_lisse", 0],
+  ["julia", 1], ["julia_lisse", 1], ["julia_piege_cercle", 1],
+  ["burning_ship", 2], ["burning_ship_lisse", 2],
+  ["burning_julia", 3],
+  ["tricorn", 4], ["tricorn_lisse", 4],
+  ["celtic", 5],
+  ["perpendicular_celtic", 6],
+  ["buffalo", 7],
+  ["heart", 8],
+  ["perpendicular_burning_ship", 9],
+  ["perpendicular_mandelbrot", 10],
+  ["duck", 11],
+]);
+
+function lireOrbiteDepuisWasm(meta, ptrF64) {
+  const base = Math.trunc(ptrF64);
+  const view = new DataView(meta.memory.buffer);
+  // Les listes multilingual portent leur longueur i32 cachée à base+0 ;
+  // les données utilisateur démarrent à base+8.
+  const np = view.getFloat64(base + 8, true);
+  const escaped = view.getFloat64(base + 16, true);
+  const points = [];
+  for (let k = 0; k < np; k++) {
+    const off = base + 8 + 8 * (2 + 2 * k);
+    points.push({ re: view.getFloat64(off, true), im: view.getFloat64(off + 8, true) });
+  }
+  return { points, escaped: escaped > 0.5 };
+}
+
+function calculerOrbite(fractal, point, params, wasmMeta) {
   const max = Math.min(320, Math.max(32, params.maxIter | 0));
   const points = [];
 
@@ -156,6 +187,35 @@ function calculerOrbite(fractal, point, params) {
     return { points, escaped: false, unsupported: true };
   }
 
+  // Chemin WASM canonique (src/fractales_orbite.multi) quand chargé.
+  const orb = wasmMeta?.orbite;
+  if (orb) {
+    if (fractal === "newton" || fractal === "bassin_newton_generalise") {
+      wasmMeta.reset();
+      const ptr = orb.newton(point.re, point.im, max);
+      return lireOrbiteDepuisWasm(wasmMeta, ptr);
+    }
+    if (fractal === "phoenix") {
+      wasmMeta.reset();
+      const ptr = orb.phoenix(point.re, point.im, params.juliaCre ?? -0.5, params.juliaCim ?? 0.0, max);
+      return lireOrbiteDepuisWasm(wasmMeta, ptr);
+    }
+    const code = CODES_ORBITE_FAMILLE.get(fractal);
+    if (code !== undefined) {
+      wasmMeta.reset();
+      const ptr = orb.mandelbrot_famille(
+        code, point.re, point.im,
+        params.juliaCre ?? 0.0, params.juliaCim ?? 0.0,
+        max,
+      );
+      return lireOrbiteDepuisWasm(wasmMeta, ptr);
+    }
+    // Fractale non reconnue par le code-famille — fallback JS ci-dessous.
+  }
+
+  // Fallback JS — exact-équivalent de fractales_orbite.multi. Conservé pour le
+  // cas où le WASM n'est pas chargé (init, ou échec de chargement) et pour
+  // les fractales non couvertes par le code-famille.
   if (fractal === "newton" || fractal === "bassin_newton_generalise") {
     let x = point.re, y = point.im;
     for (let i = 0; i < max; i++) {
@@ -283,6 +343,7 @@ export function initialiserExploration({
     getParams,
     getWasmFunctions,
     getWasmExportFunctions,
+    getWasmMetaPanels,
     getActiveCanvas,
     getPaletteColor,
     setJuliaC,
@@ -1184,7 +1245,7 @@ export function initialiserExploration({
   }
 
   function captureOrbitAt(point) {
-    const result = calculerOrbite(getParams().fractal, point, getParams());
+    const result = calculerOrbite(getParams().fractal, point, getParams(), getWasmMetaPanels?.());
     if (result.unsupported) {
       updateStatusBar("Orbite non disponible pour ce type de fractale", true);
       return;

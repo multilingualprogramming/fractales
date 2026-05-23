@@ -121,9 +121,9 @@ def main() -> None:
         require(pattern, js, f"missing expected event wiring for {name}")
 
     require(
-        r"initialiserPartage\(\{\s*getView:\s*\(\)\s*=>\s*view,\s*getParams:\s*\(\)\s*=>\s*params,\s*updateStatusBar\s*\}\);",
+        r"initialiserPartage\(\{\s*getView:\s*\(\)\s*=>\s*view,\s*getParams:\s*\(\)\s*=>\s*params,\s*updateStatusBar,\s*getWasmMetaPanels:\s*\(\)\s*=>\s*wasmMetaPanels,\s*\}\);",
         js,
-        "missing share button initialization",
+        "missing share button initialization (now must also pass getWasmMetaPanels for fractales_partage WASM)",
     )
     require(
         r'from "\./renderer-navigation\.js\?v=',

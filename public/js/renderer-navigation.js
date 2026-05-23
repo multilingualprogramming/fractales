@@ -7,12 +7,41 @@
  * interpolation d'angle) sont définies dans src/fractales_navigation.multi
  * et compilées vers WASM. Ce module les appelle via wasmNav, avec des
  * fallbacks JS identiques si le WASM n'est pas encore chargé.
+ *
+ * Le formatage à précision fixe (toFixed(2/3/5/6)) et la validation
+ * numérique des champs déclenchés par decoderEtat passent par WASM quand
+ * `wasmPartage` est fourni (cf. src/fractales_partage.multi). Le formatage
+ * exponentiel reste JS (le backend WAT ne fournit pas `.Ne`).
  */
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
 const FRACTALES_3D = new Set(["menger_sponge", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
 
 let hashDebounceTimer = null;
+// Module-level handle to fractales_partage WASM exports (formatter_fixe_*,
+// valider_*, memory, strLen). Set par initialiserPartage ; encoderEtat/
+// decoderEtat l'utilisent quand disponible.
+let wasmPartageRef = null;
+
+function lireChainePartage(ptrF64) {
+  if (!wasmPartageRef?.memory || !wasmPartageRef?.strLen) return null;
+  const len = wasmPartageRef.strLen();
+  if (len === 0) return "";
+  return new TextDecoder("utf-8").decode(
+    new Uint8Array(wasmPartageRef.memory.buffer, Math.trunc(ptrF64), len),
+  );
+}
+
+function fixeWasm(fn, v) {
+  // Préserve la sémantique de toFixed : sortie de longueur fixe, sans
+  // notation exponentielle. WASM partage peut différer d'1 ULP du dernier
+  // chiffre sur les milieux (round half-to-even vs JS half-away-from-zero) ;
+  // pour le hash de partage c'est négligeable.
+  if (!wasmPartageRef?.partage || !wasmPartageRef?.reset) return null;
+  wasmPartageRef.reset();
+  const ptr = fn(v);
+  return lireChainePartage(ptr);
+}
 
 function formatFlottant(n) {
   if (n === 0) return "0";
@@ -30,7 +59,9 @@ export function encoderEtat(view, params) {
     p.set("x", formatFlottant(view.centerX));
     p.set("y", formatFlottant(view.centerY));
     p.set("ps", view.pixelSize.toExponential(8).replace("e+", "e"));
-    if (view.rotation !== 0) p.set("r", view.rotation.toFixed(5));
+    if (view.rotation !== 0) {
+      p.set("r", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_5, view.rotation) ?? view.rotation.toFixed(5));
+    }
     // Partie basse double-double : ajoutée UNIQUEMENT en zoom très profond,
     // où l'addition centerX + pixelSize·offset perd des bits. Préserve la
     // précision sub-f64 lors d'un partage de lien.
@@ -41,18 +72,28 @@ export function encoderEtat(view, params) {
   if (params.palette && params.palette !== "aurora") p.set("p", params.palette);
   if (params.fractal === "multibrot") p.set("pr", String(params.multibrotPower));
   if (JULIA_FRACTALS.has(params.fractal)) {
-    p.set("jr", params.juliaCre.toFixed(6));
-    p.set("ji", params.juliaCim.toFixed(6));
+    const f6 = wasmPartageRef?.partage?.formatter_fixe_6;
+    p.set("jr", fixeWasm(f6, params.juliaCre) ?? params.juliaCre.toFixed(6));
+    p.set("ji", fixeWasm(f6, params.juliaCim) ?? params.juliaCim.toFixed(6));
   }
   if (params.coloringMode && params.coloringMode !== "standard") p.set("cm", params.coloringMode);
-  if (params.palettePhase) p.set("ph", Number(params.palettePhase).toFixed(3));
+  if (params.palettePhase) {
+    const v = Number(params.palettePhase);
+    p.set("ph", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_3, v) ?? v.toFixed(3));
+  }
   if (params.paletteContours) p.set("pc", "1");
   if (params.lsystemLineColor && params.lsystemLineColor !== "progression") p.set("lc", params.lsystemLineColor);
-  if (params.lsystemStrokeWidth && params.lsystemStrokeWidth !== 1.35) p.set("lsw", Number(params.lsystemStrokeWidth).toFixed(2));
+  if (params.lsystemStrokeWidth && params.lsystemStrokeWidth !== 1.35) {
+    const v = Number(params.lsystemStrokeWidth);
+    p.set("lsw", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_2, v) ?? v.toFixed(2));
+  }
   if (params.deepZoomAutoIterations) p.set("azi", "1");
   if (params.deepZoomQuality && params.deepZoomQuality !== "standard") p.set("q", params.deepZoomQuality);
   if (params.studio3dMaterial && params.studio3dMaterial !== "lumineux") p.set("mat", params.studio3dMaterial);
-  if (params.studio3dFog) p.set("fog", Number(params.studio3dFog).toFixed(2));
+  if (params.studio3dFog) {
+    const v = Number(params.studio3dFog);
+    p.set("fog", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_2, v) ?? v.toFixed(2));
+  }
   if (params.weatherOverlays) p.set("ov", params.weatherOverlays);
   if (params.lsystemProposalActive) {
     p.set("lp", "1");
@@ -136,10 +177,20 @@ export function decoderEtat(hash) {
     formuleParamB: num("ffb"),
   };
 
-  if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;
-  if (etat.centerY !== undefined && !isFinite(etat.centerY)) return null;
-  if (etat.pixelSize !== undefined && (!isFinite(etat.pixelSize) || etat.pixelSize <= 0)) return null;
-  if (etat.maxIter !== undefined && (!Number.isInteger(etat.maxIter) || etat.maxIter < 1)) return null;
+  // Validation numérique : exécutée via WASM (fractales_partage) si chargé,
+  // sinon JS. La sémantique est identique — un seul aller-retour WASM pour
+  // l'état complet via `valider_etat_complet`.
+  const v = wasmPartageRef?.partage;
+  if (v && etat.centerX !== undefined && etat.pixelSize !== undefined && etat.maxIter !== undefined) {
+    if (v.valider_etat_complet(etat.centerX, etat.centerY ?? 0, etat.pixelSize, etat.maxIter, etat.rotation ?? 0) < 0.5) {
+      return null;
+    }
+  } else {
+    if (etat.centerX !== undefined && !isFinite(etat.centerX)) return null;
+    if (etat.centerY !== undefined && !isFinite(etat.centerY)) return null;
+    if (etat.pixelSize !== undefined && (!isFinite(etat.pixelSize) || etat.pixelSize <= 0)) return null;
+    if (etat.maxIter !== undefined && (!Number.isInteger(etat.maxIter) || etat.maxIter < 1)) return null;
+  }
 
   return etat;
 }
@@ -228,7 +279,10 @@ export function animerVersVue(cible, { view, wasmNav, render, onComplete }) {
   });
 }
 
-export function initialiserPartage({ getView, getParams, updateStatusBar }) {
+export function initialiserPartage({ getView, getParams, updateStatusBar, getWasmMetaPanels }) {
+  if (typeof getWasmMetaPanels === "function") {
+    wasmPartageRef = getWasmMetaPanels();
+  }
   const btn = document.getElementById("btn-partager");
   if (!btn) return;
 

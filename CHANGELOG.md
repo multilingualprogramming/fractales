@@ -6,6 +6,52 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Autres panneaux Meta — math des panneaux ◈ Transformations, ☷ Météo
+  orbites, et 🔗 Partage portée en multilingual.** Trois nouveaux modules
+  authored en `.multi` :
+  - `src/fractales_transforms.multi` : `transforme_log_polaire_x/y`,
+    `transforme_inversion_x/y`, `transforme_pli_x/y`, `transforme_cayley_x/y`,
+    `transforme_joukowski_x/y`. Math complexe pure (une fonction par
+    composante, motif des attracteurs). `appliquerTransforme()` dans
+    `renderer.js` route maintenant vers WASM via `wasmMetaPanels.transforms`
+    quand chargé ; fallback JS identique sinon. Note : multilingual `math.atan`
+    est une série Taylor 7-termes sans réduction d'intervalle (~3% près de
+    |x|=1), donc le mode log_polaire est visuellement équivalent mais pas
+    bit-exact avec `Math.atan2` — accord ~5% en y, exact en x (math.log
+    natif corrigé en 2026-05-22). Inversion, plis, Cayley, Joukowski : exacts
+    à 1e-12 près.
+  - `src/fractales_orbite.multi` : `orbite_mandelbrot_famille(code, p_re,
+    p_im, c_re_julia, c_im_julia, max_iter)` couvre 12 variantes (mandelbrot,
+    julia, burning_ship, burning_julia, tricorn, celtic, perpendicular_celtic,
+    buffalo, heart, perpendicular_burning_ship, perpendicular_mandelbrot,
+    duck) via un code de famille i32-comme-f64 + drapeaux internes ;
+    `orbite_newton` (Newton-Raphson sur z³ − 1, arrêt à racine de l'unité) ;
+    `orbite_phoenix` (z²+c+p·z_{n-1}, p=0.5667). Sortie : liste plate
+    [np, escaped, x0, y0, x1, y1, …] (MAX_ORBITE=320) — un seul aller-retour
+    JS↔WASM par capture (au lieu d'une boucle JS de 320 itérations).
+    `calculerOrbite()` dans `renderer-exploration.js` route vers WASM via
+    `wasmMetaPanels.orbite` ; fallback JS exact-équivalent conservé pour init
+    et fractales non couvertes par le code-famille.
+  - `src/fractales_partage.multi` : validation numérique (`valider_centre`,
+    `valider_pixelsize`, `valider_max_iter`, `valider_rotation`,
+    `valider_etat_complet` — tous f64→f64 retournant 1.0/0.0) et formatage à
+    précision fixe (`formatter_fixe_2/3/5/6` — chaînes via f-string `.Nf`).
+    `encoderEtat()` route les `toFixed(2/3/5/6)` vers WASM ; `decoderEtat()`
+    appelle `valider_etat_complet` en un seul aller-retour. Le formatage
+    exponentiel reste JS (le backend WAT ne fournit pas `.Ne` — un futur
+    enhancement de multilingual pourrait porter `formatter_exponentiel` via
+    `math.log10` + extraction de mantisse IEEE-754). Tolérance d'1 ULP sur
+    `toFixed` côté tests : WAT utilise round half-to-even (banker's), JS
+    utilise round half-away-from-zero — divergence négligeable pour les
+    coordonnées de partage.
+  - Wiring : nouveau bucket `wasmMetaPanels` dans `renderer.js` (en complément
+    de `wasmFunctions`/`wasmExportFunctions`/`wasmDeepZoom`), exposé à
+    `initialiserExploration` (via `getWasmMetaPanels`) et `initialiserPartage`
+    (idem, pour `renderer-navigation.js`). 28 tests de parité dans
+    `tests/meta_panels_wasm.test.js` (ajouté à `quick_checks.py`) : transforms
+    sur 6 points, orbites Mandelbrot famille (13 variantes), Newton +
+    Phoenix, validation NaN/inf/négatifs, formatage à 1-ULP près. Premier
+    panneau Meta non-L-système à passer entièrement par multilingual.
 - **Zoom profond : intégration UI du noyau de perturbation DD côté JS.**
   La vue (`view.centerX`/`view.centerY`) porte désormais une partie basse
   double-double (`centerX_lo`/`centerY_lo`, à 0 en zoom standard, mises à

@@ -29,6 +29,7 @@ COMMANDS = [
     ["node", "--test", "tests/atelier_lsysteme_wasm.test.js"],
     ["node", "--test", "tests/dd.test.js"],
     ["node", "--test", "tests/deep_zoom_wasm.test.js"],
+    ["node", "--test", "tests/meta_panels_wasm.test.js"],
     [sys.executable, "scripts/js_backend_contract_checks.py"],
     [sys.executable, "scripts/advanced_workflow_checks.py"],
     [sys.executable, "scripts/ui_smoke_checks.py"],

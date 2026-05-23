@@ -6,6 +6,36 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Adoption des améliorations multilingual de la roadmap section C
+  (2026-05-23 part 2).** Chaque amélioration côté multilingual a supprimé une
+  catégorie de workarounds côté fractales :
+  - **Multi-value returns** (B1) — `transforme_*_x`/`_y` × 5 paires collapsed
+    en 5 fonctions retournant `(x', y')` ; `affiner_nucleus_x`/`_y` collapsed
+    en `affiner_nucleus(...)`. JS lit `[x, y]` directement depuis WebAssembly
+    multi-value returns (les exports renvoient un Array JS natif). ~250 lignes
+    `.multi` supprimées, et un seul appel WASM par transforme/par pixel au
+    lieu de deux.
+  - **`format_fixed(v, n)` builtin** (B4) — `formatter_fixe_2/3/5/6` (4
+    fonctions presque identiques) collapsed en un seul `formatter_fixe(v, n)`.
+    N variable au runtime, clampé à `[0, 9]`. La logique JS `fixeWasm` prend
+    maintenant un argument optionnel `n`.
+  - **String concat sur RHS f-string/CallExpr** (B9) — workaround d'affectation
+    à un local temporaire supprimé dans `formatter_exponentiel_signe`.
+  - **`pow_f64` exposants réels généraux** (B8) — débloque l'usage de `**`
+    avec exposant non-entier dans n'importe quel `.multi`. Plus de NaN
+    silencieux. Aussi `math.exp` est maintenant ~1e-15 précis grâce à la
+    réduction d'intervalle k·ln2.
+  - **List ABI helpers `__ml_list_count`/`__ml_list_item`** (B5) — disponibles
+    depuis JS pour lire les listes WASM sans calcul d'offsets manuel. Non
+    encore adoptés systématiquement côté fractales (les readers existants
+    fonctionnent) ; futurs ports les utiliseront.
+  - **`math.atan` ~1e-10** (B-side prior, 2026-05-23 part 1) — log_polaire
+    transform désormais bit-précis vs `Math.atan2` (tolérance test 1e-9).
+
+  Tests : full quick_checks suite verte (41 tests fractales × 9 suites,
+  inchangé en nombre mais avec API plus simple). Build verifie tous les
+  exports collapsés.
+
 - **Noyau SIMD (v128 f64x2) Mandelbrot — ~2× sur la boucle interne.** Nouveau
   module `src/fractales_simd.multi` exposant `mandelbrot_simd_pair(cx0, cy0,
   cx1, cy1, max_iter)` qui délègue au builtin multilingual `simd_mandelbrot_pair`

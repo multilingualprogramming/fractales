@@ -31,6 +31,11 @@ export function encoderEtat(view, params) {
     p.set("y", formatFlottant(view.centerY));
     p.set("ps", view.pixelSize.toExponential(8).replace("e+", "e"));
     if (view.rotation !== 0) p.set("r", view.rotation.toFixed(5));
+    // Partie basse double-double : ajoutée UNIQUEMENT en zoom très profond,
+    // où l'addition centerX + pixelSize·offset perd des bits. Préserve la
+    // précision sub-f64 lors d'un partage de lien.
+    if (view.centerX_lo) p.set("xlo", view.centerX_lo.toExponential(8).replace("e+", "e"));
+    if (view.centerY_lo) p.set("ylo", view.centerY_lo.toExponential(8).replace("e+", "e"));
   }
   p.set("i", String(params.maxIter));
   if (params.palette && params.palette !== "aurora") p.set("p", params.palette);
@@ -92,6 +97,11 @@ export function decoderEtat(hash) {
     fractal,
     centerX: num("x"),
     centerY: num("y"),
+    // Partie basse double-double absente (ou 0) pour les liens classiques ;
+    // restaurée à 0 par défaut pour préserver l'invariant `vraie position ≈
+    // centerX + centerX_lo`.
+    centerX_lo: num("xlo") ?? 0,
+    centerY_lo: num("ylo") ?? 0,
     pixelSize: num("ps"),
     rotation: num("r") ?? 0,
     maxIter: ent("i"),
@@ -195,12 +205,20 @@ export function animerVersVue(cible, { view, wasmNav, render, onComplete }) {
       const te = easer(t);
       view.centerX = startX + (cible.centerX - startX) * te;
       view.centerY = startY + (cible.centerY - startY) * te;
+      // Pendant l'animation, les parties basses double-double sont à 0 ; à la
+      // dernière image, on applique la partie basse de la cible (si présente).
+      view.centerX_lo = 0;
+      view.centerY_lo = 0;
       view.pixelSize = interpPs(startPs, cible.pixelSize, te);
       view.rotation = interpAngle(startRot, targetRot, te);
       render();
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
+        view.centerX = cible.centerX;
+        view.centerY = cible.centerY;
+        view.centerX_lo = cible.centerX_lo ?? 0;
+        view.centerY_lo = cible.centerY_lo ?? 0;
         onComplete?.();
         resolve();
       }

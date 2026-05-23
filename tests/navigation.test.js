@@ -249,4 +249,32 @@ describe("share: round-trip", () => {
     const decoded = decoderEtat(hash);
     assert.equal(decoded.rotation, 0, "decoded rotation is 0");
   });
+
+  test("double-double parts omitted when zero", () => {
+    const view = { ...defaultView, centerX_lo: 0, centerY_lo: 0 };
+    const hash = encoderEtat(view, defaultParams);
+    assert.ok(!hash.includes("xlo="), "xlo omitted when zero");
+    assert.ok(!hash.includes("ylo="), "ylo omitted when zero");
+    const decoded = decoderEtat(hash);
+    assert.equal(decoded.centerX_lo, 0, "decoded centerX_lo defaults to 0");
+    assert.equal(decoded.centerY_lo, 0, "decoded centerY_lo defaults to 0");
+  });
+
+  test("deep-zoom view round-trips with DD lo parts", () => {
+    const view = {
+      centerX: -0.7436438870371587,
+      centerX_lo: 1.234e-17,
+      centerY: 0.131825904205311,
+      centerY_lo: -5.678e-18,
+      pixelSize: 1.5e-16,
+      rotation: 0,
+    };
+    const params = { fractal: "mandelbrot", maxIter: 2000, palette: "aurora" };
+    const hash = encoderEtat(view, params);
+    assert.ok(hash.includes("xlo="), "xlo present");
+    assert.ok(hash.includes("ylo="), "ylo present");
+    const decoded = decoderEtat(hash);
+    assert.ok(Math.abs(decoded.centerX_lo - view.centerX_lo) < 1e-25, `xlo ${decoded.centerX_lo}`);
+    assert.ok(Math.abs(decoded.centerY_lo - view.centerY_lo) < 1e-25, `ylo ${decoded.centerY_lo}`);
+  });
 });

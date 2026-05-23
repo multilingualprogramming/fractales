@@ -6,6 +6,31 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Zoom profond : intégration UI du noyau de perturbation DD côté JS.**
+  La vue (`view.centerX`/`view.centerY`) porte désormais une partie basse
+  double-double (`centerX_lo`/`centerY_lo`, à 0 en zoom standard, mises à
+  jour à chaque pan/zoom/glissé). Nouveau module `public/js/dd.js` (`addDD`,
+  `subDD`, `mulDD`, `divDDScalar`, `twoSum`, `twoProduct`) — primitives
+  Dekker côté JS, miroir de `src/fractales_deep_zoom.multi`, pour éviter un
+  aller-retour WASM à chaque geste utilisateur. Les gestes (`zoomAt`,
+  `deplacerVue`, drag pan, animation depuis lien partagé/signets) calculent
+  désormais le nouveau centre en DD ; les sources « scalaires » (presets,
+  reset, restauration depuis hash sans `xlo/ylo`) remettent simplement
+  `_lo` à 0. Le hash d'URL accepte deux paramètres optionnels `xlo=`/`ylo=`
+  qui ne sont écrits que lorsque non nuls. Lorsque `pixelSize < 1e-13` ET
+  la fractale active est mandelbrot (sans transformation, mode de
+  coloration standard), `remplirFractaleScalaire` court-circuite la boucle
+  par-pixel et appelle `mandelbrot_perturbation_tile(cx_h, cx_l, cy_h, cy_l,
+  ps, w, h, max_iter)` (export WASM existant, déjà bundlé dans
+  `mandelbrot.wasm`) qui calcule l'orbite de référence en DD une seule fois
+  puis itère la perturbation par pixel en f64 — un seul appel JS↔WASM par
+  tuile, lecture stride-8 du buffer renvoyé, coloration via le même
+  `getColor` que le chemin standard. Tests : `tests/dd.test.js` (8 tests
+  Dekker JS, dont round-trip add/sub/mul/div et scénario zoom ×1e15 en
+  cascade), `tests/deep_zoom_wasm.test.js` (6 tests, dont parité 0/64
+  noyau-vs-f64 natif sur grille 16×16 à ps=0.01, et préservation des bits
+  sub-ulp à ps=1e-15). Signets et liens partagés transportent maintenant les
+  parties basses pour un round-trip fidèle en zoom profond.
 - **Mode de coloration « distance » (DE — distance estimation).** Nouveau noyau
   `.multi` `src/fractales_de.multi` exporte `mandelbrot_de` et `julia_de` qui
   itèrent z ET sa dérivée `dz_{n+1} = 2·z·dz + 1` en parallèle, puis renvoient

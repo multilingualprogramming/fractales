@@ -45,6 +45,11 @@ import {
 import {
   compilerFormule,
 } from "./renderer-formule.js?v=20260520-formule-preview-fix";
+import {
+  addDD,
+  subDD,
+  divDDScalar,
+} from "./dd.js?v=20260523-deep-zoom";
 
 const WASM_URL = "mandelbrot.wasm?v=20260520-formule-preview";
 const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profondeur", "orientation"]);
@@ -53,10 +58,22 @@ const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profo
 // ÉTAT DE L'APPLICATION
 // ============================================================
 
-/** Paramètres de la vue courante (plan complexe) */
+/**
+ * Paramètres de la vue courante (plan complexe).
+ *
+ * `centerX_lo` / `centerY_lo` portent la partie basse double-double : la vraie
+ * position du centre est `centerX + centerX_lo` (idem Y). En zoom standard les
+ * lo sont à 0 et tout reste f64 ; quand le pixelSize tombe sous le seuil
+ * `SEUIL_DEEP_ZOOM`, les gestes pan/zoom basculent en arithmétique DD pour
+ * préserver les bits significatifs du centre et le noyau de perturbation WASM
+ * (mandelbrot_perturbation_tile) prend le relais du rendu.
+ */
+const SEUIL_DEEP_ZOOM = 1e-13;
 const view = {
   centerX: -0.5,
+  centerX_lo: 0.0,
   centerY: 0.0,
+  centerY_lo: 0.0,
   /** unités mathématiques par pixel */
   pixelSize: 4.0 / Math.min(window.innerWidth - 380, 800),
   /** angle de rotation du plan complexe (radians) */
@@ -204,6 +221,10 @@ const LINE_FRACTALS = new Set(["koch", "dragon_heighway", "courbe_levy_c", "gosp
 /** Fonctions fractales exportées par WASM */
 let wasmFunctions = {};
 let wasmExportFunctions = {};
+/** Exports zoom profond (Dekker + perturbation Mandelbrot) et accès mémoire */
+let wasmDeepZoom = null;
+let wasmMemory = null;
+let wasmResetHeap = null;
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
 /** Timestamp de début du dernier rendu */
@@ -1204,6 +1225,8 @@ function capturerVueCourante() {
   return {
     centerX: view.centerX,
     centerY: view.centerY,
+    centerX_lo: view.centerX_lo,
+    centerY_lo: view.centerY_lo,
     pixelSize: view.pixelSize,
     rotation: view.rotation,
     fractal: params.fractal,
@@ -1895,7 +1918,9 @@ function appliquerPropositionLSysteme(config) {
   }
   if (!config.preserveView) {
     view.centerX = 0.0;
+    view.centerX_lo = 0.0;
     view.centerY = 0.0;
+    view.centerY_lo = 0.0;
     view.pixelSize = 2.4 / Math.max(canvas.width, 1);
     view.rotation = 0.0;
   }
@@ -1942,7 +1967,9 @@ function appliquerFormuleProposition(config) {
     loadSources(params.fractal);
   }
   view.centerX = VIEW_PRESETS[params.fractal]?.centerX ?? -0.5;
+  view.centerX_lo = 0.0;
   view.centerY = VIEW_PRESETS[params.fractal]?.centerY ?? 0.0;
+  view.centerY_lo = 0.0;
   view.pixelSize = (VIEW_PRESETS[params.fractal]?.span ?? 3.5) / Math.max(canvas.width, 1);
   view.rotation = 0.0;
   mettreAJourOptionsSpecifiques();
@@ -2907,10 +2934,74 @@ async function remplirFractaleScalaireDistance(w, h, data, cx0, cy0, ps, renduPa
   return true;
 }
 
-async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
+// Capacité de sortie du noyau de perturbation (MAXPIX dans
+// src/fractales_deep_zoom.multi). Au-delà, on retombe sur la précision f64.
+const PERTURB_TILE_MAX_PIXELS = 1048576;
+
+/**
+ * Rendu Mandelbrot via le noyau de perturbation double-double WASM.
+ * Une seule orbite de référence est calculée pour la tuile entière (centre =
+ * view DD), puis pour chaque pixel l'itération δ_n+1 = 2·Z·δ + δ² + δc est faite
+ * en f64 (δ reste petit donc tient dans f64 même à très faible échelle).
+ * Renvoie true si traité ; false pour fallback synchrone.
+ */
+async function remplirMandelbrotPerturbation(w, h, data, vueCible, renduParams) {
+  if (!wasmDeepZoom || !wasmMemory || !wasmResetHeap) return false;
+  const total = w * h;
+  if (total > PERTURB_TILE_MAX_PIXELS) return false;
+
+  const cxH = vueCible.centerX, cxL = vueCible.centerX_lo ?? 0;
+  const cyH = vueCible.centerY, cyL = vueCible.centerY_lo ?? 0;
+  const ps = vueCible.pixelSize;
+  const maxIter = renduParams.maxIter;
+
+  let ptr;
+  try {
+    wasmResetHeap();
+    ptr = wasmDeepZoom.mandelbrot_perturbation_tile(cxH, cxL, cyH, cyL, ps, w, h, maxIter);
+  } catch (err) {
+    console.warn("[deep-zoom] noyau de perturbation indisponible :", err);
+    return false;
+  }
+  const base = Math.trunc(ptr);
+  const dv = new DataView(wasmMemory.buffer);
+  const count = dv.getFloat64(base + 8, true); // [0] = w*h
+  if (!Number.isFinite(count) || count <= 0) return false;
+  const n = Math.min(total, count);
+
+  for (let py = 0; py < h; py++) {
+    const baseRow = py * w * 4;
+    for (let px = 0; px < w; px++) {
+      const idx = py * w + px;
+      let iter = maxIter;
+      if (idx < n) iter = dv.getFloat64(base + 8 + 8 * (1 + idx), true);
+      const couleur = getColor(iter, maxIter, renduParams);
+      const i = baseRow + px * 4;
+      data[i] = couleur[0];
+      data[i + 1] = couleur[1];
+      data[i + 2] = couleur[2];
+      data[i + 3] = 255;
+    }
+    if (py % 12 === 0) await attendre(0);
+  }
+  return true;
+}
+
+async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vueCible = null) {
   // Mode coloration par distance (WASM DE) — interception avant le chemin standard.
   if (renduParams.coloringMode === "distance"
       && await remplirFractaleScalaireDistance(w, h, data, cx0, cy0, ps, renduParams)) {
+    return;
+  }
+  // Zoom profond : sous le seuil f64 (~1e-13), basculer sur le noyau de
+  // perturbation DD (Mandelbrot uniquement, sans transforme/coloration spéciale).
+  // L'arithmétique de navigation côté JS conserve déjà les bits du centre via DD.
+  if (vueCible
+      && renduParams.fractal === "mandelbrot"
+      && (renduParams.coloringMode === "standard" || !renduParams.coloringMode)
+      && (!renduParams.coordTransform || renduParams.coordTransform === "aucune")
+      && vueCible.pixelSize < SEUIL_DEEP_ZOOM
+      && await remplirMandelbrotPerturbation(w, h, data, vueCible, renduParams)) {
     return;
   }
   const fn = wasmFunctions[renduParams.fractal];
@@ -3067,7 +3158,7 @@ async function rendreDansCanvas(canvasCible, vueCible, renduParams) {
   const image = ctxCible.createImageData(w, h);
   const cx0 = vueCible.centerX - (w / 2) * vueCible.pixelSize;
   const cy0 = vueCible.centerY - (h / 2) * vueCible.pixelSize;
-  await remplirFractaleScalaire(w, h, image.data, cx0, cy0, vueCible.pixelSize, renduParams);
+  await remplirFractaleScalaire(w, h, image.data, cx0, cy0, vueCible.pixelSize, renduParams, vueCible);
   ctxCible.putImageData(image, 0, 0);
 }
 
@@ -3275,6 +3366,22 @@ async function loadWasm() {
       evaluer_affine_y: typeof exports.evaluer_affine_y === "function" ? exports.evaluer_affine_y : null,
       choisir_transformee_ifs: typeof exports.choisir_transformee_ifs === "function" ? exports.choisir_transformee_ifs : null,
     };
+    // Noyau de zoom profond (Dekker + perturbation Mandelbrot).
+    if (typeof exports.mandelbrot_perturbation_tile === "function"
+        && typeof exports.__ml_reset === "function"
+        && exports.memory instanceof WebAssembly.Memory) {
+      wasmDeepZoom = {
+        mandelbrot_perturbation_tile: exports.mandelbrot_perturbation_tile,
+        mandelbrot_reference_orbit: exports.mandelbrot_reference_orbit ?? null,
+        mandelbrot_perturbation_pixel: exports.mandelbrot_perturbation_pixel ?? null,
+      };
+      wasmMemory = exports.memory;
+      wasmResetHeap = exports.__ml_reset;
+    } else {
+      wasmDeepZoom = null;
+      wasmMemory = null;
+      wasmResetHeap = null;
+    }
     wasmAvailable = true;
     console.info("[WASM] Module mandelbrot.wasm chargé avec succès.");
     updateStatusBar("WASM prêt");
@@ -3283,6 +3390,9 @@ async function loadWasm() {
     console.warn("[WASM] Chargement échoué :", err.message);
     wasmFunctions = {};
     wasmExportFunctions = {};
+    wasmDeepZoom = null;
+    wasmMemory = null;
+    wasmResetHeap = null;
     wasmAvailable = false;
     updateStatusBar("WASM indisponible");
     return false;
@@ -3548,9 +3658,26 @@ function zoomAt(px, py, factor) {
     zoomerVue3D(factor < 1 ? 1 / Math.max(factor, 0.001) : 1 / factor);
     return;
   }
-  const { re, im } = canvasToComplex(px, py);
-  view.centerX = re + (view.centerX - re) / factor;
-  view.centerY = im + (view.centerY - im) / factor;
+  // Zoom : new_center = re + (old_center − re) / factor, où (re, im) est le
+  // point sous le curseur. Calculé en DD pour préserver les bits du centre
+  // quand on zoome très profond (sinon old_center − re ≈ 0 en f64).
+  const dx = (px - canvas.width / 2) * view.pixelSize;
+  const dy = (py - canvas.height / 2) * view.pixelSize;
+  const cr = Math.cos(view.rotation);
+  const sr = Math.sin(view.rotation);
+  const reH = dx * cr - dy * sr;
+  const imH = dx * sr + dy * cr;
+  // (centerX − reH) puis ÷ factor puis + reH, le tout en DD.
+  const [diffXh, diffXl] = subDD(view.centerX, view.centerX_lo, reH, 0);
+  const [diffYh, diffYl] = subDD(view.centerY, view.centerY_lo, imH, 0);
+  const [scaledXh, scaledXl] = divDDScalar(diffXh, diffXl, factor);
+  const [scaledYh, scaledYl] = divDDScalar(diffYh, diffYl, factor);
+  const [newXh, newXl] = addDD(scaledXh, scaledXl, reH, 0);
+  const [newYh, newYl] = addDD(scaledYh, scaledYl, imH, 0);
+  view.centerX = newXh;
+  view.centerX_lo = newXl;
+  view.centerY = newYh;
+  view.centerY_lo = newYl;
   view.pixelSize /= factor;
   render();
   mettreAJourHash(view, params);
@@ -3561,15 +3688,22 @@ function deplacerVue(deltaX, deltaY) {
     deplacerVue3D(deltaX * 0.12, deltaY * 0.12);
     return;
   }
+  let dxH, dyH;
   if (LINE_FRACTALS.has(params.fractal) && view.rotation !== 0) {
     const cosR = Math.cos(view.rotation);
     const sinR = Math.sin(view.rotation);
-    view.centerX += deltaX * cosR - deltaY * sinR;
-    view.centerY += deltaX * sinR + deltaY * cosR;
+    dxH = deltaX * cosR - deltaY * sinR;
+    dyH = deltaX * sinR + deltaY * cosR;
   } else {
-    view.centerX += deltaX;
-    view.centerY += deltaY;
+    dxH = deltaX;
+    dyH = deltaY;
   }
+  const [newXh, newXl] = addDD(view.centerX, view.centerX_lo, dxH, 0);
+  const [newYh, newYl] = addDD(view.centerY, view.centerY_lo, dyH, 0);
+  view.centerX = newXh;
+  view.centerX_lo = newXl;
+  view.centerY = newYh;
+  view.centerY_lo = newYl;
   render();
   mettreAJourHash(view, params);
 }
@@ -3604,7 +3738,9 @@ function resetView() {
     ? getMultibrotPreset(params.multibrotPower)
     : (VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot);
   view.centerX = preset.centerX;
+  view.centerX_lo = 0.0;
   view.centerY = preset.centerY;
+  view.centerY_lo = 0.0;
   view.pixelSize = preset.span / Math.max(canvas.width, 1);
   view.rotation = 0.0;
   render();
@@ -3642,11 +3778,14 @@ canvas.addEventListener("wheel", (e) => {
 let dragStart = null;
 let dragViewX, dragViewY;
 
+let dragViewXLo = 0, dragViewYLo = 0;
 canvas.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
   dragStart = { x: e.offsetX, y: e.offsetY };
   dragViewX = view.centerX;
   dragViewY = view.centerY;
+  dragViewXLo = view.centerX_lo;
+  dragViewYLo = view.centerY_lo;
   canvas.setPointerCapture(e.pointerId);
 });
 
@@ -3687,8 +3826,14 @@ canvas.addEventListener("pointermove", (e) => {
   if (!dragStart) return;
   const dx = (e.offsetX - dragStart.x) * view.pixelSize;
   const dy = (e.offsetY - dragStart.y) * view.pixelSize;
-  view.centerX = dragViewX - dx;
-  view.centerY = dragViewY - dy;
+  // Pan : new_center = drag_origin − pixel_delta (en DD pour préserver les
+  // bits du centre quand on glisse à très grand zoom).
+  const [nxH, nxL] = subDD(dragViewX, dragViewXLo, dx, 0);
+  const [nyH, nyL] = subDD(dragViewY, dragViewYLo, dy, 0);
+  view.centerX = nxH;
+  view.centerX_lo = nxL;
+  view.centerY = nyH;
+  view.centerY_lo = nyL;
   render();
 });
 
@@ -4282,6 +4427,8 @@ async function appliquerSignet(signet) {
   const cible = signet.vue3d ? null : {
     centerX: signet.centerX,
     centerY: signet.centerY,
+    centerX_lo: signet.centerX_lo ?? 0,
+    centerY_lo: signet.centerY_lo ?? 0,
     pixelSize: signet.pixelSize,
     rotation: signet.rotation ?? 0,
   };
@@ -4534,7 +4681,9 @@ async function init() {
   // Vue initiale : preset de la fractale (point de départ de l'animation)
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;
   view.centerX = preset.centerX;
+  view.centerX_lo = 0.0;
   view.centerY = preset.centerY;
+  view.centerY_lo = 0.0;
   view.pixelSize = preset.span / Math.max(canvas.width, 1);
   view.rotation = 0.0;
 
@@ -4549,7 +4698,14 @@ async function init() {
   render();
   if (etatHash && etatHash.centerX !== undefined && etatHash.pixelSize !== undefined) {
     animerVersVue(
-      { centerX: etatHash.centerX, centerY: etatHash.centerY, pixelSize: etatHash.pixelSize, rotation: etatHash.rotation ?? 0 },
+      {
+        centerX: etatHash.centerX,
+        centerY: etatHash.centerY,
+        centerX_lo: etatHash.centerX_lo ?? 0,
+        centerY_lo: etatHash.centerY_lo ?? 0,
+        pixelSize: etatHash.pixelSize,
+        rotation: etatHash.rotation ?? 0,
+      },
       { view, wasmNav: wasmExportFunctions, render, onComplete: () => mettreAJourHash(view, params) }
     );
   }

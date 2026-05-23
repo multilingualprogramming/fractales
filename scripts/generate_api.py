@@ -103,6 +103,8 @@ FRACTAL_DESCRIPTIONS: dict[str, str] = {
     "julia_lisse": "Smooth Julia set with continuous iteration count.",
     "burning_ship_lisse": "Smooth Burning Ship with continuous iteration count.",
     "tricorn_lisse": "Smooth Tricorn with continuous iteration count.",
+    "mandelbrot_de": "Mandelbrot distance estimation: iterates z and dz/dc to return boundary distance.",
+    "julia_de": "Julia distance estimation: iterates z and dz/dz0 for distance-based boundary rendering.",
     "mandelbrot_piege_cercle": "Mandelbrot with circular orbit trap coloring.",
     "mandelbrot_piege_croix": "Mandelbrot with cross orbit trap coloring.",
     "mandelbrot_piege_ligne": "Mandelbrot with line orbit trap coloring.",
@@ -117,6 +119,7 @@ FAMILY_DESCRIPTIONS: dict[str, str] = {
     "lsystem": "L-system curves: geometric fractals from string-rewriting (Lindenmayer systems).",
     "magnetique": "Magnetic fractals: renormalization-group iterations from statistical physics.",
     "lisse": "Smooth coloring variants: continuous iteration count eliminates discrete color bands.",
+    "distance": "Distance estimation fractals: color by estimated geometric distance to the set boundary.",
     "orbitrap": "Orbit trap fractals: color by orbit proximity to a geometric shape.",
 }
 

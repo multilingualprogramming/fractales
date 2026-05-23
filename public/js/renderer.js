@@ -186,6 +186,8 @@ const VIEW_PRESETS = {
   julia_lisse: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   burning_ship_lisse: { centerX: -0.5, centerY: -0.5, span: 3.0 },
   tricorn_lisse: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  mandelbrot_de: { centerX: -0.5, centerY: 0.0, span: 3.5 },
+  julia_de: { centerX: 0.0, centerY: 0.0, span: 3.0 },
   mandelbrot_piege_cercle: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   mandelbrot_piege_croix: { centerX: -0.5, centerY: 0.0, span: 3.5 },
   mandelbrot_piege_ligne: { centerX: -0.5, centerY: 0.0, span: 3.5 },
@@ -699,6 +701,14 @@ const FRACTAL_FAMILIES = [
       ["mandelbrot_piege_croix", "Mandelbrot · piège croix"],
       ["mandelbrot_piege_ligne", "Mandelbrot · piège ligne"],
       ["julia_piege_cercle", "Julia · piège cercle"],
+    ],
+  },
+  {
+    id: "distance",
+    label: "Distance",
+    fractales: [
+      ["mandelbrot_de", "Mandelbrot · estimation de distance"],
+      ["julia_de", "Julia · estimation de distance"],
     ],
   },
   {
@@ -4267,6 +4277,8 @@ const FRACTAL_SOURCE_MAP = {
   julia_lisse: "fractales_lisse",
   burning_ship_lisse: "fractales_lisse",
   tricorn_lisse: "fractales_lisse",
+  mandelbrot_de: "fractales_de",
+  julia_de: "fractales_de",
   mandelbrot_piege_cercle: "fractales_orbitrap",
   mandelbrot_piege_croix: "fractales_orbitrap",
   mandelbrot_piege_ligne: "fractales_orbitrap",

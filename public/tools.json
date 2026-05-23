@@ -26,7 +26,7 @@
           "request": {},
           "response_shape": {
             "schema": "https://multilingualprogramming.github.io/fractales/schemas/fractal.schema.json",
-                        "total": 81,
+                        "total": 83,
             "fractals": [{"id": "mandelbrot", "label": "Mandelbrot", "...": "..."}]
           }
         }
@@ -74,7 +74,7 @@
     },
     {
       "name": "list_families",
-      "description": "Return the index of fractal families. Each family groups fractals by mathematical type: evasion (escape-time), dynamique (dynamic systems and attractors), ifs (iterated function systems), lsystem (L-system curves), magnetique (magnetic renormalization), lisse (smooth coloring variants), orbitrap (orbit trap coloring), classe (OOP compatibility demo). Use this to let users browse by mathematical category.",
+      "description": "Return the index of fractal families. Each family groups fractals by mathematical type: evasion (escape-time), formule (free-form formula variants), dynamique (dynamic systems and attractors), ifs (iterated function systems), lsystem (L-system curves), magnetique (magnetic renormalization), lisse (smooth coloring variants), orbitrap (orbit trap coloring), distance (distance estimation), classe (OOP compatibility demo). Use this to let users browse by mathematical category.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -89,8 +89,8 @@
           "description": "List all fractal families",
           "request": {},
           "response_shape": {
-            "total_families": 8,
-                        "total_fractals": 81,
+            "total_families": 10,
+                        "total_fractals": 83,
             "families": [
               {"id": "evasion", "label": "Évasion", "count": 15, "fractal_ids": ["mandelbrot", "julia", "..."]}
             ]
@@ -101,13 +101,13 @@
     },
     {
       "name": "get_family",
-      "description": "Return the full fractal list for a specific family, including complete metadata for each member. Valid family identifiers: evasion, dynamique, ifs, lsystem, magnetique, lisse, orbitrap, classe.",
+      "description": "Return the full fractal list for a specific family, including complete metadata for each member. Valid family identifiers: evasion, formule, dynamique, ifs, lsystem, magnetique, lisse, orbitrap, distance, classe.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "family_id": {
             "type": "string",
-            "enum": ["evasion", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "classe"],
+            "enum": ["evasion", "formule", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "distance", "classe"],
             "description": "Family identifier. Use list_families to discover available families and their descriptions."
           }
         },

@@ -21,8 +21,8 @@
     },
     "family": {
       "type": "string",
-      "enum": ["evasion", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "classe"],
-      "description": "Family identifier: evasion=escape-time, dynamique=attractors/basins, ifs=iterated function systems, lsystem=L-system curves, magnetique=magnetic renormalization, lisse=smooth coloring, orbitrap=orbit trap, classe=OOP demo"
+      "enum": ["evasion", "formule", "dynamique", "ifs", "lsystem", "magnetique", "lisse", "orbitrap", "distance", "classe"],
+      "description": "Family identifier: evasion=escape-time, formule=free-form formulas, dynamique=attractors/basins, ifs=iterated function systems, lsystem=L-system curves, magnetique=magnetic renormalization, lisse=smooth coloring, orbitrap=orbit trap, distance=distance estimation, classe=OOP demo"
     },
     "family_label": {
       "type": "string",

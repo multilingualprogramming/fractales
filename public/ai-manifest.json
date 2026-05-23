@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "name": "Fractales",
-  "tagline": "Multilingual WebAssembly fractal explorer — 81 fractals, static GitHub Pages, FAIR open knowledge",
-  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 81 mathematical fractals across 8 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
+  "tagline": "Multilingual WebAssembly fractal explorer — 83 fractals, static GitHub Pages, FAIR open knowledge",
+  "description": "An interactive fractal explorer compiled from French-syntax source (multilingual programming language) to WebAssembly. The application renders 83 mathematical fractals across 10 families in the browser with no backend server. It exposes a static JSON API for machine discovery and a URL-based deep-link system for shareable views. This manifest enables AI agents and autonomous tools to discover, query, and navigate the application programmatically.",
   "base_url": "https://multilingualprogramming.github.io/fractales",
   "viewer_url": "https://multilingualprogramming.github.io/fractales/",
   "repository": "https://github.com/multilingualprogramming/fractales",
@@ -70,8 +70,8 @@
     }
   },
   "fractal_stats": {
-    "total": 81,
-    "families": 8,
+    "total": 83,
+    "families": 10,
     "render_modes": ["escape_time", "point_cloud", "line", "webgl_3d"],
     "palettes": 9
     ,
@@ -125,10 +125,11 @@
       "fractales_lsystem",
       "fractales_magnetiques",
       "fractales_lisse",
-            "fractales_orbitrap",
-            "fractales_export",
-            "fractales_navigation",
-            "fractales_formule"
+      "fractales_de",
+      "fractales_orbitrap",
+      "fractales_export",
+      "fractales_navigation",
+      "fractales_formule"
         ]
   },
   "agent_guidance": {

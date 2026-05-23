@@ -12,16 +12,18 @@
         "url": "https://multilingualprogramming.github.io/fractales/api/families.json"
       },
       "response_excerpt": {
-        "total_families": 8,
-        "total_fractals": 71,
+        "total_families": 10,
+        "total_fractals": 83,
         "families": [
           {"id": "evasion", "label": "Évasion", "count": 15, "description": "Escape-time fractals: color each point by how many iterations before divergence."},
+          {"id": "formule", "label": "Formule libre", "count": 8, "description": "Formula variants: canonical examples from the free-form formula engine."},
           {"id": "dynamique", "label": "Dynamique", "count": 17, "description": "Dynamic systems: Newton basins, attractors, Lyapunov, and chaotic maps."},
-          {"id": "ifs", "label": "IFS", "count": 8, "description": "Iterated Function Systems: self-similar structures from affine maps and random chaos."},
-          {"id": "lsystem", "label": "L-system", "count": 9, "description": "L-system curves: geometric fractals from string-rewriting (Lindenmayer systems)."},
+          {"id": "ifs", "label": "IFS", "count": 10, "description": "Iterated Function Systems: self-similar structures from affine maps and random chaos."},
+          {"id": "lsystem", "label": "L-system", "count": 14, "description": "L-system curves: geometric fractals from string-rewriting (Lindenmayer systems)."},
           {"id": "magnetique", "label": "Magnétique", "count": 8, "description": "Magnetic fractals: renormalization-group iterations from statistical physics."},
           {"id": "lisse", "label": "Lisse", "count": 4, "description": "Smooth coloring variants: continuous iteration count eliminates discrete color bands."},
           {"id": "orbitrap", "label": "Piège orbital", "count": 4, "description": "Orbit trap fractals: color by orbit proximity to a geometric shape."},
+          {"id": "distance", "label": "Distance", "count": 2, "description": "Distance estimation fractals: color by estimated geometric distance to the set boundary."},
           {"id": "classe", "label": "Classe", "count": 1, "description": "OOP compatibility demo via multilingual class."}
         ]
       },

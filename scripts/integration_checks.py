@@ -140,6 +140,8 @@ REQUIRED_EXPORTS = {
     "julia_lisse",
     "burning_ship_lisse",
     "tricorn_lisse",
+    "mandelbrot_de",
+    "julia_de",
     "mandelbrot_piege_cercle",
     "mandelbrot_piege_croix",
     "mandelbrot_piege_ligne",

@@ -2879,51 +2879,47 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
 // identique si le module n'est pas encore chargé. Depuis l'enhancement
 // multilingual math.atan (range reduction double + 12 termes Taylor,
 // 2026-05-23), log_polaire est ~1e-10 près de la référence JS Math.atan2.
+// Depuis multilingual B1 (multi-value returns 2026-05-23) : chaque transforme
+// renvoie un Array [x', y'] en un seul appel WASM (au lieu de _x/_y séparés).
 function appliquerTransforme(x, y, renduParams) {
   const ct = renduParams.coordTransform;
   if (!ct || ct === "aucune") return [x, y];
   const t = wasmMetaPanels?.transforms;
   if (ct === "log_polaire") {
-    if (t) return [t.log_polaire_x(x, y), t.log_polaire_y(x, y)];
+    if (t) return t.log_polaire(x, y);
     const r2 = x * x + y * y;
     if (r2 < 1e-20) return [x, y];
     return [0.5 * Math.log(r2), Math.atan2(y, x)];
   }
   if (ct === "inversion") {
-    if (t) return [t.inversion_x(x, y), t.inversion_y(x, y)];
+    if (t) return t.inversion(x, y);
     const r2 = x * x + y * y;
     if (r2 < 1e-20) return [x, y];
     return [x / r2, -y / r2];
   }
-  if (ct === "pli_x") {
-    if (t) return [t.pli_x(x), y];
-    return [Math.abs(x), y];
-  }
-  if (ct === "pli_y") {
-    if (t) return [x, t.pli_y(y)];
-    return [x, Math.abs(y)];
-  }
+  if (ct === "pli_x") return [Math.abs(x), y];
+  if (ct === "pli_y") return [x, Math.abs(y)];
   if (ct === "pli_xy") {
-    if (t) return [t.pli_x(x), t.pli_y(y)];
+    if (t) return t.pli_xy(x, y);
     return [Math.abs(x), Math.abs(y)];
   }
   if (ct === "mobius") {
     const mp = renduParams.mobiusPreset || "inversion_cercle";
     if (mp === "inversion_cercle") {
-      if (t) return [t.inversion_x(x, y), t.inversion_y(x, y)];
+      if (t) return t.inversion(x, y);
       const r2 = x * x + y * y;
       if (r2 < 1e-20) return [x, y];
       return [x / r2, -y / r2];
     }
     if (mp === "cayley") {
-      if (t) return [t.cayley_x(x, y), t.cayley_y(x, y)];
+      if (t) return t.cayley(x, y);
       const denRe = x + 1, denIm = y;
       const den2 = denRe * denRe + denIm * denIm;
       if (den2 < 1e-20) return [x, y];
       return [((x - 1) * denRe + y * denIm) / den2, (y * denRe - (x - 1) * denIm) / den2];
     }
     if (mp === "joukowski") {
-      if (t) return [t.joukowski_x(x, y), t.joukowski_y(x, y)];
+      if (t) return t.joukowski(x, y);
       const r2 = x * x + y * y;
       if (r2 < 1e-20) return [x, y];
       return [(x + x / r2) * 0.5, (y - y / r2) * 0.5];
@@ -3480,16 +3476,14 @@ async function loadWasm() {
         && typeof exports.valider_etat_complet === "function") {
       wasmMetaPanels = {
         transforms: {
-          log_polaire_x: exports.transforme_log_polaire_x,
-          log_polaire_y: exports.transforme_log_polaire_y,
-          inversion_x: exports.transforme_inversion_x,
-          inversion_y: exports.transforme_inversion_y,
-          pli_x: exports.transforme_pli_x,
-          pli_y: exports.transforme_pli_y,
-          cayley_x: exports.transforme_cayley_x,
-          cayley_y: exports.transforme_cayley_y,
-          joukowski_x: exports.transforme_joukowski_x,
-          joukowski_y: exports.transforme_joukowski_y,
+          // Depuis multilingual B1 (2026-05-23) : un seul appel par transforme
+          // qui renvoie un Array [x', y'] grâce aux multi-value WASM returns.
+          // Plus de duplication _x/_y, et 1 appel WASM par pixel au lieu de 2.
+          log_polaire: exports.transforme_log_polaire,
+          inversion: exports.transforme_inversion,
+          pli_xy: exports.transforme_pli_xy,
+          cayley: exports.transforme_cayley,
+          joukowski: exports.transforme_joukowski,
         },
         orbite: {
           mandelbrot_famille: exports.orbite_mandelbrot_famille,
@@ -3502,10 +3496,9 @@ async function loadWasm() {
           valider_max_iter: exports.valider_max_iter,
           valider_rotation: exports.valider_rotation,
           valider_etat_complet: exports.valider_etat_complet,
-          formatter_fixe_2: exports.formatter_fixe_2,
-          formatter_fixe_3: exports.formatter_fixe_3,
-          formatter_fixe_5: exports.formatter_fixe_5,
-          formatter_fixe_6: exports.formatter_fixe_6,
+          // Depuis multilingual B4 (2026-05-23) : un seul formatter_fixe(v, n)
+          // grâce au builtin `format_fixed(v, n)` runtime. N variable.
+          formatter_fixe: exports.formatter_fixe,
           formatter_exponentiel_8: exports.formatter_exponentiel_8 ?? null,
           formatter_exponentiel_9: exports.formatter_exponentiel_9 ?? null,
         },
@@ -3521,8 +3514,8 @@ async function loadWasm() {
         } : null,
         landmark: (typeof exports.detecter_periode_mandelbrot === "function") ? {
           detecter_periode_mandelbrot: exports.detecter_periode_mandelbrot,
-          affiner_nucleus_x: exports.affiner_nucleus_x,
-          affiner_nucleus_y: exports.affiner_nucleus_y,
+          // Depuis multilingual B1 : un seul appel WASM qui renvoie [cx, cy].
+          affiner_nucleus: exports.affiner_nucleus,
           distance_estimation_mandelbrot: exports.distance_estimation_mandelbrot,
         } : null,
         simd: (typeof exports.mandelbrot_simd_pair === "function") ? {

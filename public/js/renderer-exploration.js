@@ -1283,9 +1283,8 @@ export function initialiserExploration({
         let suffixe = ` · période ${periode}`;
         if (!isJulia && periode <= 64) {
           // Pour mandelbrot, raffiner le noyau (super-attracteur de la
-          // composante). Si la convergence est nette, l'afficher.
-          const nx = landmark.affiner_nucleus_x(cx, cy, periode, 25);
-          const ny = landmark.affiner_nucleus_y(cx, cy, periode, 25);
+          // composante). Un seul appel WASM grâce aux multi-value returns.
+          const [nx, ny] = landmark.affiner_nucleus(cx, cy, periode, 25);
           if (isFinite(nx) && isFinite(ny)) {
             suffixe += ` · noyau ≈ (${formatNombre(nx, 6)}, ${formatNombre(ny, 6)})`;
           }

@@ -136,8 +136,7 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
     // est désormais quasi bit-exact avec JS Math.atan2.
     for (const [x, y] of points) {
       const [refX, refY] = jsAppliquerTransforme(x, y, "log_polaire");
-      const wasmX = exports.transforme_log_polaire_x(x, y);
-      const wasmY = exports.transforme_log_polaire_y(x, y);
+      const [wasmX, wasmY] = exports.transforme_log_polaire(x, y);
       assert.ok(
         Math.abs(wasmX - refX) < 1e-4,
         `log_polaire_x(${x},${y}): WASM ${wasmX} vs JS ${refX}`,
@@ -152,25 +151,24 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
   test("inversion : x et y reproduisent exactement la référence", () => {
     for (const [x, y] of points) {
       const [refX, refY] = jsAppliquerTransforme(x, y, "inversion");
-      const wasmX = exports.transforme_inversion_x(x, y);
-      const wasmY = exports.transforme_inversion_y(x, y);
+      const [wasmX, wasmY] = exports.transforme_inversion(x, y);
       assert.ok(Math.abs(wasmX - refX) < 1e-12, `inv_x(${x},${y})`);
       assert.ok(Math.abs(wasmY - refY) < 1e-12, `inv_y(${x},${y})`);
     }
   });
 
-  test("pli (abs) reproduit exactement la référence", () => {
+  test("pli_xy (abs sur les deux composantes)", () => {
     for (const [x, y] of points) {
-      assert.equal(exports.transforme_pli_x(x), Math.abs(x), `pli_x(${x})`);
-      assert.equal(exports.transforme_pli_y(y), Math.abs(y), `pli_y(${y})`);
+      const [wasmX, wasmY] = exports.transforme_pli_xy(x, y);
+      assert.equal(wasmX, Math.abs(x));
+      assert.equal(wasmY, Math.abs(y));
     }
   });
 
   test("Möbius/Cayley : x et y reproduisent la référence", () => {
     for (const [x, y] of points) {
       const [refX, refY] = jsAppliquerTransforme(x, y, "mobius", "cayley");
-      const wasmX = exports.transforme_cayley_x(x, y);
-      const wasmY = exports.transforme_cayley_y(x, y);
+      const [wasmX, wasmY] = exports.transforme_cayley(x, y);
       assert.ok(Math.abs(wasmX - refX) < 1e-12, `cayley_x(${x},${y})`);
       assert.ok(Math.abs(wasmY - refY) < 1e-12, `cayley_y(${x},${y})`);
     }
@@ -179,8 +177,7 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
   test("Möbius/Joukowski : x et y reproduisent la référence", () => {
     for (const [x, y] of points) {
       const [refX, refY] = jsAppliquerTransforme(x, y, "mobius", "joukowski");
-      const wasmX = exports.transforme_joukowski_x(x, y);
-      const wasmY = exports.transforme_joukowski_y(x, y);
+      const [wasmX, wasmY] = exports.transforme_joukowski(x, y);
       assert.ok(Math.abs(wasmX - refX) < 1e-12, `jouk_x(${x},${y})`);
       assert.ok(Math.abs(wasmY - refY) < 1e-12, `jouk_y(${x},${y})`);
     }
@@ -188,9 +185,9 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
 
   test("singularité (z ≈ 0) renvoie l'entrée inchangée", () => {
     const [x, y] = [1e-15, 0];
-    assert.equal(exports.transforme_log_polaire_x(x, y), x);
-    assert.equal(exports.transforme_inversion_x(x, y), x);
-    assert.equal(exports.transforme_joukowski_x(x, y), x);
+    assert.deepEqual(exports.transforme_log_polaire(x, y), [x, y]);
+    assert.deepEqual(exports.transforme_inversion(x, y), [x, y]);
+    assert.deepEqual(exports.transforme_joukowski(x, y), [x, y]);
   });
 });
 
@@ -388,33 +385,21 @@ describe("fractales_partage — formatage fixe", () => {
     return Math.abs(parseFloat(s1) - parseFloat(s2)) <= ulp;
   }
 
-  test("formatter_fixe_2 reproduit toFixed(2) (à 1 ulp près)", () => {
-    for (const v of [-0.5, 0.0, 1.234, -98.765, 1000.0, -0.005]) {
+  // Depuis multilingual B4 (2026-05-23) : un seul formatter_fixe(v, n) gère
+  // tous les N (clampé à [0, 9]) — plus de formatter_fixe_2/3/5/6.
+  test("formatter_fixe(v, n) reproduit toFixed(n) (à 1 ulp près)", () => {
+    const cases = [
+      { v: -0.5, n: 2 }, { v: 0.0, n: 2 }, { v: 1.234, n: 2 }, { v: -98.765, n: 2 },
+      { v: -0.43633, n: 5 }, { v: 0.12345, n: 5 }, { v: 1.23456, n: 5 },
+      { v: -0.7, n: 6 }, { v: 0.27, n: 6 }, { v: 0.123456, n: 6 },
+      { v: 3.14159, n: 3 },
+    ];
+    for (const { v, n } of cases) {
       exports.__ml_reset();
-      const ptr = exports.formatter_fixe_2(v);
+      const ptr = exports.formatter_fixe(v, n);
       const got = lireChaine(ptr);
-      const ref = v.toFixed(2);
-      assert.ok(presqueEgalAuFormat(got, ref, 2), `formatter_fixe_2(${v}): got "${got}" vs "${ref}"`);
-    }
-  });
-
-  test("formatter_fixe_5 reproduit toFixed(5)", () => {
-    for (const v of [-0.43633, 0.12345, 1.23456, -2.71828]) {
-      exports.__ml_reset();
-      const ptr = exports.formatter_fixe_5(v);
-      const got = lireChaine(ptr);
-      const ref = v.toFixed(5);
-      assert.ok(presqueEgalAuFormat(got, ref, 5), `formatter_fixe_5(${v}): got "${got}" vs "${ref}"`);
-    }
-  });
-
-  test("formatter_fixe_6 reproduit toFixed(6) (utilisé pour julia)", () => {
-    for (const v of [-0.7, 0.27, 0.123456, -1.000001]) {
-      exports.__ml_reset();
-      const ptr = exports.formatter_fixe_6(v);
-      const got = lireChaine(ptr);
-      const ref = v.toFixed(6);
-      assert.ok(presqueEgalAuFormat(got, ref, 6), `formatter_fixe_6(${v}): got "${got}" vs "${ref}"`);
+      const ref = v.toFixed(n);
+      assert.ok(presqueEgalAuFormat(got, ref, n), `formatter_fixe(${v}, ${n}): got "${got}" vs "${ref}"`);
     }
   });
 
@@ -552,14 +537,12 @@ describe("fractales_landmark — détection de période et raffinage de noyau", 
   });
 
   test("Newton converge vers le noyau de période 2 (c = -1)", () => {
-    const nx = exports.affiner_nucleus_x(-1.01, 0.01, 2, 30);
-    const ny = exports.affiner_nucleus_y(-1.01, 0.01, 2, 30);
+    const [nx, ny] = exports.affiner_nucleus(-1.01, 0.01, 2, 30);
     assert.ok(Math.abs(nx - (-1)) < 1e-12, `nx ${nx}`);
     assert.ok(Math.abs(ny) < 1e-12, `ny ${ny}`);
   });
   test("Newton converge vers le noyau de période 3 (c = -1.7548776662466927)", () => {
-    const nx = exports.affiner_nucleus_x(-1.76, 0.01, 3, 30);
-    const ny = exports.affiner_nucleus_y(-1.76, 0.01, 3, 30);
+    const [nx, ny] = exports.affiner_nucleus(-1.76, 0.01, 3, 30);
     assert.ok(Math.abs(nx - (-1.7548776662466927)) < 1e-12, `nx ${nx}`);
     assert.ok(Math.abs(ny) < 1e-12, `ny ${ny}`);
   });

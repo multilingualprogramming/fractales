@@ -32,14 +32,16 @@ function lireChainePartage(ptrF64) {
   );
 }
 
-function fixeWasm(fn, v) {
+function fixeWasm(fn, v, n = null) {
   // Préserve la sémantique de toFixed : sortie de longueur fixe, sans
   // notation exponentielle. WASM partage peut différer d'1 ULP du dernier
   // chiffre sur les milieux (round half-to-even vs JS half-away-from-zero) ;
   // pour le hash de partage c'est négligeable.
+  // Signature : `n === null` ⇒ ancien chemin (fn(v) — exponentiel) ; `n !== null` ⇒
+  // nouveau chemin formatter_fixe(v, n) avec n runtime depuis multilingual B4.
   if (!wasmPartageRef?.partage || !wasmPartageRef?.reset) return null;
   wasmPartageRef.reset();
-  const ptr = fn(v);
+  const ptr = n === null ? fn(v) : fn(v, n);
   return lireChainePartage(ptr);
 }
 
@@ -65,7 +67,7 @@ export function encoderEtat(view, params) {
     p.set("y", formatFlottant(view.centerY));
     p.set("ps", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.pixelSize) ?? view.pixelSize.toExponential(8).replace("e+", "e"));
     if (view.rotation !== 0) {
-      p.set("r", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_5, view.rotation) ?? view.rotation.toFixed(5));
+      p.set("r", fixeWasm(wasmPartageRef?.partage?.formatter_fixe, view.rotation, 5) ?? view.rotation.toFixed(5));
     }
     // Partie basse double-double : ajoutée UNIQUEMENT en zoom très profond,
     // où l'addition centerX + pixelSize·offset perd des bits. Préserve la
@@ -76,28 +78,28 @@ export function encoderEtat(view, params) {
   p.set("i", String(params.maxIter));
   if (params.palette && params.palette !== "aurora") p.set("p", params.palette);
   if (params.fractal === "multibrot") p.set("pr", String(params.multibrotPower));
+  const fF = wasmPartageRef?.partage?.formatter_fixe;
   if (JULIA_FRACTALS.has(params.fractal)) {
-    const f6 = wasmPartageRef?.partage?.formatter_fixe_6;
-    p.set("jr", fixeWasm(f6, params.juliaCre) ?? params.juliaCre.toFixed(6));
-    p.set("ji", fixeWasm(f6, params.juliaCim) ?? params.juliaCim.toFixed(6));
+    p.set("jr", fixeWasm(fF, params.juliaCre, 6) ?? params.juliaCre.toFixed(6));
+    p.set("ji", fixeWasm(fF, params.juliaCim, 6) ?? params.juliaCim.toFixed(6));
   }
   if (params.coloringMode && params.coloringMode !== "standard") p.set("cm", params.coloringMode);
   if (params.palettePhase) {
     const v = Number(params.palettePhase);
-    p.set("ph", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_3, v) ?? v.toFixed(3));
+    p.set("ph", fixeWasm(fF, v, 3) ?? v.toFixed(3));
   }
   if (params.paletteContours) p.set("pc", "1");
   if (params.lsystemLineColor && params.lsystemLineColor !== "progression") p.set("lc", params.lsystemLineColor);
   if (params.lsystemStrokeWidth && params.lsystemStrokeWidth !== 1.35) {
     const v = Number(params.lsystemStrokeWidth);
-    p.set("lsw", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_2, v) ?? v.toFixed(2));
+    p.set("lsw", fixeWasm(fF, v, 2) ?? v.toFixed(2));
   }
   if (params.deepZoomAutoIterations) p.set("azi", "1");
   if (params.deepZoomQuality && params.deepZoomQuality !== "standard") p.set("q", params.deepZoomQuality);
   if (params.studio3dMaterial && params.studio3dMaterial !== "lumineux") p.set("mat", params.studio3dMaterial);
   if (params.studio3dFog) {
     const v = Number(params.studio3dFog);
-    p.set("fog", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_2, v) ?? v.toFixed(2));
+    p.set("fog", fixeWasm(fF, v, 2) ?? v.toFixed(2));
   }
   if (params.weatherOverlays) p.set("ov", params.weatherOverlays);
   if (params.lsystemProposalActive) {

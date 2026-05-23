@@ -96,66 +96,19 @@ déf detecter_periode_mandelbrot(cx, cy, max_iter, tolerance):
 # La dérivée se calcule en propageant dc/dc = 1 puis :
 #   ∂z_{n+1}/∂c = 2·z_n·(∂z_n/∂c) + 1.
 
-déf affiner_nucleus_x(cx, cy, periode, max_newton):
-    # Renvoie la partie réelle du noyau raffiné. Fonctions séparées (x, y) pour
-    # éviter les tuples WAT. Utilise la même itération en parallèle des deux.
+# Depuis multilingual B1 (multi-value returns 2026-05-23) : une seule fonction
+# affiner_nucleus retournant le couple (cx, cy) — plus la duplication _x/_y.
+
+déf affiner_nucleus(cx, cy, periode, max_newton):
+    # Newton-Raphson sur z_p(c) = 0 pour raffiner vers le noyau super-attracteur.
+    # Itère z_n et dz_n/dc en parallèle ; à chaque pas : c -= z_p / dz_p
+    # (division complexe). Convergence quadratique pour des graines proches.
     soit p = periode
     si p < 1.0:
-        retour cx
+        retour (cx, cy)
     soit p_int = p
     si p > 4096.0:
-        retour cx
-
-    soit cr = cx
-    soit ci = cy
-    soit pas = 0
-    tantque pas < max_newton:
-        # Itérer z_n et dz_n/dc en parallèle.
-        soit zx = 0.0
-        soit zy = 0.0
-        soit dzx = 0.0
-        soit dzy = 0.0
-        soit k = 0
-        soit echappe = 0
-        tantque k < p_int:
-            si echappe == 0:
-                soit ndzx = 2.0 * (zx * dzx - zy * dzy) + 1.0
-                soit ndzy = 2.0 * (zx * dzy + zy * dzx)
-                soit nzx = zx * zx - zy * zy + cr
-                soit nzy = 2.0 * zx * zy + ci
-                zx = nzx
-                zy = nzy
-                dzx = ndzx
-                dzy = ndzy
-                si zx * zx + zy * zy > 1.0e18:
-                    echappe = 1
-            k = k + 1
-        si echappe == 1:
-            retour cr
-        # c -= z_p / dz_p (division complexe)
-        soit dz2 = dzx * dzx + dzy * dzy
-        si dz2 < 1.0e-30:
-            retour cr
-        soit dcx = (zx * dzx + zy * dzy) / dz2
-        soit dcy = (zy * dzx - zx * dzy) / dz2
-        cr = cr - dcx
-        ci = ci - dcy
-        # Critère d'arrêt : déplacement très petit
-        si dcx * dcx + dcy * dcy < 1.0e-26:
-            retour cr
-        pas = pas + 1
-    retour cr
-
-
-déf affiner_nucleus_y(cx, cy, periode, max_newton):
-    # Idem affiner_nucleus_x mais renvoie la partie imaginaire. Duplique le
-    # corps faute de retour tuple — cf. note attracteurs/transforms.
-    soit p = periode
-    si p < 1.0:
-        retour cy
-    soit p_int = p
-    si p > 4096.0:
-        retour cy
+        retour (cx, cy)
 
     soit cr = cx
     soit ci = cy
@@ -181,18 +134,18 @@ déf affiner_nucleus_y(cx, cy, periode, max_newton):
                     echappe = 1
             k = k + 1
         si echappe == 1:
-            retour ci
+            retour (cr, ci)
         soit dz2 = dzx * dzx + dzy * dzy
         si dz2 < 1.0e-30:
-            retour ci
+            retour (cr, ci)
         soit dcx = (zx * dzx + zy * dzy) / dz2
         soit dcy = (zy * dzx - zx * dzy) / dz2
         cr = cr - dcx
         ci = ci - dcy
         si dcx * dcx + dcy * dcy < 1.0e-26:
-            retour ci
+            retour (cr, ci)
         pas = pas + 1
-    retour ci
+    retour (cr, ci)
 
 
 # ─── Distance euclidienne à l'ensemble (utilisée par les rayons externes) ───

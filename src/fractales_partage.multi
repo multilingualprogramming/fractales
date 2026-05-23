@@ -68,23 +68,13 @@ déf valider_etat_complet(cx, cy, ps, max_iter, rotation):
         retour 0.0
     retour 1.0
 
-# Formatage à précision fixe : matche `n.toFixed(N)` côté JS pour N=2..6.
-# Le backend WAT possède le format `{v:.Nf}` (n_decimals 0..9) — round half
-# to even comme toFixed (rounding "bank"). Pour les usages du hash de
-# partage (rotation 5, julia 6, palettePhase 3, lsystemStrokeWidth 2,
-# studio3dFog 2) on cible un sous-ensemble exact.
+# Formatage à précision fixe : matche `n.toFixed(N)` côté JS pour N variable.
+# Depuis multilingual B4 (2026-05-23) : `format_fixed(v, n)` runtime builtin
+# remplace les fonctions spécialisées par N (formatter_fixe_2/3/5/6) — un seul
+# point d'entrée prend N en paramètre. Le backend WAT clamp N à [0, 9].
 
-déf formatter_fixe_2(v):
-    retour f"{v:.2f}"
-
-déf formatter_fixe_3(v):
-    retour f"{v:.3f}"
-
-déf formatter_fixe_5(v):
-    retour f"{v:.5f}"
-
-déf formatter_fixe_6(v):
-    retour f"{v:.6f}"
+déf formatter_fixe(v, n):
+    retour format_fixed(v, n)
 
 # Formatage exponentiel — `toExponential(N)` côté JS (pour pixelSize, parties
 # basses double-double xlo/ylo). Approche : extraction de l'exposant via
@@ -130,17 +120,14 @@ déf formatter_exponentiel_signe(abs_n, decimales_code):
         corps = f"{m:.8f}"
     sinon:
         corps = f"{m:.9f}"
-    soit exp_str = f"{e:.0f}"
-    soit corps_e = corps + "e"
-    retour corps_e + exp_str
+    retour corps + "e" + f"{e:.0f}"
 
 
 déf formatter_exponentiel_8(n):
     si n == 0.0:
         retour "0e0"
     si n < 0.0:
-        soit corps = formatter_exponentiel_signe(-n, 8)
-        retour "-" + corps
+        retour "-" + formatter_exponentiel_signe(-n, 8)
     retour formatter_exponentiel_signe(n, 8)
 
 
@@ -150,6 +137,5 @@ déf formatter_exponentiel_9(n):
     si n == 0.0:
         retour "0e0"
     si n < 0.0:
-        soit corps = formatter_exponentiel_signe(-n, 9)
-        retour "-" + corps
+        retour "-" + formatter_exponentiel_signe(-n, 9)
     retour formatter_exponentiel_signe(n, 9)

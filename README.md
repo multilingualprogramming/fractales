@@ -335,11 +335,10 @@ python scripts/integration_checks.py
 python scripts/quick_checks.py
 ```
 
-Pour tester explicitement une copie locale du depot `multilingual` au lieu de la
-version epinglee :
+Pour tester explicitement le dépôt amont `johnsamuelwrites/multilingual` :
 
 ```powershell
-$env:MULTILINGUAL_DEV_PATH="..\\multilingual"
+python -m pip install --upgrade "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
 python scripts/compile_wasm.py
 ```
 

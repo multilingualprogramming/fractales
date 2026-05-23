@@ -9,8 +9,6 @@
 "use strict";
 
 const WORKER_URL = "./js/render-worker.js?v=20260522-parallel";
-const WASM_URL = "mandelbrot.wasm?v=20260520-formule-preview";
-
 let poolInstance = null;
 let poolInitFailed = false;
 
@@ -36,7 +34,7 @@ class WorkerPool {
         };
         worker.addEventListener("message", handler);
       }));
-      worker.postMessage({ type: "init", wasmUrl: WASM_URL });
+      worker.postMessage({ type: "init" });
     }
   }
 

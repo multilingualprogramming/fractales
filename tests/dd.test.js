@@ -13,16 +13,6 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { addDD, subDD, mulDD, divDDScalar, twoSum, twoProduct, toF64 } from "../public/js/dd.js";
 
-// Référence : somme exacte (a + b) en BigInt à partir de la décomposition
-// IEEE-754. Suffisamment précis pour les tests : addition à 53 bits → 106 bits.
-function addExact(a, b) {
-  // En JS, BigInt ne porte pas les flottants : on convertit via un facteur
-  // 2^52 et la mantissa. Plus simple : utiliser le fait que two_sum donne le
-  // résultat avec lo = erreur exacte. On confronte addDD au résultat de
-  // l'évaluation symbolique faite ici à la main.
-  return [a + b, 0];
-}
-
 describe("twoSum — préserve l'erreur d'arrondi", () => {
   test("a + b sans débordement de précision rend l'erreur exacte", () => {
     const a = 1.0;

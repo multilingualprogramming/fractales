@@ -17,12 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         channel:
-          - name: pinned
-            install_command: pip install -r requirements-build.txt
+          - name: github-main
+            install_command: pip install "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
           - name: latest
             install_command: pip install "multilingualprogramming[wasm]"
-          - name: upstream-main
-            install_command: pip install "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
 
     steps:
       - name: Cloner le depot

@@ -417,4 +417,200 @@ describe("fractales_partage — formatage fixe", () => {
       assert.ok(presqueEgalAuFormat(got, ref, 6), `formatter_fixe_6(${v}): got "${got}" vs "${ref}"`);
     }
   });
+
+  test("formatter_exponentiel_8 (pixelSize / lo) — round-trip parseFloat fidèle", () => {
+    // Le WAT n'a pas de format `.Ne` natif ; fractales_partage.multi le
+    // construit via math.log10 + pow(10, e) + .Nf (cf. la fix de pow_f64
+    // dans multilingual, 2026-05-23). Round-trip exigé pour la précision
+    // sub-f64 des liens de partage en zoom profond.
+    for (const v of [1.5e-13, 5e-16, 1e10, 3.141592, -0.0001, 9.99e8, 0.0, -1e-15, 1e-300]) {
+      exports.__ml_reset();
+      const ptr = exports.formatter_exponentiel_8(v);
+      const got = lireChaine(ptr);
+      if (v === 0) {
+        assert.equal(got, "0e0");
+        continue;
+      }
+      const parsed = parseFloat(got);
+      // tolérance relative 1e-7 (mantisse à 8 décimales = ~8 chiffres sig)
+      assert.ok(
+        Math.abs(parsed / v - 1) < 1e-7,
+        `formatter_exponentiel_8(${v}): got "${got}" → parseFloat=${parsed}`,
+      );
+    }
+  });
+
+  test("formatter_exponentiel_9 (xlo/ylo deep zoom) — 9 décimales", () => {
+    for (const v of [1.5e-13, -2.7e-15, 9.876543210e-14, 1.0e-200]) {
+      exports.__ml_reset();
+      const ptr = exports.formatter_exponentiel_9(v);
+      const got = lireChaine(ptr);
+      const parsed = parseFloat(got);
+      assert.ok(
+        Math.abs(parsed / v - 1) < 1e-8,
+        `formatter_exponentiel_9(${v}): got "${got}" → parseFloat=${parsed}`,
+      );
+    }
+  });
+});
+
+// ============================================================================
+// Hasard L-système (FNV-1a + mulberry32) — bit-exact avec JS
+// ============================================================================
+
+function jsFnvSeed(seed) {
+  const text = String(seed ?? "1").trim() || "1";
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h || 1;
+}
+function jsMulberry32Step(state) {
+  state = (state + 0x6d2b79f5) | 0;
+  let t = state;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return [state, ((t ^ (t >>> 14)) >>> 0) / 4294967296];
+}
+
+function ecrireChaineLP(s) {
+  const bytes = new TextEncoder().encode(s);
+  const ptr = exports.__ml_str_alloc(bytes.length);
+  new Uint8Array(exports.memory.buffer, ptr, bytes.length).set(bytes);
+  return ptr;
+}
+
+function lireListeF64(ptr, n) {
+  const base = Math.trunc(ptr);
+  const view = new DataView(exports.memory.buffer);
+  const out = [];
+  for (let k = 0; k < n; k++) out.push(view.getFloat64(base + 8 + 8 * k, true));
+  return out;
+}
+
+// ============================================================================
+// Repères mathématiques (period detection + nucleus refinement)
+// ============================================================================
+
+// ============================================================================
+// SIMD (v128 f64x2) Mandelbrot pair
+// ============================================================================
+
+describe("fractales_simd — mandelbrot_simd_pair", () => {
+  function jsScalar(cx, cy, maxIter) {
+    let zx = 0, zy = 0;
+    for (let i = 0; i < maxIter; i++) {
+      if (zx * zx + zy * zy > 4) return i;
+      const t = zx * zx - zy * zy + cx;
+      zy = 2 * zx * zy + cy;
+      zx = t;
+    }
+    return maxIter;
+  }
+  function readPair(ptr) {
+    const base = Math.trunc(ptr);
+    const v = new DataView(exports.memory.buffer);
+    return [v.getFloat64(base + 8, true), v.getFloat64(base + 16, true)];
+  }
+  test("SIMD donne les mêmes itérations que le scalaire à ±1 près", () => {
+    const cases = [
+      [-0.5, 0.0, 0.3, 0.0],
+      [-1.0, 0.0, -1.5, 0.0],
+      [-0.122561, 0.744861, 0.25, 0.25],
+      [-2.0, 0.0, 1.5, -0.5],
+      [-0.74, 0.12, -0.74, 0.13],   // 2 pixels adjacents
+    ];
+    for (const [cx0, cy0, cx1, cy1] of cases) {
+      exports.__ml_reset();
+      const ptr = exports.mandelbrot_simd_pair(cx0, cy0, cx1, cy1, 256);
+      const [s0, s1] = readPair(ptr);
+      const sc0 = jsScalar(cx0, cy0, 256);
+      const sc1 = jsScalar(cx1, cy1, 256);
+      assert.ok(Math.abs(s0 - sc0) <= 1, `lane0 c=(${cx0},${cy0}) SIMD=${s0} JS=${sc0}`);
+      assert.ok(Math.abs(s1 - sc1) <= 1, `lane1 c=(${cx1},${cy1}) SIMD=${s1} JS=${sc1}`);
+    }
+  });
+});
+
+describe("fractales_landmark — détection de période et raffinage de noyau", () => {
+  test("period 1 (origine, cardioïde principale)", () => {
+    assert.equal(exports.detecter_periode_mandelbrot(0, 0, 1024, 1e-10), 1);
+  });
+  test("period 2 (c = -1, bulbe à gauche)", () => {
+    assert.equal(exports.detecter_periode_mandelbrot(-1, 0, 1024, 1e-10), 2);
+  });
+  test("period 3 (c ≈ -1.7549)", () => {
+    assert.equal(exports.detecter_periode_mandelbrot(-1.7548776, 0, 1024, 1e-8), 3);
+  });
+  test("period 4 (c ≈ -1.3107)", () => {
+    assert.equal(exports.detecter_periode_mandelbrot(-1.3107026413366, 0, 1024, 1e-8), 4);
+  });
+  test("point qui s'échappe → période 0", () => {
+    assert.equal(exports.detecter_periode_mandelbrot(0.3, 0, 1024, 1e-10), 0);
+  });
+
+  test("Newton converge vers le noyau de période 2 (c = -1)", () => {
+    const nx = exports.affiner_nucleus_x(-1.01, 0.01, 2, 30);
+    const ny = exports.affiner_nucleus_y(-1.01, 0.01, 2, 30);
+    assert.ok(Math.abs(nx - (-1)) < 1e-12, `nx ${nx}`);
+    assert.ok(Math.abs(ny) < 1e-12, `ny ${ny}`);
+  });
+  test("Newton converge vers le noyau de période 3 (c = -1.7548776662466927)", () => {
+    const nx = exports.affiner_nucleus_x(-1.76, 0.01, 3, 30);
+    const ny = exports.affiner_nucleus_y(-1.76, 0.01, 3, 30);
+    assert.ok(Math.abs(nx - (-1.7548776662466927)) < 1e-12, `nx ${nx}`);
+    assert.ok(Math.abs(ny) < 1e-12, `ny ${ny}`);
+  });
+
+  test("DE renvoie 0 à l'intérieur, > 0 à l'extérieur", () => {
+    assert.equal(exports.distance_estimation_mandelbrot(0, 0, 256), 0);
+    assert.ok(exports.distance_estimation_mandelbrot(0.3, 0, 256) > 0);
+    assert.ok(exports.distance_estimation_mandelbrot(-2.5, 0, 256) > 0.5);
+  });
+});
+
+describe("fractales_hasard — parité bit-exacte avec JS", () => {
+  const seeds = ["1", "42", "hello", "fractale", "plante-13", "0"];
+
+  test("hash_fnv32_seed reproduit exactement FNV-1a JS", () => {
+    for (const seed of seeds) {
+      exports.__ml_reset();
+      const ptr = ecrireChaineLP(seed);
+      const wasm = exports.hash_fnv32_seed(ptr);
+      const wasmU32 = wasm < 0 ? wasm + 4294967296 : wasm;
+      const js = jsFnvSeed(seed);
+      assert.equal(wasmU32, js, `FNV("${seed}"): WASM ${wasmU32} vs JS ${js}`);
+    }
+  });
+
+  test("prochain_hash_mulberry32 reproduit mulberry32 sur 20 itérations", () => {
+    exports.__ml_reset();
+    const ptr = ecrireChaineLP("plante-13");
+    let wasmState = exports.hash_fnv32_seed(ptr);
+    let jsState = jsFnvSeed("plante-13");
+    // Hash WASM est en vue signée ; JS commence en uint32. Convertit pour le test.
+    jsState |= 0;  // signed i32 view of jsState (since JS uses uint32 but Math.imul/+ treat as i32)
+    // Note: en JS, state += 0x6d2b79f5 produit un i32 (le |0 dans mulberry32).
+    // L'initial state JS est uint32 — la 1ʳᵉ addition fait `+= 0x6d2b79f5 → wraparound i32`.
+    // wasmState est déjà i32-signé après hash_fnv32_seed. Pour rester en parité,
+    // on suit mulberry32 JS qui ne signe l'état qu'au moment du `+ k | 0`.
+    // Donc on rebascule wasmState à uint32 pour l'aligner avec JS:
+    jsState = jsFnvSeed("plante-13");  // uint32 départ
+    let wasmStateU32 = wasmState < 0 ? wasmState + 4294967296 : wasmState;
+    assert.equal(wasmStateU32, jsState, "états initiaux concordent");
+
+    for (let step = 0; step < 20; step++) {
+      const out = exports.prochain_hash_mulberry32(wasmState);
+      const [newWasmState, wasmDraw] = lireListeF64(out, 2);
+      wasmState = newWasmState;
+      const [newJsState, jsDraw] = jsMulberry32Step(jsState);
+      jsState = newJsState;
+      assert.ok(
+        Math.abs(wasmDraw - jsDraw) < 1e-15,
+        `step ${step}: WASM ${wasmDraw} vs JS ${jsDraw}`,
+      );
+    }
+  });
 });

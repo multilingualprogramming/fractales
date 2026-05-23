@@ -663,7 +663,7 @@ export function initialiserExploration({
       const apercu = dessinerPropositionLSysteme(lsystemCanvas, proposition.axiom, proposition.rules, proposition.angle, proposition.generations, proposition.seed);
       const stringPreview = document.getElementById("lsystem-string-preview");
       if (stringPreview) {
-        const { sequence: seq, truncated, limit } = genererPropositionLSysteme(proposition, { limit: 70000 });
+        const { sequence: seq, truncated, limit } = genererPropositionLSysteme(proposition, { limit: 70000, hasardWasm: getWasmMetaPanels?.()?.hasard });
         const suffix = truncated ? `, limite ${limit} atteinte` : "";
         stringPreview.textContent = seq.length > 180 ? seq.slice(0, 180) + `… (${seq.length} symboles${suffix})` : seq + ` (${seq.length} symboles${suffix})`;
       }
@@ -1260,7 +1260,42 @@ export function initialiserExploration({
     });
     const readout = document.getElementById("weather-readout");
     const label = orbitEscaped ? "échappe" : "bornée";
-    if (readout) readout.textContent = `${capturedOrbit.length} pts · ${label} · départ ${formatNombre(point.re, 5)} ${point.im >= 0 ? "+" : "-"} ${formatNombre(Math.abs(point.im), 5)}i`;
+    let texte = `${capturedOrbit.length} pts · ${label} · départ ${formatNombre(point.re, 5)} ${point.im >= 0 ? "+" : "-"} ${formatNombre(Math.abs(point.im), 5)}i`;
+    // Analyse de repères mathématiques sur les fractales mandelbrot-famille
+    // (cf. src/fractales_landmark.multi). N'opère que sur les orbites bornées,
+    // où la détection de cycle a un sens.
+    const meta = getWasmMetaPanels?.();
+    const landmark = meta?.landmark;
+    const fr = getParams().fractal;
+    const supporteRepères = !orbitEscaped
+      && landmark
+      && (fr === "mandelbrot" || fr === "mandelbrot_lisse"
+          || fr === "julia" || fr === "julia_lisse"
+          || fr === "julia_piege_cercle");
+    if (supporteRepères) {
+      // Pour mandelbrot : c = point cliqué ; pour julia : c = juliaCre/juliaCim,
+      // période détectée à partir du paramètre julia (point cliqué = z₀).
+      const isJulia = fr.startsWith("julia");
+      const cx = isJulia ? (getParams().juliaCre ?? 0) : point.re;
+      const cy = isJulia ? (getParams().juliaCim ?? 0) : point.im;
+      const periode = landmark.detecter_periode_mandelbrot(cx, cy, 1024, 1e-9);
+      if (periode > 0) {
+        let suffixe = ` · période ${periode}`;
+        if (!isJulia && periode <= 64) {
+          // Pour mandelbrot, raffiner le noyau (super-attracteur de la
+          // composante). Si la convergence est nette, l'afficher.
+          const nx = landmark.affiner_nucleus_x(cx, cy, periode, 25);
+          const ny = landmark.affiner_nucleus_y(cx, cy, periode, 25);
+          if (isFinite(nx) && isFinite(ny)) {
+            suffixe += ` · noyau ≈ (${formatNombre(nx, 6)}, ${formatNombre(ny, 6)})`;
+          }
+        }
+        texte += suffixe;
+      } else {
+        texte += " · cycle non détecté";
+      }
+    }
+    if (readout) readout.textContent = texte;
     startOrbitAnimation();
     updateHash();
   }

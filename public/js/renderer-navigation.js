@@ -47,6 +47,11 @@ function formatFlottant(n) {
   if (n === 0) return "0";
   const abs = Math.abs(n);
   if (abs < 0.0001 || abs >= 100000) {
+    // Chemin WASM canonique (cf. fractales_partage.multi : formatter_exponentiel_9)
+    // — round-trip parseFloat-fidèle, simple normalisation des zéros de queue.
+    const fe = wasmPartageRef?.partage?.formatter_exponentiel_9;
+    const wasm = fixeWasm(fe, n);
+    if (wasm !== null) return wasm.replace(/\.?0+e/, "e").replace("e+", "e");
     return n.toExponential(10).replace(/\.?0+e/, "e").replace("e+", "e");
   }
   return n.toPrecision(12).replace(/\.?0+$/, "");
@@ -58,15 +63,15 @@ export function encoderEtat(view, params) {
   if (!FRACTALES_3D.has(params.fractal)) {
     p.set("x", formatFlottant(view.centerX));
     p.set("y", formatFlottant(view.centerY));
-    p.set("ps", view.pixelSize.toExponential(8).replace("e+", "e"));
+    p.set("ps", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.pixelSize) ?? view.pixelSize.toExponential(8).replace("e+", "e"));
     if (view.rotation !== 0) {
       p.set("r", fixeWasm(wasmPartageRef?.partage?.formatter_fixe_5, view.rotation) ?? view.rotation.toFixed(5));
     }
     // Partie basse double-double : ajoutée UNIQUEMENT en zoom très profond,
     // où l'addition centerX + pixelSize·offset perd des bits. Préserve la
     // précision sub-f64 lors d'un partage de lien.
-    if (view.centerX_lo) p.set("xlo", view.centerX_lo.toExponential(8).replace("e+", "e"));
-    if (view.centerY_lo) p.set("ylo", view.centerY_lo.toExponential(8).replace("e+", "e"));
+    if (view.centerX_lo) p.set("xlo", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.centerX_lo) ?? view.centerX_lo.toExponential(8).replace("e+", "e"));
+    if (view.centerY_lo) p.set("ylo", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.centerY_lo) ?? view.centerY_lo.toExponential(8).replace("e+", "e"));
   }
   p.set("i", String(params.maxIter));
   if (params.palette && params.palette !== "aurora") p.set("p", params.palette);

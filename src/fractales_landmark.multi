@@ -1,0 +1,228 @@
+# Repères mathématiques pour le panneau d'exploration — détection de période
+# d'orbite et raffinage de noyau (« nucleus ») via Newton-Raphson. Ces deux
+# briques sont la base de l'analyse des structures de l'ensemble de Mandelbrot
+# (composantes hyperboliques, points de Misiurewicz, cascades de Feigenbaum).
+#
+# Toutes les itérations sont en f64 ; pour aller au-delà du mur ~1e-13, le
+# pipeline deep-zoom (perturbation Dekker) prendrait le relais.
+#
+# Conventions :
+#   - Une orbite est PÉRIODIQUE de période p si, après une transitoire, on a
+#     z_{n+p} ≈ z_n. On utilise Floyd cycle detection : deux marcheurs (lent et
+#     rapide) ; s'ils se rejoignent, il y a un cycle, dont la période se déduit
+#     en mesurant la longueur de l'orbite à partir du point de rencontre.
+#   - Un « nucleus » d'une composante de période p est le point c où le cycle
+#     est super-attracteur (z_p(c) = 0). Newton-Raphson sur f(c) = z_p(c).
+
+déf abs_landmark(v):
+    si v < 0.0:
+        retour -v
+    retour v
+
+# ─── Détection de période (Floyd) ───────────────────────────────────────────
+
+déf detecter_periode_mandelbrot(cx, cy, max_iter, tolerance):
+    # Renvoie la période détectée (1..max_iter), ou 0 si aucun cycle n'est
+    # détecté à `tolerance` près dans la fenêtre [transitoire, max_iter].
+    # max_iter limité à 4096 (au-delà, l'orbite f64 perd toute précision pour
+    # les composantes hyperboliques de grande période).
+
+    soit limite = max_iter
+    si limite > 4096:
+        limite = 4096
+    si limite < 4:
+        limite = 4
+
+    # Phase 1 : Floyd — lent fait 1 pas, rapide 2 pas. Si rendez-vous, cycle.
+    soit zlx = 0.0
+    soit zly = 0.0
+    soit zfx = 0.0
+    soit zfy = 0.0
+    soit i = 0
+    soit rencontre = 0
+    tantque i < limite:
+        si rencontre == 0:
+            # Avancer lent (1 itération de z² + c)
+            soit tx = zlx * zlx - zly * zly + cx
+            zly = 2.0 * zlx * zly + cy
+            zlx = tx
+            # Avancer rapide (2 itérations)
+            soit ux = zfx * zfx - zfy * zfy + cx
+            soit uy = 2.0 * zfx * zfy + cy
+            soit vx = ux * ux - uy * uy + cx
+            zfy = 2.0 * ux * uy + cy
+            zfx = vx
+            # Sortie d'évasion
+            si zlx * zlx + zly * zly > 256.0:
+                retour 0.0
+            si zfx * zfx + zfy * zfy > 1.0e18:
+                retour 0.0
+            # Test de rencontre
+            soit dx = zlx - zfx
+            soit dy = zly - zfy
+            si dx * dx + dy * dy < tolerance * tolerance:
+                rencontre = 1
+        i = i + 1
+
+    si rencontre == 0:
+        retour 0.0
+
+    # Phase 2 : période = distance entre la rencontre et le point suivant
+    # qui correspond. zlx,zly est dans le cycle ; on avance un nouveau marcheur
+    # à partir du même point et on compte les pas jusqu'à retomber.
+    soit zrx = zlx
+    soit zry = zly
+    soit p = 0
+    soit k = 0
+    soit borne = limite
+    tantque k < borne:
+        soit nx = zrx * zrx - zry * zry + cx
+        zry = 2.0 * zrx * zry + cy
+        zrx = nx
+        p = p + 1
+        soit ex = zrx - zlx
+        soit ey = zry - zly
+        si ex * ex + ey * ey < tolerance * tolerance:
+            retour p
+        k = k + 1
+    retour 0.0
+
+
+# ─── Raffinage Newton du noyau ──────────────────────────────────────────────
+#
+# Pour une composante de période p, le noyau (centre, super-attracteur) vérifie
+# z_p(c) = 0, où z_p(c) est la p-ième itérée à partir de z_0 = 0. Newton :
+#   c_{n+1} = c_n − z_p(c_n) / (∂z_p / ∂c)(c_n)
+# La dérivée se calcule en propageant dc/dc = 1 puis :
+#   ∂z_{n+1}/∂c = 2·z_n·(∂z_n/∂c) + 1.
+
+déf affiner_nucleus_x(cx, cy, periode, max_newton):
+    # Renvoie la partie réelle du noyau raffiné. Fonctions séparées (x, y) pour
+    # éviter les tuples WAT. Utilise la même itération en parallèle des deux.
+    soit p = periode
+    si p < 1.0:
+        retour cx
+    soit p_int = p
+    si p > 4096.0:
+        retour cx
+
+    soit cr = cx
+    soit ci = cy
+    soit pas = 0
+    tantque pas < max_newton:
+        # Itérer z_n et dz_n/dc en parallèle.
+        soit zx = 0.0
+        soit zy = 0.0
+        soit dzx = 0.0
+        soit dzy = 0.0
+        soit k = 0
+        soit echappe = 0
+        tantque k < p_int:
+            si echappe == 0:
+                soit ndzx = 2.0 * (zx * dzx - zy * dzy) + 1.0
+                soit ndzy = 2.0 * (zx * dzy + zy * dzx)
+                soit nzx = zx * zx - zy * zy + cr
+                soit nzy = 2.0 * zx * zy + ci
+                zx = nzx
+                zy = nzy
+                dzx = ndzx
+                dzy = ndzy
+                si zx * zx + zy * zy > 1.0e18:
+                    echappe = 1
+            k = k + 1
+        si echappe == 1:
+            retour cr
+        # c -= z_p / dz_p (division complexe)
+        soit dz2 = dzx * dzx + dzy * dzy
+        si dz2 < 1.0e-30:
+            retour cr
+        soit dcx = (zx * dzx + zy * dzy) / dz2
+        soit dcy = (zy * dzx - zx * dzy) / dz2
+        cr = cr - dcx
+        ci = ci - dcy
+        # Critère d'arrêt : déplacement très petit
+        si dcx * dcx + dcy * dcy < 1.0e-26:
+            retour cr
+        pas = pas + 1
+    retour cr
+
+
+déf affiner_nucleus_y(cx, cy, periode, max_newton):
+    # Idem affiner_nucleus_x mais renvoie la partie imaginaire. Duplique le
+    # corps faute de retour tuple — cf. note attracteurs/transforms.
+    soit p = periode
+    si p < 1.0:
+        retour cy
+    soit p_int = p
+    si p > 4096.0:
+        retour cy
+
+    soit cr = cx
+    soit ci = cy
+    soit pas = 0
+    tantque pas < max_newton:
+        soit zx = 0.0
+        soit zy = 0.0
+        soit dzx = 0.0
+        soit dzy = 0.0
+        soit k = 0
+        soit echappe = 0
+        tantque k < p_int:
+            si echappe == 0:
+                soit ndzx = 2.0 * (zx * dzx - zy * dzy) + 1.0
+                soit ndzy = 2.0 * (zx * dzy + zy * dzx)
+                soit nzx = zx * zx - zy * zy + cr
+                soit nzy = 2.0 * zx * zy + ci
+                zx = nzx
+                zy = nzy
+                dzx = ndzx
+                dzy = ndzy
+                si zx * zx + zy * zy > 1.0e18:
+                    echappe = 1
+            k = k + 1
+        si echappe == 1:
+            retour ci
+        soit dz2 = dzx * dzx + dzy * dzy
+        si dz2 < 1.0e-30:
+            retour ci
+        soit dcx = (zx * dzx + zy * dzy) / dz2
+        soit dcy = (zy * dzx - zx * dzy) / dz2
+        cr = cr - dcx
+        ci = ci - dcy
+        si dcx * dcx + dcy * dcy < 1.0e-26:
+            retour ci
+        pas = pas + 1
+    retour ci
+
+
+# ─── Distance euclidienne à l'ensemble (utilisée par les rayons externes) ───
+
+déf distance_estimation_mandelbrot(cx, cy, max_iter):
+    # Réutilise la formule DE classique : |z|·ln|z| / |dz|. Renvoie 0 si
+    # l'orbite n'évade pas dans la fenêtre (intérieur présumé). Permet
+    # d'estimer la proximité d'un point candidat à un rayon externe.
+    soit zx = 0.0
+    soit zy = 0.0
+    soit dzx = 0.0
+    soit dzy = 0.0
+    soit k = 0
+    soit r2_evasion = 256.0
+    tantque k < max_iter:
+        soit ndzx = 2.0 * (zx * dzx - zy * dzy) + 1.0
+        soit ndzy = 2.0 * (zx * dzy + zy * dzx)
+        soit nzx = zx * zx - zy * zy + cx
+        soit nzy = 2.0 * zx * zy + cy
+        zx = nzx
+        zy = nzy
+        dzx = ndzx
+        dzy = ndzy
+        soit r2 = zx * zx + zy * zy
+        si r2 > r2_evasion:
+            soit r = math.sqrt(r2)
+            soit dr2 = dzx * dzx + dzy * dzy
+            si dr2 < 1.0e-30:
+                retour 0.0
+            soit dr = math.sqrt(dr2)
+            retour r * math.log(r) / dr
+        k = k + 1
+    retour 0.0

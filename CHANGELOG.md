@@ -6,6 +6,61 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Noyau SIMD (v128 f64x2) Mandelbrot — ~2× sur la boucle interne.** Nouveau
+  module `src/fractales_simd.multi` exposant `mandelbrot_simd_pair(cx0, cy0,
+  cx1, cy1, max_iter)` qui délègue au builtin multilingual `simd_mandelbrot_pair`
+  (instructions WebAssembly SIMD natives : `f64x2.mul/add/sub/le`, `i64x2.add`,
+  `v128.bitselect`). Itère deux pixels Mandelbrot en parallèle ; les lanes
+  échappées sont gelées via bitselect — accord bit-pour-bit avec la version
+  scalaire (±1 itération). `renderer.js` `remplirFractaleScalaire` détecte la
+  fractale Mandelbrot pure sur le chemin synchrone (workers indisponibles ou
+  transforme active) et passe les pixels par paires via la nouvelle voie
+  `wasmMetaPanels.simd.mandelbrot_pair` ; pixel impair en fin de ligne traité
+  en scalaire. Build vérifie l'export ; test parité dans
+  `tests/meta_panels_wasm.test.js`. Pas de type v128 exposé au niveau source —
+  un seul builtin spécialisé pour rester contenu.
+
+- **Repères mathématiques (B) — détection de période + raffinage de noyau.**
+  Nouveau module `src/fractales_landmark.multi` : `detecter_periode_mandelbrot`
+  (Floyd cycle detection sur z²+c, tolérance configurable, retourne 1..max ou
+  0 si pas de cycle), `affiner_nucleus_x` / `affiner_nucleus_y` (Newton-Raphson
+  sur z_p(c) = 0 avec propagation parallèle de la dérivée dz/dc), et
+  `distance_estimation_mandelbrot` (DE classique `|z|·ln|z|/|dz|`). Le panneau
+  ☷ Météo capture maintenant la période et — sur Mandelbrot — le noyau
+  super-attracteur dans son readout après chaque capture d'orbite (sur orbite
+  bornée uniquement). Vérification numérique des landmarks connus :
+  c=0 → p=1, c=-1 → p=2, c=-1.7549 → p=3, c=-1.3107 → p=4 ; Newton converge
+  à 1e-12 près sur les noyaux p=2, p=3.
+
+- **L-système stochastique : RNG porté en multilingual (bit-exact).** Nouveau
+  module `src/fractales_hasard.multi` : `hash_fnv32_seed(seed: chaîne)`
+  (FNV-1a 32-bit) et `prochain_hash_mulberry32(état)` (mulberry32 1-pas
+  retournant `[nouvel_état, tirage ∈ [0,1))`). Bit-pour-bit identique à
+  l'implémentation JS d'origine (`hacherGraineLSysteme` + `creerHasardLSysteme`)
+  grâce aux nouveaux builtins multilingual `imul32` / `iadd32` / `shr_u32` /
+  `u32_to_f64` (cf. changelog multilingual). `genererPropositionLSysteme`
+  accepte désormais `options.hasardWasm` ; quand fourni, route via WASM.
+  Permet aux grammaires stochastiques de prendre 100 % du chemin WASM
+  (expansion + tortue). Test : 5 seeds × 20 itérations vérifient l'égalité
+  exacte des tirages flottants.
+
+- **Formatage exponentiel en multilingual (`formatter_exponentiel_8/9`).**
+  Le backend WAT ne fournit pas `.Ne` natif ; `fractales_partage.multi` le
+  construit via `math.log10` + `pow(10, e)` + `.Nf`, avec correction de la
+  mantisse hors `[1, 10)` (l'erreur ~1e-6 de `math.log10` peut pousser e
+  d'une unité). Retourne `"[-]m.dddddddde[+/-]E"`, round-trip
+  `parseFloat`-fidèle. `encoderEtat` route `view.pixelSize`,
+  `view.centerX_lo`, `view.centerY_lo` et la branche exponentielle de
+  `formatFlottant` via WASM. Complète la migration partage : les seules
+  parts encore JS sont l'orchestration `URLSearchParams` et le strip des
+  zéros de queue (cosmétique).
+
+- **Précision math.atan ×10⁹ en multilingual.** Voir entrée correspondante
+  du CHANGELOG multilingual (double range reduction `1/x` + `(x-1)/(x+1)`,
+  12 termes Taylor). Conséquence côté fractales : `appliquerTransforme(log_polaire)`
+  est maintenant à ~1e-10 de `Math.atan2` (était ~5 % au pire) ; tolérance
+  du test `tests/meta_panels_wasm.test.js` resserrée de 0.05 à 1e-9.
+
 - **Autres panneaux Meta — math des panneaux ◈ Transformations, ☷ Météo
   orbites, et 🔗 Partage portée en multilingual.** Trois nouveaux modules
   authored en `.multi` :

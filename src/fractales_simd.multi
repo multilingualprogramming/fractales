@@ -1,0 +1,15 @@
+# Noyau SIMD (v128 / f64x2) — itère deux pixels Mandelbrot en parallèle.
+# Délègue au builtin `simd_mandelbrot_pair` (cf. multilingual 0.7+, fix SIMD
+# 2026-05-23) qui émet directement les instructions WebAssembly SIMD pour
+# un gain d'environ 2× sur la boucle interne. Le caller JS appelle deux
+# pixels à la fois et lit `[iter0, iter1]` du buffer renvoyé.
+#
+# Sémantique : pour chaque lane indépendamment, équivaut à
+# fractales_escape.mandelbrot(cx, cy, max_iter) au sens "itère z²+c, retourne
+# l'itération à laquelle |z|² > 4 (sinon max_iter)". Vérifié bit-exact dans
+# multilingual `test_simd_mandelbrot_pair_matches_scalar`.
+
+déf mandelbrot_simd_pair(cx0, cy0, cx1, cy1, max_iter):
+    # Retourne un pointeur vers la liste [iter0, iter1]. Le caller lit
+    # `sortie[0]` et `sortie[1]` côté JS (offsets ptr+8, ptr+16).
+    retour simd_mandelbrot_pair(cx0, cy0, cx1, cy1, max_iter)

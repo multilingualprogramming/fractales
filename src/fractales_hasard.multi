@@ -1,0 +1,46 @@
+# Hasard pour L-système stochastique — FNV-1a (hash de graine) + mulberry32
+# (générateur pseudo-aléatoire 32-bit). Reproduit bit-pour-bit la version JS
+# (`hacherGraineLSysteme` + `creerHasardLSysteme` dans renderer-lsystem.js)
+# afin que les grammaires stochastiques rendues via le chemin WASM donnent
+# exactement la même séquence que le rendu JS.
+#
+# Briques multilingual utilisées (toutes ajoutées en 2026-05-23) :
+#   imul32(a, b) : Math.imul équivalent (i32.mul avec wraparound)
+#   iadd32(a, b) : i32.add avec wraparound (via i64 intermédiaire)
+#   shr_u32(a, k) : décalage logique à droite (zero-fill, JS >>>)
+#   u32_to_f64(x) : signed-i32-as-f64 → unsigned-i32-as-f64
+#                   (mappe les négatifs vers [2^31, 2^32))
+
+déf hash_fnv32_seed(seed: chaîne):
+    # FNV-1a 32-bit du contenu UTF-8 de la chaîne `seed`. Retourne le hash en
+    # vue signée i32-as-f64 (∈ [-2^31, 2^31)).
+    # Constante FNV offset basis = 0x811C9DC5 = 2166136261 (uint32).
+    # En vue signée : 2166136261 − 2^32 = -2128831035.
+    soit h = -2128831035.0
+    soit n = longueur(seed)
+    soit i = 0
+    tantque i < n:
+        soit code = ord(seed[i])
+        h = imul32(h ^ code, 16777619.0)
+        i = i + 1
+    si h == 0.0:
+        h = 1.0
+    retour h
+
+
+déf prochain_hash_mulberry32(etat):
+    # Avance l'état de un cran. Retour : liste [nouvel_etat, tirage_unitaire]
+    # où tirage_unitaire ∈ [0, 1). Le `nouvel_etat` doit être réinjecté à
+    # l'appel suivant — la fonction est pure.
+    soit etat_avance = iadd32(etat, 1831565813.0)   # 0x6d2b79f5
+    soit t = etat_avance
+    # t = imul(t ^ (t >>> 15), t | 1)
+    t = imul32(t ^ shr_u32(t, 15.0), t | 1.0)
+    # t ^= t + imul(t ^ (t >>> 7), t | 61)
+    soit aux = imul32(t ^ shr_u32(t, 7.0), t | 61.0)
+    t = t ^ iadd32(t, aux)
+    # ((t ^ (t >>> 14)) >>> 0) / 2^32
+    soit mixe = t ^ shr_u32(t, 14.0)
+    soit non_signe = u32_to_f64(mixe)
+    soit tirage = non_signe / 4294967296.0
+    retour [etat_avance, tirage]

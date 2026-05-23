@@ -28,6 +28,28 @@ function creerHasardLSysteme(seed) {
   };
 }
 
+// Variante WASM (src/fractales_hasard.multi) — bit-exact avec la version JS
+// ci-dessus (vérifiée par tests/lsystem.test.js). Utilisée quand
+// `wasmMetaPanels.hasard` est chargé. La graine est ré-hachée via
+// `hash_fnv32_seed` (FNV-1a) avant chaque expansion ; mulberry32 avance pas
+// à pas via `prochain_hash_mulberry32(état) → [nouvel_état, tirage]`.
+function creerHasardLSystemeWasm(seed, hasardWasm) {
+  const { hash_fnv32_seed, prochain_hash_mulberry32, memory, reset, strLen, strAlloc } = hasardWasm;
+  const text = String(seed ?? "1").trim() || "1";
+  reset();
+  const bytes = new TextEncoder().encode(text);
+  const ptr = strAlloc(bytes.length);
+  new Uint8Array(memory.buffer, ptr, bytes.length).set(bytes);
+  let state = hash_fnv32_seed(ptr);
+  return function hasard() {
+    const out = prochain_hash_mulberry32(state);
+    const base = Math.trunc(out);
+    const view = new DataView(memory.buffer);
+    state = view.getFloat64(base + 8, true);
+    return view.getFloat64(base + 16, true);
+  };
+}
+
 function parserAlternativeLSysteme(fragment, diagnostics, lineNumber, stochasticLine) {
   const trimmed = fragment.trim();
   if (!trimmed) return null;
@@ -87,7 +109,11 @@ function choisirAlternativeLSysteme(rule, hasard) {
 
 export function genererPropositionLSysteme(config, options = {}) {
   const { rules, diagnostics } = parserReglesLSysteme(config.rules);
-  const hasard = creerHasardLSysteme(config.seed ?? 1);
+  // Chemin WASM (src/fractales_hasard.multi) prioritaire — bit-exact avec JS.
+  const hasardWasm = options.hasardWasm;
+  const hasard = hasardWasm
+    ? creerHasardLSystemeWasm(config.seed ?? 1, hasardWasm)
+    : creerHasardLSysteme(config.seed ?? 1);
   let sequence = String(config.axiom || "F").slice(0, 96);
   const generations = clamp(Number(config.generations) | 0, 0, 8);
   const limit = options.limit ?? LIMITE_SEQUENCE_RENDU;

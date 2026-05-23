@@ -19,6 +19,9 @@ importer fractales_formule
 importer fractales_transforms
 importer fractales_orbite
 importer fractales_partage
+importer fractales_hasard
+importer fractales_landmark
+importer fractales_simd
 #
 # Module orienté objet (transpilation Python uniquement) :
 # Démontre : classe, héritage, soi (self), super().__init__

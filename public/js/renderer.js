@@ -2323,22 +2323,24 @@ function grammaireEstStochastique(reglesTexte) {
 // Tortue authored en multilingual (WASM) dans tous les cas :
 //   - Déterministe : tortue_lsysteme(axiome, regles, gen, angle) — expansion ET
 //     tortue en WASM, sans matérialisation (parcours DFS).
-//   - Stochastique : expansion JS (RNG FNV+mulberry32, bit-pour-bit, partagée
-//     par les liens deep-link) puis tortue_chemin_brut(sequence, angle) en WASM.
+//   - Stochastique : expansion JS (orchestration des règles), RNG via WASM
+//     (src/fractales_hasard.multi) — bit-pour-bit avec la version JS d'origine,
+//     partagée par les liens deep-link. Tortue ensuite en WASM via
+//     tortue_chemin_brut(sequence, angle).
 // Repli JS complet (pointsPropositionLSysteme) seulement tant que le module
 // WASM n'est pas encore chargé.
 function sommetsLSystemePourRendu(renduParams) {
   const generations = Math.max(0, Math.min(8, Number(renduParams.lsystemGenerations) | 0));
   const axiome = String(renduParams.lsystemAxiom || "F").slice(0, 96);
   if (grammaireEstStochastique(renduParams.lsystemRules)) {
-    // RNG en JS (reproduction bit-pour-bit des seeds existants) ; tortue en WASM.
+    // RNG via WASM (fractales_hasard) si chargé, sinon JS — identique aux bits près.
     const { sequence } = genererPropositionLSysteme({
       axiom: axiome,
       rules: renduParams.lsystemRules,
       angle: renduParams.lsystemAngle,
       generations,
       seed: renduParams.lsystemSeed,
-    });
+    }, { hasardWasm: wasmMetaPanels?.hasard });
     const sommets = sommetsCheminWasmSync(sequence, renduParams.lsystemAngle);
     if (sommets && sommets.length >= 2) return sommets;
   } else {
@@ -2354,7 +2356,7 @@ function sommetsLSystemePourRendu(renduParams) {
     angle: renduParams.lsystemAngle,
     generations: renduParams.lsystemGenerations,
     seed: renduParams.lsystemSeed,
-  });
+  }, { hasardWasm: wasmMetaPanels?.hasard });
   return points;
 }
 
@@ -3102,6 +3104,52 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
     }
   }
 
+  // Pré-calcul SIMD (v128 f64x2) — itère les pixels Mandelbrot par paires
+  // via `mandelbrot_simd_pair` (cf. src/fractales_simd.multi → builtin
+  // multilingual `simd_mandelbrot_pair`). ~2× moins d'appels JS↔WASM sur le
+  // chemin synchrone. Limité au Mandelbrot pur (la base de la famille) et
+  // bypass quand des Workers ont déjà fourni le buffer.
+  const simdPair = wasmMetaPanels?.simd?.mandelbrot_pair;
+  const wasmMem = wasmMemory ?? wasmMetaPanels?.memory ?? null;
+  const wasmReset = wasmResetHeap ?? wasmMetaPanels?.reset ?? null;
+  const useSimdMandelbrot =
+    itersBuffer === null
+    && renduParams.fractal === "mandelbrot"
+    && simdPair
+    && wasmMem
+    && wasmReset;
+  if (useSimdMandelbrot) {
+    itersBuffer = new Float64Array(w * h);
+    const dvSimd = new DataView(wasmMem.buffer);
+    for (let py = 0; py < h; py++) {
+      const rawCy = cy0 + py * ps;
+      let px = 0;
+      // Paires : 2 pixels par appel SIMD.
+      for (; px + 1 < w; px += 2) {
+        const rawCx0 = cx0 + px * ps;
+        const rawCx1 = cx0 + (px + 1) * ps;
+        let c0x = rawCx0, c0y = rawCy, c1x = rawCx1, c1y = rawCy;
+        if (useTransform) {
+          [c0x, c0y] = appliquerTransforme(rawCx0, rawCy, renduParams);
+          [c1x, c1y] = appliquerTransforme(rawCx1, rawCy, renduParams);
+        }
+        wasmReset();
+        const ptr = simdPair(c0x, c0y, c1x, c1y, renduParams.maxIter);
+        const base = Math.trunc(ptr);
+        // Layout : header f64 à base+0 (=2.0), iter0 à base+8, iter1 à base+16.
+        itersBuffer[py * w + px] = dvSimd.getFloat64(base + 8, true);
+        itersBuffer[py * w + px + 1] = dvSimd.getFloat64(base + 16, true);
+      }
+      // Pixel de fin si w est impair : repli scalaire.
+      if (px < w) {
+        const rawCx = cx0 + px * ps;
+        let cxL = rawCx, cyL = rawCy;
+        if (useTransform) [cxL, cyL] = appliquerTransforme(rawCx, rawCy, renduParams);
+        itersBuffer[py * w + px] = fn(cxL, cyL, renduParams.maxIter);
+      }
+      if (py % 12 === 0) await attendre(0);
+    }
+  }
   for (let py = 0; py < h; py++) {
     const rawCy = cy0 + py * ps;
     const base = py * w * 4;
@@ -3458,7 +3506,28 @@ async function loadWasm() {
           formatter_fixe_3: exports.formatter_fixe_3,
           formatter_fixe_5: exports.formatter_fixe_5,
           formatter_fixe_6: exports.formatter_fixe_6,
+          formatter_exponentiel_8: exports.formatter_exponentiel_8 ?? null,
+          formatter_exponentiel_9: exports.formatter_exponentiel_9 ?? null,
         },
+        hasard: (typeof exports.hash_fnv32_seed === "function"
+          && typeof exports.prochain_hash_mulberry32 === "function"
+          && typeof exports.__ml_str_alloc === "function") ? {
+          hash_fnv32_seed: exports.hash_fnv32_seed,
+          prochain_hash_mulberry32: exports.prochain_hash_mulberry32,
+          memory: exports.memory,
+          reset: exports.__ml_reset,
+          strAlloc: exports.__ml_str_alloc,
+          strLen: exports.__ml_str_len ?? null,
+        } : null,
+        landmark: (typeof exports.detecter_periode_mandelbrot === "function") ? {
+          detecter_periode_mandelbrot: exports.detecter_periode_mandelbrot,
+          affiner_nucleus_x: exports.affiner_nucleus_x,
+          affiner_nucleus_y: exports.affiner_nucleus_y,
+          distance_estimation_mandelbrot: exports.distance_estimation_mandelbrot,
+        } : null,
+        simd: (typeof exports.mandelbrot_simd_pair === "function") ? {
+          mandelbrot_pair: exports.mandelbrot_simd_pair,
+        } : null,
         memory: exports.memory,
         reset: exports.__ml_reset,
         strLen: exports.__ml_str_len ?? null,

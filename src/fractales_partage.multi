@@ -85,3 +85,71 @@ déf formatter_fixe_5(v):
 
 déf formatter_fixe_6(v):
     retour f"{v:.6f}"
+
+# Formatage exponentiel — `toExponential(N)` côté JS (pour pixelSize, parties
+# basses double-double xlo/ylo). Approche : extraction de l'exposant via
+# `math.log10` + `floor`, mantisse via division par pow(10, e). math.log10 a
+# une précision ~1e-6, donc on corrige la mantisse si elle tombe hors de
+# [1, 10) (cas limite : log10 d'un x très proche d'une puissance de 10 peut
+# arrondir du mauvais côté).
+#
+# Sortie : "[-]m.dddddddde[+/-]E" — pas de strip des zéros de queue (le JS
+# original le faisait via `replace(/\.?0+e/, "e")` ; pour la sérialisation
+# du hash, la longueur supplémentaire est négligeable, le parsing reste
+# parseFloat-compatible).
+
+déf formatter_exponentiel_signe(abs_n, decimales_code):
+    # decimales_code ∈ {8, 10} — N décimales de la mantisse. Le `:.Nf` de WAT
+    # n'accepte pas N variable, d'où le branchement explicite.
+    si abs_n < 1.0e-300:
+        si decimales_code == 8:
+            retour "0.00000000e0"
+        retour "0.0000000000e0"
+
+    soit log_val = math.log10(abs_n)
+    soit e = math.trunc(log_val)
+    # math.trunc tronque vers zéro ; pour log_val négatif non entier, on veut
+    # floor (e doit être l'entier le plus grand ≤ log_val).
+    si log_val < 0.0:
+        si log_val != e:
+            e = e - 1.0
+
+    soit puissance = pow(10.0, e)
+    soit m = abs_n / puissance
+
+    # Correction d'erreur log10 (~1e-6) — m doit être dans [1, 10).
+    si m >= 10.0:
+        m = m / 10.0
+        e = e + 1.0
+    si m < 1.0:
+        m = m * 10.0
+        e = e - 1.0
+
+    soit corps = ""
+    si decimales_code == 8:
+        corps = f"{m:.8f}"
+    sinon:
+        corps = f"{m:.9f}"
+    soit exp_str = f"{e:.0f}"
+    soit corps_e = corps + "e"
+    retour corps_e + exp_str
+
+
+déf formatter_exponentiel_8(n):
+    si n == 0.0:
+        retour "0e0"
+    si n < 0.0:
+        soit corps = formatter_exponentiel_signe(-n, 8)
+        retour "-" + corps
+    retour formatter_exponentiel_signe(n, 8)
+
+
+déf formatter_exponentiel_9(n):
+    # 9 décimales (~10 chiffres significatifs) — utilisé pour xlo/ylo en zoom
+    # profond. Le JS d'origine utilise toExponential(8) pour ces champs.
+    si n == 0.0:
+        retour "0e0"
+    si n < 0.0:
+        soit corps = formatter_exponentiel_signe(-n, 9)
+        retour "-" + corps
+    retour formatter_exponentiel_signe(n, 9)

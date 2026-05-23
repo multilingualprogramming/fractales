@@ -139,6 +139,9 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "renderer-ifs.js:projeter3DIFS": {
         "browser_only": "isometric view projection combining camera/perspective settings — mirrors renderer.js:projeterPoint3D"
     },
+    "render-worker.js:calculerTuile": {
+        "browser_only": "Web Worker tile-dispatch orchestration — calls canonical WASM fractal exports by name, no formula"
+    },
     "renderer-exploration.js:calculerOrbite": {
         "backend_refs": [
             "mandelbrot",

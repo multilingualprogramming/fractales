@@ -1,0 +1,67 @@
+# Fractales — Distance Estimation (DE).
+#
+# Itère z ET sa dérivée dz = ∂z_n / ∂c en parallèle :
+#   dz_{n+1} = 2·z_n·dz_n + 1,  z_{n+1} = z_n² + c
+# À l'échappement, l'estimation de distance à l'ensemble est
+#   DE = 0.5 · |z| · ln|z| / |dz|
+# qui sert à colorier finement les bords (anti-banding) et donne une vraie
+# « gravure » de la frontière. Retourne 0.0 pour les points dans l'ensemble.
+#
+# Utilise un rayon d'échappement plus large (256) que la coloration lisse
+# (4) — l'asymptotique du DE n'est précise qu'au-delà.
+
+déf mandelbrot_de(cx, cy, max_iter):
+    soit x = 0.0
+    soit y = 0.0
+    soit dx = 0.0
+    soit dy = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        soit r2 = x * x + y * y
+        si r2 > 65536.0:
+            # |dz|² ; clamp pour éviter division par zéro
+            soit d2 = dx * dx + dy * dy
+            si d2 < 1.0e-300:
+                d2 = 1.0e-300
+            soit r = math.sqrt(r2)
+            # ln|z| = 0.5·ln|z|² (math.log corrigé par réduction de mantisse)
+            soit ln_r = 0.5 * math.log(r2)
+            soit dn = math.sqrt(d2)
+            retour r * ln_r / dn
+        # dz_{n+1} = 2·z_n·dz_n + 1  (complexe)
+        soit ndx = 2.0 * (x * dx - y * dy) + 1.0
+        soit ndy = 2.0 * (x * dy + y * dx)
+        soit xtemp = x * x - y * y + cx
+        y = 2.0 * x * y + cy
+        x = xtemp
+        dx = ndx
+        dy = ndy
+        iter = iter + 1.0
+    retour 0.0
+
+déf julia_de(zx, zy, c_re, c_im, max_iter):
+    soit x = zx
+    soit y = zy
+    soit dx = 1.0
+    soit dy = 0.0
+    soit iter = 0.0
+    tantque iter < max_iter:
+        soit r2 = x * x + y * y
+        si r2 > 65536.0:
+            soit d2 = dx * dx + dy * dy
+            si d2 < 1.0e-300:
+                d2 = 1.0e-300
+            soit r = math.sqrt(r2)
+            soit ln_r = 0.5 * math.log(r2)
+            soit dn = math.sqrt(d2)
+            retour r * ln_r / dn
+        # Pour Julia, dz_{n+1} = 2·z_n·dz_n  (c est constant)
+        soit ndx = 2.0 * (x * dx - y * dy)
+        soit ndy = 2.0 * (x * dy + y * dx)
+        soit xtemp = x * x - y * y + c_re
+        y = 2.0 * x * y + c_im
+        x = xtemp
+        dx = ndx
+        dy = ndy
+        iter = iter + 1.0
+    retour 0.0

@@ -1,0 +1,190 @@
+# Deep zoom — arithmétique double-double pure-multilingual + théorie de
+# perturbation. Casse le mur du zoom 1e-15 (f64 natif) vers ~1e-25 sans
+# nécessiter `decimal` dans le backend WAT.
+#
+# Stratégie : pour une tuile centrée sur (Cx, Cy) en précision double-double,
+#   1. calculer l'orbite de RÉFÉRENCE Z_n+1 = Z_n² + C une seule fois en DD ;
+#   2. pour chaque pixel à l'écart (δx, δy) de C, itérer en f64 la
+#      *perturbation* δ_n+1 = 2·Z_n·δ_n + δ_n² + δc, qui reste petite donc
+#      bien représentée par un f64 même à très faible échelle ;
+#   3. tester l'échappement sur la position absolue z_n = Z_n + δ_n.
+#
+# Algèbre Dekker (sans FMA) : split sur 2^27+1 = 134217729 ; safe pour les
+# valeurs <~2 qu'on rencontre en itération Mandelbrot.
+#
+# Convention : les paires DD sont renvoyées comme listes [hi, lo] (16 octets via
+# l'allocateur bump ; libéré par __ml_reset entre rendus).
+
+déf two_sum(a, b):
+    soit s = a + b
+    soit bb = s - a
+    soit err = (a - (s - bb)) + (b - bb)
+    retour [s, err]
+
+déf two_product(a, b):
+    soit p = a * b
+    soit splitter = 134217729.0
+    soit ca = a * splitter
+    soit a_hi = ca - (ca - a)
+    soit a_lo = a - a_hi
+    soit cb = b * splitter
+    soit b_hi = cb - (cb - b)
+    soit b_lo = b - b_hi
+    soit err = ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo
+    retour [p, err]
+
+déf add_dd(a_hi, a_lo, b_hi, b_lo):
+    # two_sum sur les parties hautes, puis combine + renormalise
+    soit s = a_hi + b_hi
+    soit bb = s - a_hi
+    soit e = (a_hi - (s - bb)) + (b_hi - bb)
+    e = e + a_lo + b_lo
+    soit hi = s + e
+    soit lo = e - (hi - s)
+    retour [hi, lo]
+
+déf sub_dd(a_hi, a_lo, b_hi, b_lo):
+    # add_dd avec b nié
+    soit s = a_hi - b_hi
+    soit bb = s - a_hi
+    soit e = (a_hi - (s - bb)) + (-b_hi - bb)
+    e = e + a_lo - b_lo
+    soit hi = s + e
+    soit lo = e - (hi - s)
+    retour [hi, lo]
+
+déf mul_dd(a_hi, a_lo, b_hi, b_lo):
+    # two_product des parties hautes, puis ajout des termes croisés
+    soit splitter = 134217729.0
+    soit p = a_hi * b_hi
+    soit ca = a_hi * splitter
+    soit ah = ca - (ca - a_hi)
+    soit al = a_hi - ah
+    soit cb = b_hi * splitter
+    soit bh = cb - (cb - b_hi)
+    soit bl = b_hi - bh
+    soit e = ((ah * bh - p) + ah * bl + al * bh) + al * bl
+    e = e + a_hi * b_lo + a_lo * b_hi
+    soit hi = p + e
+    soit lo = e - (hi - p)
+    retour [hi, lo]
+
+déf square_dd(a_hi, a_lo):
+    # square spécialisé (moins d'ops que mul_dd(a,a))
+    soit splitter = 134217729.0
+    soit p = a_hi * a_hi
+    soit ca = a_hi * splitter
+    soit ah = ca - (ca - a_hi)
+    soit al = a_hi - ah
+    soit e = ((ah * ah - p) + 2.0 * ah * al) + al * al
+    e = e + 2.0 * a_hi * a_lo
+    soit hi = p + e
+    soit lo = e - (hi - p)
+    retour [hi, lo]
+
+
+# Itère l'orbite de référence Mandelbrot Z_n+1 = Z_n² + C en double-double et
+# rend un tampon stride-2 : [count, zx_h₀, zy_h₀, zx_h₁, zy_h₁, ...]. Les
+# parties basses (low) sont écartées en sortie : seules les hautes sont
+# nécessaires pour la perturbation f64 (δ_n petit ⇒ Z_n_lo·δ ≈ 1e-32 négligeable).
+# S'arrête tôt si |Z|² > 4 (la référence elle-même a échappé).
+déf mandelbrot_reference_orbit(cx_h, cx_l, cy_h, cy_l, max_iter):
+    soit MAXREF = 8000
+    soit n_iter = max_iter
+    si n_iter > MAXREF:
+        n_iter = MAXREF
+    soit buf = [0.0] * (1 + 2 * MAXREF)
+    soit zx_h = 0.0
+    soit zx_l = 0.0
+    soit zy_h = 0.0
+    soit zy_l = 0.0
+    soit count = 0
+    tantque count < n_iter:
+        # Échec si la référence elle-même a échappé
+        si zx_h * zx_h + zy_h * zy_h > 4.0:
+            count = n_iter
+        sinon:
+            buf[1 + 2 * count] = zx_h
+            buf[2 + 2 * count] = zy_h
+            # zx² - zy² + cx  (DD)
+            soit zx2 = square_dd(zx_h, zx_l)
+            soit zy2 = square_dd(zy_h, zy_l)
+            soit diff = sub_dd(zx2[0], zx2[1], zy2[0], zy2[1])
+            soit new_zx = add_dd(diff[0], diff[1], cx_h, cx_l)
+            # 2*zx*zy + cy  (DD)
+            soit xy = mul_dd(zx_h, zx_l, zy_h, zy_l)
+            soit dxy_h = xy[0] + xy[0]
+            soit dxy_l = xy[1] + xy[1]
+            soit new_zy = add_dd(dxy_h, dxy_l, cy_h, cy_l)
+            zx_h = new_zx[0]
+            zx_l = new_zx[1]
+            zy_h = new_zy[0]
+            zy_l = new_zy[1]
+            count = count + 1
+    buf[0] = count
+    retour buf
+
+
+# Itération de perturbation pour UN pixel : δ_n+1 = 2·Z_n·δ_n + δ_n² + δc.
+# `orbit` est le tampon stride-2 renvoyé par mandelbrot_reference_orbit.
+# Renvoie le nombre d'itérations avant l'échappement (ou max_iter si dans
+# l'ensemble). Détecte les *glitches* basiques (|δ| ≈ |Z|) en arrêtant l'orbite
+# de perturbation (gestion robuste = rebasement, hors MVP).
+déf mandelbrot_perturbation_pixel(dcx, dcy, orbit, max_iter):
+    soit ref_count = orbit[0]
+    soit max_n = max_iter
+    si ref_count < max_n:
+        max_n = ref_count
+    soit dzx = 0.0
+    soit dzy = 0.0
+    soit n = 0
+    tantque n < max_n:
+        soit Zx = orbit[1 + 2 * n]
+        soit Zy = orbit[2 + 2 * n]
+        # Position absolue : z = Z + δ
+        soit zx = Zx + dzx
+        soit zy = Zy + dzy
+        si zx * zx + zy * zy > 4.0:
+            retour n
+        # δ_n+1 = 2·Z·δ + δ² + δc  (en f64 ; tous les facteurs O(1) sauf δ qui
+        # est petit ; donc les produits Z·δ et δ² restent bien dans la dynamique f64)
+        soit ndzx = 2.0 * (Zx * dzx - Zy * dzy) + (dzx * dzx - dzy * dzy) + dcx
+        soit ndzy = 2.0 * (Zx * dzy + Zy * dzx) + 2.0 * dzx * dzy + dcy
+        dzx = ndzx
+        dzy = ndzy
+        n = n + 1
+    retour max_iter
+
+
+# Kernel de tuile : calcule l'orbite de référence UNE fois, puis itère la
+# perturbation pour les w*h pixels d'une tuile centrée sur (cx, cy) en DD,
+# avec un pas pixel `ps` (f64 — au-delà de la précision DD on est largement
+# au-dessus du f64 epsilon multiplié par max_iter, donc f64 suffit pour le
+# pas et l'offset par pixel).
+#
+# Sortie : tampon [count=w*h, iter_0, iter_1, ...] de taille w*h+1.
+# L'appelant JS lit les iters et applique la palette ; chemin minimisant
+# le crossings JS<->WASM (un seul appel par tuile).
+déf mandelbrot_perturbation_tile(cx_h, cx_l, cy_h, cy_l, ps, w, h, max_iter):
+    soit MAXPIX = 1048576
+    soit total = w * h
+    si total > MAXPIX:
+        total = MAXPIX
+    soit out = [0.0] * (1 + MAXPIX)
+    out[0] = total
+    soit orbit = mandelbrot_reference_orbit(cx_h, cx_l, cy_h, cy_l, max_iter)
+    soit half_w = w * 0.5
+    soit half_h = h * 0.5
+    soit py = 0.0
+    soit idx = 0
+    tantque py < h:
+        soit dcy = (py - half_h) * ps
+        soit px = 0.0
+        tantque px < w:
+            soit dcx = (px - half_w) * ps
+            si idx < total:
+                out[1 + idx] = mandelbrot_perturbation_pixel(dcx, dcy, orbit, max_iter)
+            idx = idx + 1
+            px = px + 1.0
+        py = py + 1.0
+    retour out

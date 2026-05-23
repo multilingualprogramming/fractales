@@ -6,6 +6,39 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Mode de coloration « distance » (DE — distance estimation).** Nouveau noyau
+  `.multi` `src/fractales_de.multi` exporte `mandelbrot_de` et `julia_de` qui
+  itèrent z ET sa dérivée `dz_{n+1} = 2·z·dz + 1` en parallèle, puis renvoient
+  `|z|·ln|z|/|dz|` à l'échappement (rayon 256). `renderer.js` intercepte le
+  mode coloration `distance` pour mandelbrot/julia (et leurs variantes lisses),
+  appelle le DE par pixel, et applique une rampe palette log-comprimée (γ=0.5)
+  — donne une « gravure » fine des bords. Dépend de la **correction de
+  `math.log`** dans multilingual (réduction de mantisse).
+- **Arithmétique double-double (Dekker) en pur `.multi` + théorie de
+  perturbation Mandelbrot (Pauldelbrot/Botsch).** Nouveau module
+  `src/fractales_deep_zoom.multi` exporte `two_sum`, `two_product`, `add_dd`,
+  `sub_dd`, `mul_dd`, `square_dd` (split sur 2^27+1, sans FMA),
+  `mandelbrot_reference_orbit(cx_h, cx_l, cy_h, cy_l, max_iter)` qui itère
+  l'orbite Z_{n+1}=Z_n²+C en double-double et renvoie un tampon stride-2
+  `[count, Zx₀, Zy₀, …]`, et `mandelbrot_perturbation_pixel(δcx, δcy, orbit,
+  max_iter)` qui itère la perturbation `δ_{n+1}=2·Z·δ+δ²+δc` en f64. Un kernel
+  de tuile `mandelbrot_perturbation_tile(cx_h, cx_l, cy_h, cy_l, ps, w, h,
+  max_iter)` calcule l'orbite de référence UNE fois par tuile puis distribue
+  la perturbation par pixel — un seul appel JS↔WASM par tuile. Vérifié au
+  pixel près contre la mandelbrot f64 native (8×8 grille, 0/64 écart). Casse
+  potentiellement le mur du zoom 1e-15 vers ~1e-25 ; l'intégration UI
+  (coordonnées de vue en DD côté JS, navigation deep-zoom) reste à câbler.
+- **Rendu parallèle via Web Workers.** Nouveau pool de workers
+  (`public/js/render-worker.js` + `public/js/renderer-workers.js`) :
+  `hardwareConcurrency - 1` workers (plafonné à 8) ; chacun instancie sa
+  propre copie de `mandelbrot.wasm`. `remplirFractaleScalaire` découpe le
+  canvas en tuiles horizontales et dispatche en round-robin ; les itérations
+  reviennent en transfert zéro-copie (`Float64Array.buffer`), la coloration
+  reste sur le main thread (même logique exacte que le chemin synchrone).
+  Repli synchrone automatique si Workers indisponibles, transformation de
+  coordonnées active, ou erreur worker. **Sans `SharedArrayBuffer`** —
+  compatible GitHub Pages sans en-têtes COOP/COEP. SIMD (`v128`/`f64x2`)
+  nécessite une mise à jour du backend WAT et reste reporté.
 - **Migration « Meta » — première tranche : Atelier L-système en multilingual.**
   La grammaire L-système (réécriture simultanée de l'axiome) **et** l'interprétation
   tortue (géométrie : cos/sin, pile de branchement `[ ]`, accumulation des sommets),

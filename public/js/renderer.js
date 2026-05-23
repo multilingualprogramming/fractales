@@ -38,6 +38,11 @@ import {
   sommetsCheminWasmSync,
 } from "./renderer-atelier-lsysteme.js?v=20260521-atelier-meta";
 import {
+  obtenirPoolDeWorkers,
+  workersDisponibles,
+  nombreDeWorkersDuPool,
+} from "./renderer-workers.js?v=20260522-parallel";
+import {
   compilerFormule,
 } from "./renderer-formule.js?v=20260520-formule-preview-fix";
 
@@ -2857,7 +2862,57 @@ function appliquerTransforme(x, y, renduParams) {
   return [x, y];
 }
 
+// Mode coloration « distance » (gravure des bords) — calcule l'estimation de
+// distance à l'ensemble via WASM (mandelbrot_de / julia_de) puis mappe à un
+// gris log-comprimé. Renvoie true si traité, false sinon (l'appelant continue
+// avec le chemin standard).
+async function remplirFractaleScalaireDistance(w, h, data, cx0, cy0, ps, renduParams) {
+  let fnDe = null;
+  let estJulia = false;
+  if (renduParams.fractal === "mandelbrot" || renduParams.fractal === "mandelbrot_lisse") {
+    fnDe = wasmFunctions.mandelbrot_de;
+  } else if (renduParams.fractal === "julia" || renduParams.fractal === "julia_lisse") {
+    fnDe = wasmFunctions.julia_de;
+    estJulia = true;
+  }
+  if (!fnDe) return false;
+  const fond = getPaletteBackground(renduParams);
+  const useTransform = renduParams.coordTransform && renduParams.coordTransform !== "aucune";
+  const gamma = 0.5; // compression visuelle ; 0.5 = racine carrée
+  for (let py = 0; py < h; py++) {
+    const rawCy = cy0 + py * ps;
+    const base = py * w * 4;
+    for (let px = 0; px < w; px++) {
+      const rawCx = cx0 + px * ps;
+      let cx = rawCx, cy = rawCy;
+      if (useTransform) { [cx, cy] = appliquerTransforme(rawCx, rawCy, renduParams); }
+      const de = estJulia
+        ? fnDe(cx, cy, renduParams.juliaCre, renduParams.juliaCim, renduParams.maxIter)
+        : fnDe(cx, cy, renduParams.maxIter);
+      const i = base + px * 4;
+      if (de <= 0) {
+        // À l'intérieur de l'ensemble : couleur de fond
+        data[i] = fond[0]; data[i + 1] = fond[1]; data[i + 2] = fond[2];
+      } else {
+        // Distance en pixels ; sature à 1 ; compression gamma
+        const b = Math.min(1, de / ps);
+        const v = Math.pow(b, gamma);
+        const palette = getColorFromRatio(0.05 + v * 0.92, renduParams);
+        data[i] = palette[0]; data[i + 1] = palette[1]; data[i + 2] = palette[2];
+      }
+      data[i + 3] = 255;
+    }
+    if (py % 12 === 0) await attendre(0);
+  }
+  return true;
+}
+
 async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
+  // Mode coloration par distance (WASM DE) — interception avant le chemin standard.
+  if (renduParams.coloringMode === "distance"
+      && await remplirFractaleScalaireDistance(w, h, data, cx0, cy0, ps, renduParams)) {
+    return;
+  }
   const fn = wasmFunctions[renduParams.fractal];
   if (!fn) {
     const fond = getPaletteBackground(renduParams);
@@ -2876,6 +2931,45 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
   const estFractaleLisse = renduParams.fractal === "mandelbrot_lisse" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "burning_ship_lisse" || renduParams.fractal === "tricorn_lisse";
 
   const useTransform = renduParams.coordTransform && renduParams.coordTransform !== "aucune";
+
+  // Calcul des itérations : pool de Web Workers si disponible et compatible
+  // (pas de transformation de coordonnées par pixel), sinon boucle synchrone
+  // historique. Un seul Float64Array est reconstitué côté main thread puis
+  // chaque pixel est colorisé avec la même logique que le chemin synchrone.
+  let itersBuffer = null;
+  const pool = !useTransform && workersDisponibles() ? obtenirPoolDeWorkers() : null;
+  if (pool && nombreDeWorkersDuPool() > 0) {
+    const nWorkers = nombreDeWorkersDuPool();
+    const tiles = Math.min(nWorkers * 2, h);
+    const rowsPerTile = Math.max(1, Math.ceil(h / tiles));
+    const jobs = [];
+    for (let t = 0; t * rowsPerTile < h; t++) {
+      const hStart = t * rowsPerTile;
+      const hEnd = Math.min(h, hStart + rowsPerTile);
+      jobs.push({
+        fractal: renduParams.fractal,
+        cx0, cy0, ps, w, hStart, hEnd,
+        maxIter: renduParams.maxIter,
+        juliaCre: renduParams.juliaCre,
+        juliaCim: renduParams.juliaCim,
+        multibrotPower: renduParams.multibrotPower,
+      });
+    }
+    try {
+      const results = await pool.calculerTuiles(jobs);
+      itersBuffer = new Float64Array(w * h);
+      let offset = 0;
+      for (const part of results) {
+        itersBuffer.set(part, offset);
+        offset += part.length;
+      }
+    } catch (err) {
+      // Repli synchrone — la boucle ci-dessous appellera fn() par pixel.
+      console.warn("[render] pool indisponible, repli synchrone :", err);
+      itersBuffer = null;
+    }
+  }
+
   for (let py = 0; py < h; py++) {
     const rawCy = cy0 + py * ps;
     const base = py * w * 4;
@@ -2884,7 +2978,9 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams) {
       let cx = rawCx, cy = rawCy;
       if (useTransform) { [cx, cy] = appliquerTransforme(rawCx, rawCy, renduParams); }
       let iterValue;
-      if (renduParams.fractal === "julia" || renduParams.fractal === "burning_julia" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "julia_piege_cercle") {
+      if (itersBuffer !== null) {
+        iterValue = itersBuffer[py * w + px];
+      } else if (renduParams.fractal === "julia" || renduParams.fractal === "burning_julia" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "julia_piege_cercle") {
         iterValue = fn(cx, cy, renduParams.juliaCre, renduParams.juliaCim, renduParams.maxIter);
       } else if (renduParams.fractal === "multibrot") {
         iterValue = fn(cx, cy, renduParams.maxIter, renduParams.multibrotPower);
@@ -3100,6 +3196,8 @@ async function loadWasm() {
       julia_lisse: typeof exports.julia_lisse === "function" ? exports.julia_lisse : null,
       burning_ship_lisse: typeof exports.burning_ship_lisse === "function" ? exports.burning_ship_lisse : null,
       tricorn_lisse: typeof exports.tricorn_lisse === "function" ? exports.tricorn_lisse : null,
+      mandelbrot_de: typeof exports.mandelbrot_de === "function" ? exports.mandelbrot_de : null,
+      julia_de: typeof exports.julia_de === "function" ? exports.julia_de : null,
       mandelbrot_piege_cercle: typeof exports.mandelbrot_piege_cercle === "function" ? exports.mandelbrot_piege_cercle : null,
       mandelbrot_piege_croix: typeof exports.mandelbrot_piege_croix === "function" ? exports.mandelbrot_piege_croix : null,
       mandelbrot_piege_ligne: typeof exports.mandelbrot_piege_ligne === "function" ? exports.mandelbrot_piege_ligne : null,
@@ -4370,6 +4468,9 @@ async function init() {
   // Préchargement (sans attente) du module WASM de l'Atelier L-système : rend le
   // chemin tortue déterministe disponible pour le rendu du canvas principal.
   chargerAtelierLSysteme().catch(() => {});
+  // Lance le pool de Web Workers en arrière-plan (rendu parallèle des fractales
+  // scalaires). Chaque worker charge sa propre instance de mandelbrot.wasm.
+  if (workersDisponibles()) obtenirPoolDeWorkers();
   initialiserMoteur3D({
     canvas: canvas3d,
     hud: nav3dHud,

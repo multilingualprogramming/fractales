@@ -21,8 +21,15 @@ Ce projet suit une convention inspirée de Keep a Changelog.
   stockés comme codes via `ord()`), supprimant l'ancien plafond de 8000 caractères :
   l'aperçu couvre désormais toute la plage de générations (ex. Koch génération 7 =
   16 385 sommets) et émet `profondeur` + `angle` par sommet (coloration par segment).
-- Les règles **stochastiques** (RNG + alternatives pondérées) restent traitées côté
-  JavaScript ; le chemin multilingual couvre les grammaires déterministes.
+- **Tortue WASM pour 100 % des L-systèmes (déterministes ET stochastiques).** Pour
+  les grammaires stochastiques, l'expansion (RNG FNV+mulberry32 + alternatives
+  pondérées `|`) reste en JS — préservant la reproductibilité **bit-pour-bit** des
+  seeds existants partagés via les liens deep-link — mais la tortue tourne en WASM
+  via le nouvel export `tortue_chemin_brut(chemin: chaîne, angle_deg)` qui marche
+  une séquence DÉJÀ développée. Le canvas principal (`renderer.js`) route donc :
+  déterministe → `tortue_lsysteme(axiome, regles, ...)` ; stochastique → expansion
+  JS puis `tortue_chemin_brut(sequence, angle)`. Les deux chemins exercent les
+  paramètres chaîne à longueur préfixée.
 - **Rendu du canvas principal porté en WASM (grammaires déterministes).** Désormais
   débloqué par les **chaînes à longueur préfixée** de multilingual : la tortue est
   scindée en `tortue_lsysteme(axiome, regles, generations, angle_deg)` (tortue pure,
@@ -34,10 +41,12 @@ Ce projet suit une convention inspirée de Keep a Changelog.
   grammaire est stochastique ou si le module n'est pas encore chargé.
 - Étape `[4b]` du build (`scripts/compile_wasm.multi`) compilant l'Atelier vers
   WASM et émettant le shim hôte généré ; validation de l'export `tracer_lsysteme`.
-- Test de parité `tests/atelier_lsysteme_wasm.test.js` (45 cas) vérifiant que
-  l'expansion, la tortue DOM (`tracer_lsysteme`) ET la tortue par arguments chaîne
-  (`tortue_lsysteme`, chemin du canvas principal) reproduisent les références
-  JavaScript (Koch, Dragon, grille, plante).
+- Test de parité `tests/atelier_lsysteme_wasm.test.js` (58 cas) vérifiant que
+  l'expansion, la tortue DOM (`tracer_lsysteme`), la tortue par arguments chaîne
+  (`tortue_lsysteme`, déterministe) ET la tortue de chemin brut
+  (`tortue_chemin_brut`, stochastique : expansion JS + tortue WASM) reproduisent
+  les références JavaScript (Koch, Dragon, grille, plante, buisson stochastique,
+  ramures pondérées).
 
 ### Notes
 

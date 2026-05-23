@@ -30,10 +30,12 @@ import {
 import {
   pointsPropositionLSysteme,
   parserReglesLSysteme,
+  genererPropositionLSysteme,
 } from "./renderer-lsystem.js?v=20260520-formule-preview";
 import {
   chargerAtelierLSysteme,
   sommetsGrammaireWasmSync,
+  sommetsCheminWasmSync,
 } from "./renderer-atelier-lsysteme.js?v=20260521-atelier-meta";
 import {
   compilerFormule,
@@ -2264,18 +2266,34 @@ function grammaireEstStochastique(reglesTexte) {
 }
 
 // Sommets de la proposition L-système pour le rendu du canvas principal.
-// Chemin déterministe : tortue authored en multilingual (WASM), axiome/règles
-// passés comme PARAMÈTRES chaîne (tampons à longueur préfixée). Repli JS pour
-// les grammaires stochastiques ou tant que le module WASM n'est pas chargé.
+// Tortue authored en multilingual (WASM) dans tous les cas :
+//   - Déterministe : tortue_lsysteme(axiome, regles, gen, angle) — expansion ET
+//     tortue en WASM, sans matérialisation (parcours DFS).
+//   - Stochastique : expansion JS (RNG FNV+mulberry32, bit-pour-bit, partagée
+//     par les liens deep-link) puis tortue_chemin_brut(sequence, angle) en WASM.
+// Repli JS complet (pointsPropositionLSysteme) seulement tant que le module
+// WASM n'est pas encore chargé.
 function sommetsLSystemePourRendu(renduParams) {
   const generations = Math.max(0, Math.min(8, Number(renduParams.lsystemGenerations) | 0));
   const axiome = String(renduParams.lsystemAxiom || "F").slice(0, 96);
-  if (!grammaireEstStochastique(renduParams.lsystemRules)) {
+  if (grammaireEstStochastique(renduParams.lsystemRules)) {
+    // RNG en JS (reproduction bit-pour-bit des seeds existants) ; tortue en WASM.
+    const { sequence } = genererPropositionLSysteme({
+      axiom: axiome,
+      rules: renduParams.lsystemRules,
+      angle: renduParams.lsystemAngle,
+      generations,
+      seed: renduParams.lsystemSeed,
+    });
+    const sommets = sommetsCheminWasmSync(sequence, renduParams.lsystemAngle);
+    if (sommets && sommets.length >= 2) return sommets;
+  } else {
     const sommets = sommetsGrammaireWasmSync(
       axiome, renduParams.lsystemRules, generations, renduParams.lsystemAngle,
     );
     if (sommets && sommets.length >= 2) return sommets;
   }
+  // Repli : module WASM pas encore chargé — chemin JS complet (expansion + tortue).
   const { points } = pointsPropositionLSysteme({
     axiom: renduParams.lsystemAxiom,
     rules: renduParams.lsystemRules,

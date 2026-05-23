@@ -93,16 +93,10 @@ function ecrireChaineWasm(exports, texte) {
  * Réinitialise le tas, marshalle les deux chaînes en tampons à en-tête de
  * longueur, puis appelle l'export tortue_lsysteme(axiome, regles, gen, angle).
  */
-export function sommetsGrammaireWasmSync(axiom, rules, generations, angleDeg) {
-  const exports = exportsRef.current;
-  if (!exports || !exports.tortue_lsysteme || !exports.__ml_str_alloc) return null;
-  if (!memoryRef.current) return null;
-
-  exports.__ml_reset();
-  const axPtr = ecrireChaineWasm(exports, axiom);
-  const ruPtr = ecrireChaineWasm(exports, rules);
-  const ptr = exports.tortue_lsysteme(axPtr, ruPtr, Number(generations) || 0, Number(angleDeg) || 0);
-
+// Lit les sommets renvoyés (liste stride-5 [count, x,y,move,prof,ang ...]) à
+// partir d'un pointeur f64 issu d'un export tortue, et matérialise un tableau
+// d'objets { x, y, move, profondeur, angle } compatible avec le chemin JS.
+function lireSommetsDepuisPtr(ptr) {
   const base = Math.trunc(ptr);
   const view = new DataView(memoryRef.current.buffer);
   const count = view.getFloat64(base + 8, true); // élément [0] = np
@@ -118,6 +112,36 @@ export function sommetsGrammaireWasmSync(axiom, rules, generations, angleDeg) {
     };
   }
   return points;
+}
+
+export function sommetsGrammaireWasmSync(axiom, rules, generations, angleDeg) {
+  const exports = exportsRef.current;
+  if (!exports || !exports.tortue_lsysteme || !exports.__ml_str_alloc) return null;
+  if (!memoryRef.current) return null;
+
+  exports.__ml_reset();
+  const axPtr = ecrireChaineWasm(exports, axiom);
+  const ruPtr = ecrireChaineWasm(exports, rules);
+  const ptr = exports.tortue_lsysteme(axPtr, ruPtr, Number(generations) || 0, Number(angleDeg) || 0);
+  return lireSommetsDepuisPtr(ptr);
+}
+
+/**
+ * Calcule les sommets de la tortue depuis une chaîne DÉJÀ développée. SYNCHRONE.
+ * Permet aux grammaires stochastiques de garder leur expansion JS bit-pour-bit
+ * (RNG FNV+mulberry32 non porté en WAT) tout en utilisant la tortue WASM.
+ * Renvoie null si le module n'est pas encore chargé (l'appelant doit alors se
+ * rabattre sur le chemin JS).
+ */
+export function sommetsCheminWasmSync(sequence, angleDeg) {
+  const exports = exportsRef.current;
+  if (!exports || !exports.tortue_chemin_brut || !exports.__ml_str_alloc) return null;
+  if (!memoryRef.current) return null;
+
+  exports.__ml_reset();
+  const seqPtr = ecrireChaineWasm(exports, sequence);
+  const ptr = exports.tortue_chemin_brut(seqPtr, Number(angleDeg) || 0);
+  return lireSommetsDepuisPtr(ptr);
 }
 
 /**

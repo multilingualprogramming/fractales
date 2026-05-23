@@ -23,6 +23,109 @@
 # Sortie : liste `sommets` ; [0] = nombre de sommets np, puis np quintuplets
 # (x, y, déplacer, profondeur, angle). déplacer = 1.0 pour moveTo, 0.0 pour lineTo.
 
+déf tortue_chemin_brut(chemin: chaîne, angle_deg):
+    # Tortue qui interprète une chaîne DÉJÀ développée — pas de réécriture. Permet
+    # aux grammaires stochastiques de garder leur expansion JS bit-pour-bit (RNG
+    # FNV+mulberry32 non porté en WAT) tout en utilisant la tortue WASM. Même
+    # logique « feuille » que `tortue_lsysteme` ; sortie : sommets stride-5.
+    soit MAXPTS = 200000
+    soit MAXPILE = 8192
+
+    soit n = longueur(chemin)
+    soit pas = angle_deg * 3.141592653589793 / 180.0
+    soit sommets = [0.0] * (1 + 5 * MAXPTS)
+    soit bx = [0.0] * MAXPILE
+    soit by = [0.0] * MAXPILE
+    soit ba = [0.0] * MAXPILE
+    soit bsg = [0.0] * MAXPILE
+    soit bpf = [0.0] * MAXPILE
+    soit bsp = 0
+
+    soit x = 0.0
+    soit y = 0.0
+    soit ang = 0.0
+    soit signe = 1.0
+    soit prof = 0.0
+
+    # point initial (moveTo)
+    sommets[1] = x
+    sommets[2] = y
+    sommets[3] = 1.0
+    sommets[4] = 0.0
+    sommets[5] = 0.0
+    soit np = 1
+
+    soit i = 0
+    tantque i < n:
+        soit code = ord(chemin[i])
+        si code == 70:           # 'F'
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 5 * np] = x
+                sommets[2 + 5 * np] = y
+                sommets[3 + 5 * np] = 0.0
+                sommets[4 + 5 * np] = prof
+                sommets[5 + 5 * np] = ang
+                np = np + 1
+        si code == 71:           # 'G'
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 5 * np] = x
+                sommets[2 + 5 * np] = y
+                sommets[3 + 5 * np] = 0.0
+                sommets[4 + 5 * np] = prof
+                sommets[5 + 5 * np] = ang
+                np = np + 1
+        si code == 102:          # 'f'
+            x = x + math.cos(ang)
+            y = y + math.sin(ang)
+            si np < MAXPTS:
+                sommets[1 + 5 * np] = x
+                sommets[2 + 5 * np] = y
+                sommets[3 + 5 * np] = 1.0
+                sommets[4 + 5 * np] = prof
+                sommets[5 + 5 * np] = ang
+                np = np + 1
+        si code == 43:           # '+'
+            ang = ang + pas * signe
+        si code == 45:           # '-'
+            ang = ang - pas * signe
+        si code == 91:           # '['
+            si bsp < MAXPILE:
+                bx[bsp] = x
+                by[bsp] = y
+                ba[bsp] = ang
+                bsg[bsp] = signe
+                bpf[bsp] = prof
+                bsp = bsp + 1
+            prof = prof + 1.0
+        si code == 93:           # ']'
+            si bsp > 0:
+                bsp = bsp - 1
+                x = bx[bsp]
+                y = by[bsp]
+                ang = ba[bsp]
+                signe = bsg[bsp]
+                prof = bpf[bsp]
+                si np < MAXPTS:
+                    sommets[1 + 5 * np] = x
+                    sommets[2 + 5 * np] = y
+                    sommets[3 + 5 * np] = 1.0
+                    sommets[4 + 5 * np] = prof
+                    sommets[5 + 5 * np] = ang
+                    np = np + 1
+        si code == 124:          # '|'
+            ang = ang + 3.141592653589793
+        si code == 33:           # '!'
+            signe = -signe
+        i = i + 1
+
+    sommets[0] = np
+    retour sommets
+
+
 déf tortue_lsysteme(axiome: chaîne, regles: chaîne, generations, angle_deg):
     soit MAXPTS = 200000         # capacité du tampon de sommets
     soit MAXTASK = 8192          # profondeur max de la pile de tâches DFS

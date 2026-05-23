@@ -168,6 +168,85 @@ function lireSommetsArgs(exports, memoryRef, axiom, rules, generations, angle) {
   return { np, pts };
 }
 
+// Chemin STOCHASTIQUE du CANVAS PRINCIPAL : l'expansion (RNG FNV+mulberry32 +
+// alternatives pondérées) reste en JS pour préserver la reproductibilité
+// bit-pour-bit des liens deep-link existants ; la tortue tourne en WASM via
+// tortue_chemin_brut(sequence, angle). Doit reproduire la tortue JS qui marche
+// directement la même séquence pré-développée.
+function lireSommetsChemin(exports, memoryRef, sequence, angle) {
+  exports.__ml_reset();
+  const b = encodeurArgs.encode(String(sequence ?? ""));
+  const p = exports.__ml_str_alloc(b.length);
+  if (b.length) new Uint8Array(memoryRef.current.buffer, p, b.length).set(b);
+  const ptr = exports.tortue_chemin_brut(p, angle);
+  const base = Math.trunc(ptr);
+  const view = new DataView(memoryRef.current.buffer);
+  const np = view.getFloat64(base + 8, true);
+  const pts = [];
+  for (let k = 0; k < np; k++) {
+    const o = base + 8 + 8 * (1 + PAS * k);
+    pts.push({
+      x: view.getFloat64(o, true),
+      y: view.getFloat64(o + 8, true),
+      move: view.getFloat64(o + 16, true),
+      profondeur: view.getFloat64(o + 24, true),
+      angle: view.getFloat64(o + 32, true),
+    });
+  }
+  return { np, pts };
+}
+
+const CAS_STOCHASTIQUES = [
+  {
+    nom: "buisson stochastique",
+    axiom: "X",
+    rules: "X=F[+X][-X]FX|0.6:F+X|0.4:F-X;F=FF",
+    angle: 22.5,
+    gens: [2, 3, 4],
+    seeds: [1, 7, 42],
+  },
+  {
+    nom: "ramures pondérées",
+    axiom: "F",
+    rules: "F=0.5:F[+F]F|0.3:F[-F]F|0.2:FF",
+    angle: 27,
+    gens: [2, 3],
+    seeds: [1, 13],
+  },
+];
+
+describe("Atelier L-systeme — tortue stochastique (canvas principal)", () => {
+  for (const { nom, axiom, rules, angle, gens, seeds } of CAS_STOCHASTIQUES) {
+    for (const g of gens) {
+      for (const seed of seeds) {
+        test(`${nom} génération ${g} seed=${seed} — expansion JS + tortue WASM`, async () => {
+          // Référence : chemin JS complet (expansion + tortue).
+          const ref = pointsPropositionLSysteme(
+            { axiom, rules, angle, generations: g, seed },
+            { limit: 200000 },
+          ).points;
+          // Sous test : expansion JS (même RNG) → tortue WASM sur la séquence.
+          const { sequence } = genererPropositionLSysteme(
+            { axiom, rules, angle, generations: g, seed },
+            { limit: 200000 },
+          );
+          const { exports, memoryRef } = await instancier(axiom, rules);
+          const { np, pts } = lireSommetsChemin(exports, memoryRef, sequence, angle);
+          assert.equal(np, ref.length, "nombre de sommets");
+          let maxDelta = 0;
+          for (let i = 0; i < np; i++) {
+            const expectedMove = i === 0 || ref[i].move ? 1 : 0;
+            assert.equal(pts[i].move, expectedMove, `drapeau move au point ${i}`);
+            assert.equal(pts[i].profondeur, ref[i].profondeur || 0, `profondeur au point ${i}`);
+            maxDelta = Math.max(maxDelta, Math.abs(pts[i].x - ref[i].x), Math.abs(pts[i].y - ref[i].y));
+          }
+          assert.ok(maxDelta < 1e-2, `écart de coordonnées trop grand : ${maxDelta}`);
+        });
+      }
+    }
+  }
+});
+
 describe("Atelier L-systeme — tortue par arguments chaîne (canvas principal)", () => {
   for (const { nom, axiom, rules, angle, gens } of CAS) {
     for (const g of gens) {

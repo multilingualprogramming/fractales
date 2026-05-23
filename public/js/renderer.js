@@ -2874,10 +2874,9 @@ async function remplirFractalePonctuelle(w, h, data, cx0, cy0, ps, renduParams) 
 
 // Transformations du plan (◈) — math complexe pure définie en multilingual
 // (cf. src/fractales_transforms.multi). Le WASM est canonique ; fallback JS
-// identique si le module n'est pas encore chargé. Note : multilingual atan
-// est une série Taylor 7-termes sans réduction d'intervalle (~3% près de
-// |x|=1), ce qui décale légèrement le mode log_polaire par rapport à la
-// référence JS Math.atan2 — visuellement équivalent.
+// identique si le module n'est pas encore chargé. Depuis l'enhancement
+// multilingual math.atan (range reduction double + 12 termes Taylor,
+// 2026-05-23), log_polaire est ~1e-10 près de la référence JS Math.atan2.
 function appliquerTransforme(x, y, renduParams) {
   const ct = renduParams.coordTransform;
   if (!ct || ct === "aucune") return [x, y];

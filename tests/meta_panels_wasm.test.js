@@ -130,11 +130,10 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
     [1e-12, 1e-12], // bordure singularité
   ];
 
-  test("log_polaire : x suit math.log natif (~1e-6) ; y suit math.atan natif (~5% sur Taylor 7-termes)", () => {
-    // math.atan dans multilingual est une série de Taylor à 7 termes sans
-    // réduction d'intervalle (cf. wat_generator_core.py:$math_atan) — précis
-    // pour |x| ≪ 1, jusqu'à ~3% près pour |x| ≈ 1. Le mode log_polaire reste
-    // visuellement correct : la composante x (ln|z|) garde la précision native.
+  test("log_polaire : x suit math.log natif (~1e-6) ; y suit math.atan2 natif (~1e-10)", () => {
+    // Depuis 2026-05-23 : math.atan a une double réduction d'intervalle
+    // (1/x ET (x−1)/(x+1)) + 12 termes Taylor — précision ~1e-10. log_polaire
+    // est désormais quasi bit-exact avec JS Math.atan2.
     for (const [x, y] of points) {
       const [refX, refY] = jsAppliquerTransforme(x, y, "log_polaire");
       const wasmX = exports.transforme_log_polaire_x(x, y);
@@ -143,9 +142,8 @@ describe("fractales_transforms — parité par-rapport au JS de référence", ()
         Math.abs(wasmX - refX) < 1e-4,
         `log_polaire_x(${x},${y}): WASM ${wasmX} vs JS ${refX}`,
       );
-      // tolérance bornée à 0.05 (~3.7% atan(1)) pour y = atan2(y, x)
       assert.ok(
-        Math.abs(wasmY - refY) < 0.05,
+        Math.abs(wasmY - refY) < 1e-9,
         `log_polaire_y(${x},${y}): WASM ${wasmY} vs JS ${refY}`,
       );
     }

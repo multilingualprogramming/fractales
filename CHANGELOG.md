@@ -14,12 +14,10 @@ Ce projet suit une convention inspirée de Keep a Changelog.
     `transforme_joukowski_x/y`. Math complexe pure (une fonction par
     composante, motif des attracteurs). `appliquerTransforme()` dans
     `renderer.js` route maintenant vers WASM via `wasmMetaPanels.transforms`
-    quand chargé ; fallback JS identique sinon. Note : multilingual `math.atan`
-    est une série Taylor 7-termes sans réduction d'intervalle (~3% près de
-    |x|=1), donc le mode log_polaire est visuellement équivalent mais pas
-    bit-exact avec `Math.atan2` — accord ~5% en y, exact en x (math.log
-    natif corrigé en 2026-05-22). Inversion, plis, Cayley, Joukowski : exacts
-    à 1e-12 près.
+    quand chargé ; fallback JS identique sinon. **Précision** : depuis
+    l'enhancement `math.atan` 2026-05-23 (double range reduction + 12 termes),
+    log_polaire est à ~1e-10 de la référence `Math.atan2`. Inversion, plis,
+    Cayley, Joukowski : exacts à 1e-12 près.
   - `src/fractales_orbite.multi` : `orbite_mandelbrot_famille(code, p_re,
     p_im, c_re_julia, c_im_julia, max_iter)` couvre 12 variantes (mandelbrot,
     julia, burning_ship, burning_julia, tricorn, celtic, perpendicular_celtic,

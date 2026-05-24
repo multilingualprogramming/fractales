@@ -120,14 +120,16 @@ déf formatter_exponentiel_signe(abs_n, decimales_code):
         corps = f"{m:.8f}"
     sinon:
         corps = f"{m:.9f}"
-    retour corps + "e" + f"{e:.0f}"
+    soit exposant = f"{e:.0f}"
+    retour corps + "e" + exposant
 
 
 déf formatter_exponentiel_8(n):
     si n == 0.0:
         retour "0e0"
     si n < 0.0:
-        retour "-" + formatter_exponentiel_signe(-n, 8)
+        soit corps_negatif = formatter_exponentiel_signe(-n, 8)
+        retour "-" + corps_negatif
     retour formatter_exponentiel_signe(n, 8)
 
 
@@ -137,5 +139,6 @@ déf formatter_exponentiel_9(n):
     si n == 0.0:
         retour "0e0"
     si n < 0.0:
-        retour "-" + formatter_exponentiel_signe(-n, 9)
+        soit corps_negatif = formatter_exponentiel_signe(-n, 9)
+        retour "-" + corps_negatif
     retour formatter_exponentiel_signe(n, 9)

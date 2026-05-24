@@ -3477,7 +3477,7 @@ async function loadWasm() {
       wasmMetaPanels = {
         transforms: {
           // Depuis multilingual B1 (2026-05-23) : un seul appel par transforme
-          // qui renvoie un Array [x', y'] grâce aux multi-value WASM returns.
+          // qui renvoie un Array [x', y'] via les multi-value WASM returns.
           // Plus de duplication _x/_y, et 1 appel WASM par pixel au lieu de 2.
           log_polaire: exports.transforme_log_polaire,
           inversion: exports.transforme_inversion,
@@ -3497,7 +3497,7 @@ async function loadWasm() {
           valider_rotation: exports.valider_rotation,
           valider_etat_complet: exports.valider_etat_complet,
           // Depuis multilingual B4 (2026-05-23) : un seul formatter_fixe(v, n)
-          // grâce au builtin `format_fixed(v, n)` runtime. N variable.
+          // via le builtin `format_fixed(v, n)` runtime. N variable.
           formatter_fixe: exports.formatter_fixe,
           formatter_exponentiel_8: exports.formatter_exponentiel_8 ?? null,
           formatter_exponentiel_9: exports.formatter_exponentiel_9 ?? null,

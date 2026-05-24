@@ -31,7 +31,7 @@ déf hash_fnv32_seed(seed: chaîne):
 déf prochain_hash_mulberry32(etat):
     # Avance l'état de un cran. Retour : liste [nouvel_etat, tirage_unitaire]
     # où tirage_unitaire ∈ [0, 1). Le `nouvel_etat` doit être réinjecté à
-    # l'appel suivant — la fonction est pure.
+    # l'appel suivant — la routine est pure.
     soit etat_avance = iadd32(etat, 1831565813.0)   # 0x6d2b79f5
     soit t = etat_avance
     # t = imul(t ^ (t >>> 15), t | 1)

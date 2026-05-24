@@ -1,6 +1,6 @@
 # Transformations du plan — panneau « ◈ Transformations » de l'Atelier
 # d'exploration. Math pure (complexe → complexe) appliquée par pixel avant
-# l'appel des fractales d'évasion. Une fonction par composante (x, y) pour
+# l'appel des fractales d'évasion. Une routine par composante (x, y) pour
 # éviter les retours tuple côté WAT (cf. attracteurs).
 #
 # Modes côté JS :

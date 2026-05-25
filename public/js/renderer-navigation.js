@@ -57,6 +57,12 @@ function formatFlottant(n, partage) {
     if (wasm !== null) return wasm.replace(/\.?0+e/, "e").replace("e+", "e");
     return n.toExponential(10).replace(/\.?0+e/, "e").replace("e+", "e");
   }
+  // Plage non-exponentielle : délégué à `formatter_precision_12` (W16, 2026-05-25),
+  // qui appelle `format_prec(v, 12)` côté multilingual (strip des zéros de queue
+  // et du '.' orphelin en interne).
+  const fp = partage?.partage?.formatter_precision_12;
+  const wasm = fp ? fixeWasm(partage, fp, n) : null;
+  if (wasm !== null) return wasm;
   return n.toPrecision(12).replace(/\.?0+$/, "");
 }
 

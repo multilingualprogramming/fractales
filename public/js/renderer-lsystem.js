@@ -1,5 +1,7 @@
 "use strict";
 
+import { writeStringToWasm } from "./atelier_lsysteme_shim.js?v=20260521-atelier-meta";
+
 const LIMITE_SEQUENCE_APERCU = 70000;
 const LIMITE_SEQUENCE_RENDU = 320000;
 
@@ -37,9 +39,7 @@ function creerHasardLSystemeWasm(seed, hasardWasm) {
   const { hash_fnv32_seed, prochain_hash_mulberry32, memory, reset, strAlloc, listItem } = hasardWasm;
   const text = String(seed ?? "1").trim() || "1";
   reset();
-  const bytes = new TextEncoder().encode(text);
-  const ptr = strAlloc(bytes.length);
-  new Uint8Array(memory.buffer, ptr, bytes.length).set(bytes);
+  const ptr = writeStringToWasm(strAlloc, memory, text);
   let state = hash_fnv32_seed(ptr);
   // mulberry32 renvoie une liste [nouvel_état, tirage] ; lue via __ml_list_item (B5).
   return function hasard() {

@@ -126,6 +126,7 @@ export function initialiserExports({
         centerX: vueCourante.centerX,
         centerY: vueCourante.centerY,
         pixelSize: vueCourante.pixelSize,
+        rotation: vueCourante.rotation ?? 0,
       };
     updateStatusBar("Rendu PNG haute résolution…");
     await rendreDansCanvas(canvasExport, vueCible, renduParams);
@@ -165,8 +166,9 @@ export function initialiserExports({
 
     const vueCourante = getViewState();
     const ps = vueCourante.pixelSize;
-    const cxBase = vueCourante.centerX - (largeur / 2) * ps;
-    const cyBase = vueCourante.centerY - (hauteur / 2) * ps;
+    const rotation = vueCourante.rotation ?? 0;
+    const cosR = Math.cos(rotation);
+    const sinR = Math.sin(rotation);
 
     const nbTuilesX = Math.ceil(largeur / tuile);
     const nbTuilesY = Math.ceil(hauteur / tuile);
@@ -183,11 +185,22 @@ export function initialiserExports({
         const th = Math.min(tuile, hauteur - oy);
         canvasTuile.width = tw;
         canvasTuile.height = th;
-        // Centre monde de la tuile (origine = centre pixel de la tuile dans
-        // le grand canvas, projete en coordonnees monde au pixelSize courant).
-        const tileCenterX = cxBase + (ox + tw / 2) * ps;
-        const tileCenterY = cyBase + (oy + th / 2) * ps;
-        const vueTuile = { centerX: tileCenterX, centerY: tileCenterY, pixelSize: ps };
+        // Centre monde de la tuile : offset depuis le centre de l'image en
+        // pixels-monde (cadre canvas non-tourné), puis rotation autour de
+        // (vueCourante.centerX, centerY) pour obtenir la position dans le
+        // référentiel monde rotaté. La rotation per-pixel À L'INTÉRIEUR de la
+        // tuile est ensuite appliquée par `remplirFractaleScalaire` via
+        // `vueTuile.rotation` (cf. renderer.js useRotation, 2026-05-25).
+        const dxc = (ox + tw / 2 - largeur / 2) * ps;
+        const dyc = (oy + th / 2 - hauteur / 2) * ps;
+        const tileCenterX = vueCourante.centerX + dxc * cosR - dyc * sinR;
+        const tileCenterY = vueCourante.centerY + dxc * sinR + dyc * cosR;
+        const vueTuile = {
+          centerX: tileCenterX,
+          centerY: tileCenterY,
+          pixelSize: ps,
+          rotation,
+        };
         await rendreDansCanvas(canvasTuile, vueTuile, renduParams);
         ctxFinal.drawImage(canvasTuile, ox, oy);
         const fait = ty * nbTuilesX + tx + 1;

@@ -388,16 +388,18 @@ describe("fractales_partage — formatage fixe", () => {
   });
 
   test("formatter_exponentiel_8 (pixelSize / lo) — round-trip parseFloat fidèle", () => {
-    // Le WAT n'a pas de format `.Ne` natif ; fractales_partage.multi le
-    // construit via math.log10 + pow(10, e) + .Nf (cf. la fix de pow_f64
-    // dans multilingual, 2026-05-23). Round-trip exigé pour la précision
-    // sub-f64 des liens de partage en zoom profond.
+    // Depuis W4 (2026-05-25), fractales_partage.multi délègue à
+    // `format_exp(v, n)` — runtime builtin multilingual qui matche
+    // `v.toExponential(n).replace("e+", "e")` côté JS. Round-trip exigé pour
+    // la précision sub-f64 des liens de partage en zoom profond.
     for (const v of [1.5e-13, 5e-16, 1e10, 3.141592, -0.0001, 9.99e8, 0.0, -1e-15, 1e-300]) {
       exports.__ml_reset();
       const ptr = exports.formatter_exponentiel_8(v);
       const got = lireChaine(ptr);
       if (v === 0) {
-        assert.equal(got, "0e0");
+        // format_exp(0, 8) → "0.00000000e0" (8 zéros mantisse), conforme à
+        // `(0).toExponential(8).replace("e+", "e")` côté JS.
+        assert.equal(got, "0.00000000e0");
         continue;
       }
       const parsed = parseFloat(got);

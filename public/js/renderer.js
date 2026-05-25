@@ -3021,13 +3021,26 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
   const estFractaleLisse = renduParams.fractal === "mandelbrot_lisse" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "burning_ship_lisse" || renduParams.fractal === "tricorn_lisse";
 
   const useTransform = renduParams.coordTransform && renduParams.coordTransform !== "aucune";
+  // Rotation : depuis 2026-05-25 le pipeline d'export (rendreDansCanvas →
+  // remplirFractaleScalaire) propage `vueCible.rotation` pour les exports
+  // haute-résolution et gigapixel. Quand `useRotation`, on évite les pools
+  // Workers et le chemin SIMD (qui supposent un mapping pixel→monde linéaire
+  // cx0+px*ps / cy0+py*ps) et on bascule sur la boucle scalaire rotée.
+  const rotation = vueCible?.rotation ?? 0;
+  const useRotation = rotation !== 0;
+  const cosRot = useRotation ? Math.cos(rotation) : 1;
+  const sinRot = useRotation ? Math.sin(rotation) : 0;
+  const halfW = w / 2;
+  const halfH = h / 2;
+  const centerX = useRotation ? vueCible.centerX : 0;
+  const centerY = useRotation ? vueCible.centerY : 0;
 
   // Calcul des itérations : pool de Web Workers si disponible et compatible
-  // (pas de transformation de coordonnées par pixel), sinon boucle synchrone
-  // historique. Un seul Float64Array est reconstitué côté main thread puis
-  // chaque pixel est colorisé avec la même logique que le chemin synchrone.
+  // (pas de transformation de coordonnées par pixel, pas de rotation), sinon
+  // boucle synchrone historique. Un seul Float64Array est reconstitué côté
+  // main thread puis chaque pixel est colorisé avec la même logique.
   let itersBuffer = null;
-  const pool = !useTransform && workersDisponibles() ? obtenirPoolDeWorkers() : null;
+  const pool = !useTransform && !useRotation && workersDisponibles() ? obtenirPoolDeWorkers() : null;
   if (pool && nombreDeWorkersDuPool() > 0) {
     const nWorkers = nombreDeWorkersDuPool();
     const tiles = Math.min(nWorkers * 2, h);
@@ -3070,6 +3083,7 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
   const wasmReset = wasmResetHeap ?? wasmMetaPanels?.reset ?? null;
   const useSimdMandelbrot =
     itersBuffer === null
+    && !useRotation
     && renduParams.fractal === "mandelbrot"
     && simdPair
     && wasmMem
@@ -3107,10 +3121,19 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
     }
   }
   for (let py = 0; py < h; py++) {
-    const rawCy = cy0 + py * ps;
     const base = py * w * 4;
+    const dyBaseRot = useRotation ? (py - halfH) * ps : 0;
+    const rawCyDefault = useRotation ? 0 : cy0 + py * ps;
     for (let px = 0; px < w; px++) {
-      const rawCx = cx0 + px * ps;
+      let rawCx, rawCy;
+      if (useRotation) {
+        const dx = (px - halfW) * ps;
+        rawCx = centerX + dx * cosRot - dyBaseRot * sinRot;
+        rawCy = centerY + dx * sinRot + dyBaseRot * cosRot;
+      } else {
+        rawCx = cx0 + px * ps;
+        rawCy = rawCyDefault;
+      }
       let cx = rawCx, cy = rawCy;
       if (useTransform) { [cx, cy] = appliquerTransforme(rawCx, rawCy, renduParams); }
       let iterValue;

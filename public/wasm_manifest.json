@@ -2424,9 +2424,8 @@
       "source_module": "fractales_partage"
     },
     {
-      "name": "formatter_exponentiel_signe",
+      "name": "formatter_precision_12",
       "arg_types": [
-        "f64",
         "f64"
       ],
       "return_type": "str",
@@ -2847,7 +2846,7 @@
       "valider_rotation",
       "valider_etat_complet",
       "formatter_fixe",
-      "formatter_exponentiel_signe",
+      "formatter_precision_12",
       "formatter_exponentiel_8",
       "formatter_exponentiel_9"
     ],

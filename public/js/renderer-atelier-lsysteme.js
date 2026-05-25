@@ -21,6 +21,7 @@
 import {
   createWasiImports,
   createDomImports,
+  writeStringToWasm,
 } from "./atelier_lsysteme_shim.js?v=20260521-atelier-meta";
 
 const WASM_URL = "atelier_lsysteme.wasm?v=20260521-atelier-meta";
@@ -66,21 +67,8 @@ export function chargerAtelierLSysteme() {
 // (x, y, déplacer, profondeur, angle). Pas de 5 valeurs par sommet.
 const PAS_SOMMET = 5;
 
-const encodeurUtf8 = new TextEncoder();
-
-/**
- * Écrit *texte* en mémoire WASM comme tampon à longueur préfixée (en-tête à
- * ptr-4) via __ml_str_alloc, et renvoie le pointeur vers les octets. Le module
- * doit déjà être instancié (exports/memoryRef renseignés).
- */
-function ecrireChaineWasm(exports, texte) {
-  const octets = encodeurUtf8.encode(String(texte ?? ""));
-  const ptr = exports.__ml_str_alloc(octets.length);
-  if (octets.length > 0) {
-    new Uint8Array(memoryRef.current.buffer, ptr, octets.length).set(octets);
-  }
-  return ptr;
-}
+// Marshalling JS → WASM délégué à `writeStringToWasm` du shim multilingual
+// (W17, 2026-05-25) : encode UTF-8, appelle __ml_str_alloc, copie les octets.
 
 /**
  * Calcule les sommets de la tortue DIRECTEMENT depuis une grammaire passée en
@@ -122,8 +110,8 @@ export function sommetsGrammaireWasmSync(axiom, rules, generations, angleDeg) {
   if (!memoryRef.current) return null;
 
   exports.__ml_reset();
-  const axPtr = ecrireChaineWasm(exports, axiom);
-  const ruPtr = ecrireChaineWasm(exports, rules);
+  const axPtr = writeStringToWasm(exports.__ml_str_alloc, memoryRef.current, axiom);
+  const ruPtr = writeStringToWasm(exports.__ml_str_alloc, memoryRef.current, rules);
   const ptr = exports.tortue_lsysteme(axPtr, ruPtr, Number(generations) || 0, Number(angleDeg) || 0);
   return lireSommetsDepuisPtr(ptr);
 }
@@ -141,7 +129,7 @@ export function sommetsCheminWasmSync(sequence, angleDeg) {
   if (!memoryRef.current) return null;
 
   exports.__ml_reset();
-  const seqPtr = ecrireChaineWasm(exports, sequence);
+  const seqPtr = writeStringToWasm(exports.__ml_str_alloc, memoryRef.current, sequence);
   const ptr = exports.tortue_chemin_brut(seqPtr, Number(angleDeg) || 0);
   return lireSommetsDepuisPtr(ptr);
 }

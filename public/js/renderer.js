@@ -52,6 +52,37 @@ import {
 } from "./dd.js?v=20260523-deep-zoom";
 
 const WASM_URL = "mandelbrot.wasm?v=20260520-formule-preview";
+const WASM_MANIFEST_URL = "wasm_manifest.json?v=20260525-modules";
+
+// Carte module → bucket JS pour les « autres panneaux Meta ». Cette toute
+// petite table remplace l'ancien littéral de ~50 lignes (un getter par
+// export) — la liste des fonctions est lue depuis le manifeste B6
+// `wasm_manifest.json` (groupé par module). Le `prefix` strip ne sert qu'à
+// retomber sur les noms courts (« log_polaire ») historiquement utilisés
+// par les callers JS, identiques à ce que produisait l'ancien rebundling.
+const META_PANEL_MODULES = [
+  { source: "fractales_transforms", key: "transforms", prefix: "transforme_" },
+  { source: "fractales_orbite", key: "orbite", prefix: "orbite_" },
+  { source: "fractales_partage", key: "partage", prefix: null },
+  { source: "fractales_hasard", key: "hasard", prefix: null },
+  { source: "fractales_landmark", key: "landmark", prefix: null },
+  { source: "fractales_simd", key: "simd", prefix: null },
+];
+
+function buildMetaPanelBucket(manifest, exports, sourceModule, prefix) {
+  const fnames = manifest?.modules?.[sourceModule];
+  if (!Array.isArray(fnames) || fnames.length === 0) return null;
+  const bucket = {};
+  let any = false;
+  for (const f of fnames) {
+    const fn = exports[f];
+    if (typeof fn !== "function") continue;
+    any = true;
+    const key = prefix && f.startsWith(prefix) ? f.slice(prefix.length) : f;
+    bucket[key] = fn;
+  }
+  return any ? bucket : null;
+}
 const MODES_COULEUR_TRAITS_LSYSTEME = new Set(["uniforme", "progression", "profondeur", "orientation"]);
 
 // ============================================================
@@ -228,15 +259,16 @@ let wasmDeepZoom = null;
 let wasmMemory = null;
 let wasmResetHeap = null;
 /**
- * Exports des « autres panneaux Meta » authored en multilingual :
- *   transforms : transforme_log_polaire_x/y, inversion_x/y, pli_x/y,
- *                cayley_x/y, joukowski_x/y (cf. src/fractales_transforms.multi)
- *   orbite     : orbite_mandelbrot_famille, orbite_newton, orbite_phoenix
- *                (cf. src/fractales_orbite.multi)
- *   partage    : valider_centre, valider_pixelsize, valider_max_iter,
- *                valider_rotation, valider_etat_complet, formatter_fixe_2/3/5/6
- *                (cf. src/fractales_partage.multi)
- *   strLen     : __ml_str_len pour lire les chaînes renvoyées par partage.
+ * Buckets « autres panneaux Meta » construits depuis `wasm_manifest.json`
+ * (manifest B6, regroupement par `source_module`). Subkeys (par module) :
+ *   transforms : log_polaire / inversion / pli_xy / cayley / joukowski
+ *   orbite     : mandelbrot_famille / newton / phoenix
+ *   partage    : valider_* / formatter_fixe / formatter_exponentiel_{8,9}
+ *   hasard     : hash_fnv32_seed / prochain_hash_mulberry32 + memory/reset/strAlloc/strLen
+ *   landmark   : detecter_periode_mandelbrot / affiner_nucleus / distance_estimation_mandelbrot
+ *   simd       : mandelbrot_simd_pair
+ * La table d'alias (META_PANEL_MODULES) et le helper `buildMetaPanelBucket`
+ * sont déclarés en haut du fichier.
  */
 let wasmMetaPanels = null;
 /** True si le module WASM est disponible */
@@ -329,6 +361,7 @@ const btnOpenExport = document.getElementById("btn-open-export");
 const btnCloseExport = document.getElementById("btn-close-export");
 const btnExportCurrent = document.getElementById("btn-export-current");
 const btnExportImage = document.getElementById("btn-export-image");
+const btnExportGigapixel = document.getElementById("btn-export-gigapixel");
 const btnCaptureStart = document.getElementById("btn-capture-start");
 const btnCaptureEnd = document.getElementById("btn-capture-end");
 const btnExportVideo = document.getElementById("btn-export-video");
@@ -341,6 +374,10 @@ const badgeLoading = document.getElementById("badge-loading");
 const exportPanel = document.getElementById("export-panel");
 const exportImageWidth = document.getElementById("export-image-width");
 const exportImageHeight = document.getElementById("export-image-height");
+const exportGigapixelWidth = document.getElementById("export-gigapixel-width");
+const exportGigapixelHeight = document.getElementById("export-gigapixel-height");
+const exportGigapixelTile = document.getElementById("export-gigapixel-tile");
+const exportGigapixelState = document.getElementById("export-gigapixel-state");
 const exportVideoWidth = document.getElementById("export-video-width");
 const exportVideoHeight = document.getElementById("export-video-height");
 const exportVideoDuration = document.getElementById("export-video-duration");
@@ -3105,7 +3142,7 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
   // multilingual `simd_mandelbrot_pair`). ~2× moins d'appels JS↔WASM sur le
   // chemin synchrone. Limité au Mandelbrot pur (la base de la famille) et
   // bypass quand des Workers ont déjà fourni le buffer.
-  const simdPair = wasmMetaPanels?.simd?.mandelbrot_pair;
+  const simdPair = wasmMetaPanels?.simd?.mandelbrot_simd_pair;
   const wasmMem = wasmMemory ?? wasmMetaPanels?.memory ?? null;
   const wasmReset = wasmResetHeap ?? wasmMetaPanels?.reset ?? null;
   const useSimdMandelbrot =
@@ -3467,64 +3504,42 @@ async function loadWasm() {
       wasmMemory = null;
       wasmResetHeap = null;
     }
-    // Autres panneaux Meta (transforms / orbite / partage). Bloc unique gardé
-    // par la présence d'au moins une fonction connue de chaque groupe — si le
-    // module a été construit, tous les exports requis sont là (validés au
-    // build par compile_wasm.multi).
-    if (typeof exports.transforme_log_polaire_x === "function"
-        && typeof exports.orbite_mandelbrot_famille === "function"
-        && typeof exports.valider_etat_complet === "function") {
-      wasmMetaPanels = {
-        transforms: {
-          // Depuis multilingual B1 (2026-05-23) : un seul appel par transforme
-          // qui renvoie un Array [x', y'] via les multi-value WASM returns.
-          // Plus de duplication _x/_y, et 1 appel WASM par pixel au lieu de 2.
-          log_polaire: exports.transforme_log_polaire,
-          inversion: exports.transforme_inversion,
-          pli_xy: exports.transforme_pli_xy,
-          cayley: exports.transforme_cayley,
-          joukowski: exports.transforme_joukowski,
-        },
-        orbite: {
-          mandelbrot_famille: exports.orbite_mandelbrot_famille,
-          newton: exports.orbite_newton,
-          phoenix: exports.orbite_phoenix,
-        },
-        partage: {
-          valider_centre: exports.valider_centre,
-          valider_pixelsize: exports.valider_pixelsize,
-          valider_max_iter: exports.valider_max_iter,
-          valider_rotation: exports.valider_rotation,
-          valider_etat_complet: exports.valider_etat_complet,
-          // Depuis multilingual B4 (2026-05-23) : un seul formatter_fixe(v, n)
-          // via le builtin `format_fixed(v, n)` runtime. N variable.
-          formatter_fixe: exports.formatter_fixe,
-          formatter_exponentiel_8: exports.formatter_exponentiel_8 ?? null,
-          formatter_exponentiel_9: exports.formatter_exponentiel_9 ?? null,
-        },
-        hasard: (typeof exports.hash_fnv32_seed === "function"
-          && typeof exports.prochain_hash_mulberry32 === "function"
-          && typeof exports.__ml_str_alloc === "function") ? {
-          hash_fnv32_seed: exports.hash_fnv32_seed,
-          prochain_hash_mulberry32: exports.prochain_hash_mulberry32,
-          memory: exports.memory,
-          reset: exports.__ml_reset,
-          strAlloc: exports.__ml_str_alloc,
-          strLen: exports.__ml_str_len ?? null,
-        } : null,
-        landmark: (typeof exports.detecter_periode_mandelbrot === "function") ? {
-          detecter_periode_mandelbrot: exports.detecter_periode_mandelbrot,
-          // Depuis multilingual B1 : un seul appel WASM qui renvoie [cx, cy].
-          affiner_nucleus: exports.affiner_nucleus,
-          distance_estimation_mandelbrot: exports.distance_estimation_mandelbrot,
-        } : null,
-        simd: (typeof exports.mandelbrot_simd_pair === "function") ? {
-          mandelbrot_pair: exports.mandelbrot_simd_pair,
-        } : null,
+    // Panneaux Meta (transforms / orbite / partage / hasard / landmark / simd)
+    // construits depuis le manifeste B6 `wasm_manifest.json` (groupe par
+    // module d'origine). Remplace ~50 lignes de getter assembly hand-codé —
+    // c'est la suppression de W12. La carte `META_PANEL_MODULES` (déclarée
+    // en haut du fichier) ne contient que le module ↔ bucket alias et le
+    // prefix optionnel à strip (compatible avec les callers existants).
+    let manifest = null;
+    try {
+      const respManifest = await fetch(WASM_MANIFEST_URL);
+      if (respManifest.ok) manifest = await respManifest.json();
+    } catch (errManifest) {
+      console.warn("[WASM] Manifest indisponible :", errManifest.message);
+    }
+    if (manifest && manifest.modules) {
+      const panels = {
         memory: exports.memory,
         reset: exports.__ml_reset,
         strLen: exports.__ml_str_len ?? null,
       };
+      for (const { source, key, prefix } of META_PANEL_MODULES) {
+        const bucket = buildMetaPanelBucket(manifest, exports, source, prefix);
+        if (bucket) panels[key] = bucket;
+      }
+      // Le bucket `hasard` a besoin de pointeurs supplémentaires pour
+      // marshaller les chaînes côté JS (cf. renderer-lsystem.js).
+      if (panels.hasard && typeof exports.__ml_str_alloc === "function") {
+        panels.hasard.memory = exports.memory;
+        panels.hasard.reset = exports.__ml_reset;
+        panels.hasard.strAlloc = exports.__ml_str_alloc;
+        panels.hasard.strLen = exports.__ml_str_len ?? null;
+      } else if (panels.hasard) {
+        // Sans __ml_str_alloc, l'API hasard n'est pas utilisable.
+        delete panels.hasard;
+      }
+      wasmMetaPanels = (panels.transforms || panels.orbite || panels.partage)
+        ? panels : null;
     } else {
       wasmMetaPanels = null;
     }
@@ -4168,6 +4183,64 @@ addPaletteStopButton.addEventListener("click", () => {
   render();
 });
 
+// Designer de palette — exporter/importer en JSON. Le format est minimal et
+// human-readable, prevu pour etre partage entre instances de l'app. Pas de
+// passage WASM : la donnee vit cote JS (params.paletteStops/Background/Interior)
+// et JSON.stringify est equivalent en cout a tout pont multilingual.
+const HEX_PALETTE_RE = /^#[0-9a-fA-F]{6}$/;
+function validerHexCouleur(hex, fallback) {
+  if (typeof hex !== "string") return fallback;
+  return HEX_PALETTE_RE.test(hex) ? hex.toLowerCase() : fallback;
+}
+
+document.getElementById("btn-export-palette-json")?.addEventListener("click", () => {
+  const payload = {
+    version: 1,
+    type: "fractales-palette",
+    background: params.paletteBackground,
+    interior: params.paletteInterior,
+    stops: [...params.paletteStops],
+    generated: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const nom = `palette-${payload.stops.length}-stops-${Date.now()}.json`;
+  telechargerBlob(blob, nom);
+  updateStatusBar("Palette exportée en JSON", true);
+});
+
+const inputImportPaletteJson = document.getElementById("input-import-palette-json");
+document.getElementById("btn-import-palette-json")?.addEventListener("click", () => {
+  inputImportPaletteJson?.click();
+});
+inputImportPaletteJson?.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || data.type !== "fractales-palette") {
+      throw new Error("Fichier JSON invalide (champ type ≠ fractales-palette)");
+    }
+    if (!Array.isArray(data.stops) || data.stops.length < 2) {
+      throw new Error("Le tableau stops doit contenir au moins 2 couleurs hex");
+    }
+    const stops = data.stops.map((s) => validerHexCouleur(s, "#ffffff"));
+    params.palette = "personnalisee";
+    params.paletteBackground = validerHexCouleur(data.background, params.paletteBackground);
+    params.paletteInterior = validerHexCouleur(data.interior, params.paletteInterior);
+    params.paletteStops = stops;
+    customPaletteEditorOpen = true;
+    synchroniserControlePalette();
+    render();
+    updateStatusBar(`Palette importée (${stops.length} stops)`, true);
+  } catch (err) {
+    console.error("Import palette JSON:", err);
+    updateStatusBar(`Échec import palette : ${err.message}`, true);
+  } finally {
+    event.target.value = "";
+  }
+});
+
 customPaletteStops.addEventListener("input", (event) => {
   const cible = event.target;
   if (!(cible instanceof HTMLInputElement)) return;
@@ -4570,7 +4643,7 @@ if (juliaCImSlider) {
   });
 }
 
-async function appliquerSignet(signet) {
+async function appliquerSignet(signet, options = {}) {
   params.fractal = signet.fractal;
   syncSelectors(signet.fractal);
   const cible = signet.vue3d ? null : {
@@ -4635,6 +4708,7 @@ async function appliquerSignet(signet) {
       view,
       wasmNav: wasmExportFunctions,
       render,
+      dureeMs: options.dureeMs,
       onComplete: () => mettreAJourHash(view, params),
     });
   } else {
@@ -4659,6 +4733,7 @@ const { mettreAJourEtatVideo } = initialiserExports({
     btnCloseExport,
     btnExportCurrent,
     btnExportImage,
+    btnExportGigapixel,
     btnCaptureStart,
     btnCaptureEnd,
     btnExportVideo,
@@ -4668,6 +4743,10 @@ const { mettreAJourEtatVideo } = initialiserExports({
     exportPanel,
     exportImageWidth,
     exportImageHeight,
+    exportGigapixelWidth,
+    exportGigapixelHeight,
+    exportGigapixelTile,
+    exportGigapixelState,
     exportVideoWidth,
     exportVideoHeight,
     exportVideoDuration,

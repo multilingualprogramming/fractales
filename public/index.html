@@ -134,6 +134,28 @@
           </div>
 
           <div class="export-section">
+            <div class="export-section-title">Gigapixel (rendu par tuiles)</div>
+            <div class="export-grid">
+              <label class="export-field">
+                <span>Largeur</span>
+                <input id="export-gigapixel-width" type="number" min="2048" max="16384" step="256" value="8192" />
+              </label>
+              <label class="export-field">
+                <span>Hauteur</span>
+                <input id="export-gigapixel-height" type="number" min="2048" max="16384" step="256" value="8192" />
+              </label>
+              <label class="export-field">
+                <span>Tuile (px)</span>
+                <input id="export-gigapixel-tile" type="number" min="128" max="1024" step="64" value="512" />
+              </label>
+            </div>
+            <div id="export-gigapixel-state" class="export-state">Rend l'image cible par tuiles, à pixelSize courant (vue inchangée).</div>
+            <div class="export-actions">
+              <button id="btn-export-gigapixel" class="btn" type="button">Exporter PNG gigapixel</button>
+            </div>
+          </div>
+
+          <div class="export-section">
             <div class="export-section-title">Vidéo de zoom</div>
             <div class="export-grid">
               <label class="export-field">
@@ -705,6 +727,11 @@
                     <div class="custom-palette-actions">
                       <button id="btn-add-palette-stop" class="btn custom-palette-add" type="button">Ajouter un
                         stop</button>
+                      <button id="btn-export-palette-json" class="btn btn-secondary" type="button"
+                        aria-label="Exporter la palette en JSON">Exporter JSON</button>
+                      <button id="btn-import-palette-json" class="btn btn-secondary" type="button"
+                        aria-label="Importer une palette JSON">Importer JSON</button>
+                      <input id="input-import-palette-json" type="file" accept=".json,application/json" hidden />
                       <button id="btn-close-custom-palette" class="btn btn-secondary custom-palette-close" type="button"
                         aria-label="Reduire l'editeur de palette">Reduire</button>
                     </div>

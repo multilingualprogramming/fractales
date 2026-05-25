@@ -603,6 +603,20 @@ export function initialiserExploration({
       label.append(` ${item.fractal || ""} · ${item.maxIter ?? ""} it.`);
       row.appendChild(label);
 
+      // Duree cinematique : le temps mis pour animer DEPUIS l'etape precedente
+      // jusqu'a cette etape (s'applique a la 1re etape avec la vue courante
+      // comme point de depart). Stocke sur l'item pour persister.
+      const dureeInput = document.createElement("input");
+      dureeInput.type = "number";
+      dureeInput.className = "journey-duration";
+      dureeInput.min = "0.2";
+      dureeInput.max = "30";
+      dureeInput.step = "0.5";
+      dureeInput.value = String(item.__journeyDurationSec ?? 2.0);
+      dureeInput.dataset.journeyDurationIndex = String(index);
+      dureeInput.title = "Durée d'animation jusqu'à cette étape (secondes)";
+      row.appendChild(dureeInput);
+
       const button = document.createElement("button");
       button.className = "btn btn-secondary";
       button.type = "button";
@@ -906,7 +920,9 @@ export function initialiserExploration({
 
   document.getElementById("btn-journey-add")?.addEventListener("click", () => {
     const items = lireCarnet();
-    items.push(captureView());
+    const step = captureView();
+    step.__journeyDurationSec = 2.0;
+    items.push(step);
     ecrireCarnet(items);
     updateJourneyList();
     updateStatusBar("Étape ajoutée au carnet", true);
@@ -921,10 +937,16 @@ export function initialiserExploration({
   document.getElementById("btn-journey-play")?.addEventListener("click", async () => {
     const items = lireCarnet();
     for (const item of items) {
-      await applyCapturedView(item);
+      // Duree par etape : transition cinematique fluide via animerVersVue.
+      // 0 = sans duree forcee (heuristique zoom-rapport automatique).
+      const dureeSec = Number.isFinite(item.__journeyDurationSec) ? item.__journeyDurationSec : 2.0;
+      const dureeMs = Math.max(120, Math.min(60000, dureeSec * 1000));
+      await applyCapturedView(item, { dureeMs });
       await waitForRenderIdle?.();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Petite pause de respiration entre etapes (sans bloquer le clavier).
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
+    updateStatusBar(`Lecture du carnet terminée (${items.length} étape${items.length > 1 ? "s" : ""})`, true);
   });
 
   document.getElementById("journey-list")?.addEventListener("click", (event) => {
@@ -932,6 +954,18 @@ export function initialiserExploration({
     if (!button) return;
     const item = lireCarnet()[parseInt(button.dataset.journeyIndex, 10)];
     if (item) applyCapturedView(item);
+  });
+
+  document.getElementById("journey-list")?.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-journey-duration-index]");
+    if (!input) return;
+    const index = parseInt(input.dataset.journeyDurationIndex, 10);
+    const raw = parseFloat(input.value);
+    if (!Number.isFinite(raw)) return;
+    const items = lireCarnet();
+    if (!items[index]) return;
+    items[index].__journeyDurationSec = Math.max(0.2, Math.min(30, raw));
+    ecrireCarnet(items);
   });
 
   document.getElementById("coloring-mode-select")?.addEventListener("change", (event) => {

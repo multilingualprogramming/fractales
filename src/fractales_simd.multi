@@ -1,15 +1,55 @@
 # Noyau SIMD (v128 / f64x2) — itère deux pixels Mandelbrot en parallèle.
-# Délègue au builtin `simd_mandelbrot_pair` (cf. multilingual 0.7+, fix SIMD
-# 2026-05-23) qui émet directement les instructions WebAssembly SIMD pour
-# un gain d'environ 2× sur la boucle interne. Le caller JS appelle deux
-# pixels à la fois et lit `[iter0, iter1]` du buffer renvoyé.
+# Réécrit en source-level `multi` depuis 2026-05-25 grâce au type v128 de B2
+# (`v128_pair`, `v128_lane`, et `+ - * /` vectoriels qui s'abaissent à
+# `f64x2.*`). Remplace le builtin `simd_mandelbrot_pair` (~110 lignes WAT à la
+# main, supprimé du backend) — c'est la disparition du workaround W1.
 #
 # Sémantique : pour chaque lane indépendamment, équivaut à
-# fractales_escape.mandelbrot(cx, cy, max_iter) au sens "itère z²+c, retourne
-# l'itération à laquelle |z|² > 4 (sinon max_iter)". Vérifié bit-exact dans
-# multilingual `test_simd_mandelbrot_pair_matches_scalar`.
+# fractales_escape.mandelbrot(cx, cy, max_iter) au sens « itère z²+c, retourne
+# l'itération à laquelle |z|² > 4 (sinon max_iter) ».
+#
+# Sortie : liste `[iter0, iter1]`. Le caller JS lit sortie[0] / sortie[1]
+# (offsets ptr+8 / ptr+16 dans la convention multilingual).
+#
+# Différence d'avec l'ancien hand-roll : on n'a pas (encore) `f64x2.le` /
+# `v128.bitselect` exposés au niveau source, donc on ne « gèle » pas les
+# lanes échappées via un mask SIMD ; on teste l'évasion lane-par-lane via
+# `v128_lane(r2, i) > 4`. Les multiplications restent vectorielles (gain
+# principal) ; seul le test d'évasion est scalaire. Sortie d'avance dès que
+# les deux lanes ont échappé.
 
 déf mandelbrot_simd_pair(cx0, cy0, cx1, cy1, max_iter):
-    # Retourne un pointeur vers la liste [iter0, iter1]. Le caller lit
-    # `sortie[0]` et `sortie[1]` côté JS (offsets ptr+8, ptr+16).
-    retour simd_mandelbrot_pair(cx0, cy0, cx1, cy1, max_iter)
+    soit cx = v128_pair(cx0, cx1)
+    soit cy = v128_pair(cy0, cy1)
+    soit zx = v128_pair(0.0, 0.0)
+    soit zy = v128_pair(0.0, 0.0)
+    soit deux = v128_pair(2.0, 2.0)
+    soit iter0 = max_iter
+    soit iter1 = max_iter
+    soit escaped0 = 0
+    soit escaped1 = 0
+    soit k = 0
+    tantque k < max_iter:
+        soit zx_zx = zx * zx
+        soit zy_zy = zy * zy
+        soit r2 = zx_zx + zy_zy
+        si escaped0 == 0:
+            si v128_lane(r2, 0) > 4.0:
+                iter0 = k
+                escaped0 = 1
+        si escaped1 == 0:
+            si v128_lane(r2, 1) > 4.0:
+                iter1 = k
+                escaped1 = 1
+        si escaped0 + escaped1 >= 2:
+            k = max_iter
+        sinon:
+            soit nzx = zx_zx - zy_zy + cx
+            soit nzy = deux * zx * zy + cy
+            zx = nzx
+            zy = nzy
+            k = k + 1
+    soit sortie = [0.0] * 2
+    sortie[0] = iter0
+    sortie[1] = iter1
+    retour sortie

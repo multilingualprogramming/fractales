@@ -49,6 +49,7 @@ export function initialiserExports({
     btnCloseExport,
     btnExportCurrent,
     btnExportImage,
+    btnExportGigapixel,
     btnCaptureStart,
     btnCaptureEnd,
     btnExportVideo,
@@ -59,6 +60,10 @@ export function initialiserExports({
     exportPanel,
     exportImageWidth,
     exportImageHeight,
+    exportGigapixelWidth,
+    exportGigapixelHeight,
+    exportGigapixelTile,
+    exportGigapixelState,
     exportVideoWidth,
     exportVideoHeight,
     exportVideoDuration,
@@ -127,6 +132,80 @@ export function initialiserExports({
     const blob = await blobDepuisCanvas(canvasExport, "image/png");
     telechargerBlob(blob, formaterNomExport(`${largeur}x${hauteur}`, "png"));
     updateStatusBar("PNG haute résolution exporté", true);
+  }
+
+  async function exporterGigapixel() {
+    if (!exportGigapixelWidth || !exportGigapixelHeight || !exportGigapixelTile) return;
+    const params = getParams();
+    if (fractaleActiveEst3D() || LINE_FRACTALS.has(params.fractal)) {
+      updateStatusBar("Export gigapixel disponible uniquement sur les rendus scalaires", true);
+      return;
+    }
+    const largeur = Math.max(256, Math.min(16384, lireEntier(exportGigapixelWidth, 8192)));
+    const hauteur = Math.max(256, Math.min(16384, lireEntier(exportGigapixelHeight, 8192)));
+    const tuile = Math.max(64, Math.min(2048, lireEntier(exportGigapixelTile, 512)));
+
+    const canvasFinal = document.createElement("canvas");
+    canvasFinal.width = largeur;
+    canvasFinal.height = hauteur;
+    const ctxFinal = canvasFinal.getContext("2d", { willReadFrequently: false });
+    if (!ctxFinal) {
+      updateStatusBar("Contexte 2D indisponible", true);
+      return;
+    }
+    const fond = getPaletteBackground(params);
+    ctxFinal.fillStyle = `rgb(${fond[0]},${fond[1]},${fond[2]})`;
+    ctxFinal.fillRect(0, 0, largeur, hauteur);
+
+    const renduParams = clonerParamsExport();
+    // Le nombre d'iterations doit s'accroitre avec la resolution (sinon les
+    // gros zooms perdent du detail) — meme heuristique que l'export
+    // haute-resolution mono-shot.
+    renduParams.maxIter = ajusterIterationsExport(largeur, hauteur, renduParams.maxIter);
+
+    const vueCourante = getViewState();
+    const ps = vueCourante.pixelSize;
+    const cxBase = vueCourante.centerX - (largeur / 2) * ps;
+    const cyBase = vueCourante.centerY - (hauteur / 2) * ps;
+
+    const nbTuilesX = Math.ceil(largeur / tuile);
+    const nbTuilesY = Math.ceil(hauteur / tuile);
+    const total = nbTuilesX * nbTuilesY;
+
+    const canvasTuile = document.createElement("canvas");
+
+    updateStatusBar(`Rendu gigapixel ${largeur}×${hauteur} en ${total} tuiles…`);
+    for (let ty = 0; ty < nbTuilesY; ty++) {
+      for (let tx = 0; tx < nbTuilesX; tx++) {
+        const ox = tx * tuile;
+        const oy = ty * tuile;
+        const tw = Math.min(tuile, largeur - ox);
+        const th = Math.min(tuile, hauteur - oy);
+        canvasTuile.width = tw;
+        canvasTuile.height = th;
+        // Centre monde de la tuile (origine = centre pixel de la tuile dans
+        // le grand canvas, projete en coordonnees monde au pixelSize courant).
+        const tileCenterX = cxBase + (ox + tw / 2) * ps;
+        const tileCenterY = cyBase + (oy + th / 2) * ps;
+        const vueTuile = { centerX: tileCenterX, centerY: tileCenterY, pixelSize: ps };
+        await rendreDansCanvas(canvasTuile, vueTuile, renduParams);
+        ctxFinal.drawImage(canvasTuile, ox, oy);
+        const fait = ty * nbTuilesX + tx + 1;
+        if (exportGigapixelState) {
+          exportGigapixelState.textContent = `Tuile ${fait}/${total} · ${Math.round(100 * fait / total)} %`;
+        }
+        // Laisse le navigateur respirer pour ne pas geler la page.
+        if ((fait & 3) === 0) await attendre(0);
+      }
+    }
+
+    updateStatusBar("Encodage PNG gigapixel…");
+    const blob = await blobDepuisCanvas(canvasFinal, "image/png");
+    telechargerBlob(blob, formaterNomExport(`gigapixel-${largeur}x${hauteur}`, "png"));
+    if (exportGigapixelState) {
+      exportGigapixelState.textContent = `Exporté ${largeur}×${hauteur} (${(blob.size / 1048576).toFixed(2)} Mo)`;
+    }
+    updateStatusBar(`PNG gigapixel ${largeur}×${hauteur} exporté`, true);
   }
 
   async function exporterVideoZoom() {
@@ -251,6 +330,15 @@ export function initialiserExports({
       await exporterImageHauteResolution();
     } catch (error) {
       updateStatusBar("Échec de l'export PNG haute résolution", true);
+      console.error(error);
+    }
+  });
+
+  btnExportGigapixel?.addEventListener("click", async () => {
+    try {
+      await exporterGigapixel();
+    } catch (error) {
+      updateStatusBar("Échec de l'export gigapixel", true);
       console.error(error);
     }
   });

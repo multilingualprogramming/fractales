@@ -218,7 +218,7 @@ export function mettreAJourHash(view, params) {
  * @param {object} cible  — { centerX, centerY, pixelSize, rotation? }
  * @param {object} opts   — { view, wasmNav, render, onComplete? }
  */
-export function animerVersVue(cible, { view, wasmNav, render, onComplete }) {
+export function animerVersVue(cible, { view, wasmNav, render, onComplete, dureeMs: dureeForcee }) {
   return new Promise((resolve) => {
     if (cible.centerX === undefined || cible.pixelSize === undefined) {
       onComplete?.();
@@ -235,7 +235,12 @@ export function animerVersVue(cible, { view, wasmNav, render, onComplete }) {
     const rapport = startPs > 0
       ? Math.max(startPs, cible.pixelSize) / Math.min(startPs, cible.pixelSize)
       : 1;
-    const dureeMs = Math.min(2800, 500 + Math.log(Math.max(1, rapport)) * 500);
+    const dureeAuto = Math.min(2800, 500 + Math.log(Math.max(1, rapport)) * 500);
+    // Le caller peut forcer une duree (carnet de voyage : transitions cinematiques)
+    // ; sinon on calcule depuis le rapport de zoom.
+    const dureeMs = Number.isFinite(dureeForcee) && dureeForcee > 0
+      ? Math.min(60000, Math.max(120, dureeForcee))
+      : dureeAuto;
 
     // Fonctions mathématiques depuis fractales_navigation.multi via WASM
     const easer = (t) =>

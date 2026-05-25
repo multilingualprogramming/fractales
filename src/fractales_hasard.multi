@@ -4,9 +4,15 @@
 # afin que les grammaires stochastiques rendues via le chemin WASM donnent
 # exactement la même séquence que le rendu JS.
 #
-# Briques multilingual utilisées (toutes ajoutées en 2026-05-23) :
-#   imul32(a, b) : Math.imul équivalent (i32.mul avec wraparound)
-#   iadd32(a, b) : i32.add avec wraparound (via i64 intermédiaire)
+# Depuis 2026-05-25 (suppression du workaround W2 partiel) : les builtins
+# `imul32` / `iadd32` ne sont plus appelés. Le backend WAT dispatche `*` et
+# `+` vers `i32.mul` / `i32.add` (wraparound i32) dès que les deux opérandes
+# sont « i32-shaped » (résultat bitwise, builtin i32 ou local précédemment
+# tagué). On tague la graine via `^ 0` / `| 0` au démarrage ; tout l'arbre
+# d'expression hérite ensuite naturellement de la sémantique i32.
+#
+# Builtins restants (irréductibles tant que le source n'a pas `>>>` ni vue
+# unsigned) :
 #   shr_u32(a, k) : décalage logique à droite (zero-fill, JS >>>)
 #   u32_to_f64(x) : signed-i32-as-f64 → unsigned-i32-as-f64
 #                   (mappe les négatifs vers [2^31, 2^32))
@@ -16,12 +22,14 @@ déf hash_fnv32_seed(seed: chaîne):
     # vue signée i32-as-f64 (∈ [-2^31, 2^31)).
     # Constante FNV offset basis = 0x811C9DC5 = 2166136261 (uint32).
     # En vue signée : 2166136261 − 2^32 = -2128831035.
-    soit h = -2128831035.0
+    # Le « ^ 0 » est un no-op fonctionnel qui sert uniquement à tagger `h`
+    # comme i32-shaped pour activer le dispatch i32.mul de B3 sur `* 16777619`.
+    soit h = -2128831035 ^ 0
     soit n = longueur(seed)
     soit i = 0
     tantque i < n:
         soit code = ord(seed[i])
-        h = imul32(h ^ code, 16777619.0)
+        h = (h ^ code) * 16777619
         i = i + 1
     si h == 0.0:
         h = 1.0
@@ -32,13 +40,17 @@ déf prochain_hash_mulberry32(etat):
     # Avance l'état de un cran. Retour : liste [nouvel_etat, tirage_unitaire]
     # où tirage_unitaire ∈ [0, 1). Le `nouvel_etat` doit être réinjecté à
     # l'appel suivant — la routine est pure.
-    soit etat_avance = iadd32(etat, 1831565813.0)   # 0x6d2b79f5
+    # `etat | 0` tague `etat_int` comme i32-shaped ; tous les + / * suivants
+    # héritent du dispatch i32 sans appel explicite à imul32 / iadd32.
+    soit etat_int = etat | 0
+    soit etat_avance = etat_int + 1831565813   # 0x6d2b79f5
     soit t = etat_avance
-    # t = imul(t ^ (t >>> 15), t | 1)
-    t = imul32(t ^ shr_u32(t, 15.0), t | 1.0)
-    # t ^= t + imul(t ^ (t >>> 7), t | 61)
-    soit aux = imul32(t ^ shr_u32(t, 7.0), t | 61.0)
-    t = t ^ iadd32(t, aux)
+    # t = (t ^ (t >>> 15)) * (t | 1)
+    t = (t ^ shr_u32(t, 15.0)) * (t | 1)
+    # aux = (t ^ (t >>> 7)) * (t | 61)
+    soit aux = (t ^ shr_u32(t, 7.0)) * (t | 61)
+    # t ^= t + aux
+    t = t ^ (t + aux)
     # ((t ^ (t >>> 14)) >>> 0) / 2^32
     soit mixe = t ^ shr_u32(t, 14.0)
     soit non_signe = u32_to_f64(mixe)

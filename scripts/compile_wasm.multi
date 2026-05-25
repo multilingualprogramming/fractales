@@ -18,6 +18,7 @@ soit SORTIE_BENCH = DOSSIER_PUBLIC / "benchmark.json"
 soit SORTIE_WASM_RS = DOSSIER_PUBLIC / "wasm_intermediate.rs"
 soit SORTIE_WAT = DOSSIER_PUBLIC / "main.wat"
 soit SORTIE_WASM = DOSSIER_PUBLIC / "mandelbrot.wasm"
+soit SORTIE_MANIFEST = DOSSIER_PUBLIC / "wasm_manifest.json"
 
 # Module « Atelier L-système » — UI authored en multilingual via le pont DOM.
 # Compilé vers son propre WASM (importe ml_dom_*), chargé séparément du noyau
@@ -79,16 +80,62 @@ déf emettre_intermediaire_wasm_si_disponible(source):
         detail_erreur = str(erreur)
     retour (ok, detail_erreur)
 
-déf generer_wat_et_wasm_strict(source):
+déf calculer_attribution_modules(modules_wasm):
+    # Scanne chaque `src/<module>.multi` pour récupérer le nom du module
+    # d'origine de chaque `déf NAME(`. Utilisé pour attribuer
+    # `FunctionDef.source_module` après que le bundle source a été parsé en
+    # un seul programme — sans recourir à un parse-par-fichier qui casserait
+    # le pipeline existant.
+    soit attribution = {}
+    pour nom_module dans modules_wasm:
+        soit chemin = RACINE / "src" / f"{nom_module}.multi"
+        si non chemin.exists():
+            continuer
+        soit texte = chemin.read_text(encoding="utf-8")
+        pour ligne dans texte.splitlines():
+            soit brut = ligne.strip()
+            si non brut.startswith("déf "):
+                continuer
+            soit reste = brut[4:]
+            soit i = 0
+            tantque i < longueur(reste) et reste[i] != "(":
+                i = i + 1
+            soit nom = reste[:i].strip()
+            si nom:
+                attribution[nom] = nom_module
+    retour attribution
+
+déf attribuer_modules_au_programme(programme, attribution):
+    # Walk `programme.body` ; pour chaque FunctionDef dont le nom est dans
+    # l'attribution, fixe `source_module` (cf. multilingual B6 manifeste).
+    pour noeud dans programme.body:
+        si non hasattr(noeud, "name"):
+            continuer
+        si non hasattr(noeud, "params"):
+            continuer
+        si non hasattr(noeud, "body"):
+            continuer
+        si non hasattr(noeud, "source_module"):
+            continuer
+        soit nom_brut = noeud.name
+        soit nom_str = nom_brut si isinstance(nom_brut, str) sinon getattr(nom_brut, "name", str(nom_brut))
+        si nom_str dans attribution:
+            noeud.source_module = attribution[nom_str]
+
+déf generer_wat_et_wasm_strict(source, attribution=None):
     ajouter_depot_multilingual_au_chemin()
     soit wat_generator_module = importlib.import_module("multilingualprogramming.codegen.wat_generator")
     soit WATCodeGenerator = wat_generator_module.WATCodeGenerator
     soit wasmtime = importlib.import_module("wasmtime")
 
     soit programme = analyser_programme(source)
-    soit texte_wat = WATCodeGenerator().generate(programme)
+    si attribution:
+        attribuer_modules_au_programme(programme, attribution)
+    soit generateur = WATCodeGenerator()
+    soit texte_wat = generateur.generate(programme)
     soit octets_wasm = wasmtime.wat2wasm(texte_wat)
-    retour (texte_wat, octets_wasm)
+    soit manifeste = generateur.generate_abi_manifest(programme)
+    retour (texte_wat, octets_wasm, manifeste)
 
 déf construire_atelier_lsysteme():
     # Compile src/atelier_lsysteme.multi vers public/atelier_lsysteme.wasm et
@@ -253,12 +300,15 @@ déf main():
         si erreur_wasm:
             afficher(f"    Detail: {erreur_wasm}")
 
-    soit texte_wat, octets_wasm = generer_wat_et_wasm_strict(source_wasm)
+    soit attribution = calculer_attribution_modules(MODULES_WASM)
+    soit texte_wat, octets_wasm, manifeste = generer_wat_et_wasm_strict(source_wasm, attribution=attribution)
     verifier_wat_strict(texte_wat)
     SORTIE_WAT.write_text(texte_wat, encoding="utf-8")
     SORTIE_WASM.write_bytes(octets_wasm)
+    SORTIE_MANIFEST.write_text(json.dumps(manifeste, indent=2, ensure_ascii=Faux), encoding="utf-8")
     afficher(f"    WAT ecrit : {SORTIE_WAT.relative_to(RACINE)}")
     afficher(f"    WASM ecrit: {SORTIE_WASM.relative_to(RACINE)} ({longueur(octets_wasm):,} octets)")
+    afficher(f"    Manifest  : {SORTIE_MANIFEST.relative_to(RACINE)} ({longueur(manifeste.get('modules', {}))} modules attribues)")
 
     soit exports_transforms = ["transforme_log_polaire", "transforme_inversion", "transforme_pli_xy", "transforme_cayley", "transforme_joukowski"]
     soit exports_orbite = ["orbite_mandelbrot_famille", "orbite_newton", "orbite_phoenix"]

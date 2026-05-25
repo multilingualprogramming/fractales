@@ -312,11 +312,11 @@ déf attracteur_de_clifford(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf attracteur_de_clifford_etape_x(x, y):
-    retour sinus_dynamique(-1.4 * y) + cosinus_dynamique(-1.4 * x)
-
-déf attracteur_de_clifford_etape_y(x, y):
-    retour sinus_dynamique(1.7 * x) + 0.7 * cosinus_dynamique(1.7 * y)
+déf attracteur_de_clifford_etape(x, y):
+    retour (
+        sinus_dynamique(-1.4 * y) + cosinus_dynamique(-1.4 * x),
+        sinus_dynamique(1.7 * x) + 0.7 * cosinus_dynamique(1.7 * y),
+    )
 
 déf attracteur_de_peter_de_jong(cx, cy, max_iter):
     soit a = 1.4
@@ -351,11 +351,11 @@ déf attracteur_de_peter_de_jong(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf attracteur_de_peter_de_jong_etape_x(x, y):
-    retour sinus_dynamique(1.4 * y) - cosinus_dynamique(-2.3 * x)
-
-déf attracteur_de_peter_de_jong_etape_y(x, y):
-    retour sinus_dynamique(2.4 * x) - cosinus_dynamique(-2.1 * y)
+déf attracteur_de_peter_de_jong_etape(x, y):
+    retour (
+        sinus_dynamique(1.4 * y) - cosinus_dynamique(-2.3 * x),
+        sinus_dynamique(2.4 * x) - cosinus_dynamique(-2.1 * y),
+    )
 
 déf attracteur_ikeda(cx, cy, max_iter):
     soit u = 0.9
@@ -391,21 +391,13 @@ déf attracteur_ikeda(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf attracteur_ikeda_etape_x(x, y):
+déf attracteur_ikeda_etape(x, y):
     soit u = 0.9
     soit rayon = x * x + y * y
     soit angle = 0.4 - 6.0 / (1.0 + rayon)
     soit cos_t = cosinus_dynamique(angle)
     soit sin_t = sinus_dynamique(angle)
-    retour 1.0 + u * (x * cos_t - y * sin_t)
-
-déf attracteur_ikeda_etape_y(x, y):
-    soit u = 0.9
-    soit rayon = x * x + y * y
-    soit angle = 0.4 - 6.0 / (1.0 + rayon)
-    soit cos_t = cosinus_dynamique(angle)
-    soit sin_t = sinus_dynamique(angle)
-    retour u * (x * sin_t + y * cos_t)
+    retour (1.0 + u * (x * cos_t - y * sin_t), u * (x * sin_t + y * cos_t))
 
 déf attracteur_de_henon(cx, cy, max_iter):
     soit a = 1.4
@@ -438,11 +430,8 @@ déf attracteur_de_henon(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf attracteur_de_henon_etape_x(x, y):
-    retour 1.0 - 1.4 * x * x + y
-
-déf attracteur_de_henon_etape_y(x, y):
-    retour 0.3 * x
+déf attracteur_de_henon_etape(x, y):
+    retour (1.0 - 1.4 * x * x + y, 0.3 * x)
 
 déf projeter_lorenz_x(x, y, z):
     retour (x - y) * 0.12
@@ -504,20 +493,16 @@ déf lorenz_attractor(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf lorenz_attractor_etape_x(x, y, z):
+déf lorenz_attractor_etape(x, y, z):
     soit sigma = 10.0
-    soit dt = 0.01
-    retour x + sigma * (y - x) * dt
-
-déf lorenz_attractor_etape_y(x, y, z):
     soit rho = 28.0
-    soit dt = 0.01
-    retour y + (x * (rho - z) - y) * dt
-
-déf lorenz_attractor_etape_z(x, y, z):
     soit beta = 2.6666666667
     soit dt = 0.01
-    retour z + (x * y - beta * z) * dt
+    retour (
+        x + sigma * (y - x) * dt,
+        y + (x * (rho - z) - y) * dt,
+        z + (x * y - beta * z) * dt,
+    )
 
 déf rossler_attractor(cx, cy, max_iter):
     soit a = 0.2
@@ -559,20 +544,16 @@ déf rossler_attractor(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf rossler_attractor_etape_x(x, y, z):
-    soit dt = 0.02
-    retour x + (-y - z) * dt
-
-déf rossler_attractor_etape_y(x, y, z):
+déf rossler_attractor_etape(x, y, z):
     soit a = 0.2
-    soit dt = 0.02
-    retour y + (x + a * y) * dt
-
-déf rossler_attractor_etape_z(x, y, z):
     soit b = 0.2
     soit c = 5.7
     soit dt = 0.02
-    retour z + (b + z * (x - c)) * dt
+    retour (
+        x + (-y - z) * dt,
+        y + (x + a * y) * dt,
+        z + (b + z * (x - c)) * dt,
+    )
 
 déf aizawa_attractor(cx, cy, max_iter):
     soit a = 0.95
@@ -618,26 +599,20 @@ déf aizawa_attractor(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf aizawa_attractor_etape_x(x, y, z):
-    soit b = 0.7
-    soit d = 3.5
-    soit dt = 0.008
-    retour x + (((z - b) * x) - d * y) * dt
-
-déf aizawa_attractor_etape_y(x, y, z):
-    soit b = 0.7
-    soit d = 3.5
-    soit dt = 0.008
-    retour y + (d * x + (z - b) * y) * dt
-
-déf aizawa_attractor_etape_z(x, y, z):
+déf aizawa_attractor_etape(x, y, z):
     soit a = 0.95
+    soit b = 0.7
     soit c = 0.6
+    soit d = 3.5
     soit e = 0.25
     soit f = 0.1
     soit dt = 0.008
     soit r2 = x * x + y * y
-    retour z + (c + a * z - (z * z * z) / 3.0 - r2 * (1.0 + e * z) + f * z * x * x * x) * dt
+    retour (
+        x + (((z - b) * x) - d * y) * dt,
+        y + (d * x + (z - b) * y) * dt,
+        z + (c + a * z - (z * z * z) / 3.0 - r2 * (1.0 + e * z) + f * z * x * x * x) * dt,
+    )
 
 déf sprott_attractor(cx, cy, max_iter):
     soit dt = 0.04
@@ -676,17 +651,9 @@ déf sprott_attractor(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf sprott_attractor_etape_x(x, y, z):
+déf sprott_attractor_etape(x, y, z):
     soit dt = 0.04
-    retour x + y * z * dt
-
-déf sprott_attractor_etape_y(x, y, z):
-    soit dt = 0.04
-    retour y + (x - y) * dt
-
-déf sprott_attractor_etape_z(x, y, z):
-    soit dt = 0.04
-    retour z + (1.0 - x * y) * dt
+    retour (x + y * z * dt, y + (x - y) * dt, z + (1.0 - x * y) * dt)
 
 déf feigenbaum_tree(cx, cy, max_iter):
     soit r = 3.4 + (cx + 1.0) * 0.3
@@ -748,8 +715,5 @@ déf duffing_attractor(cx, cy, max_iter):
         retour max_iter
     retour score
 
-déf duffing_attractor_etape_x(x, y):
-    retour y
-
-déf duffing_attractor_etape_y(x, y):
-    retour -0.2 * x + 2.75 * y - y * y * y
+déf duffing_attractor_etape(x, y):
+    retour (y, -0.2 * x + 2.75 * y - y * y * y)

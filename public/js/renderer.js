@@ -1450,16 +1450,8 @@ function etapeLichtenberg(x, y, z, r) {
 }
 
 function etapeMandelbulb(x, y, z, cx, cy) {
-  if (
-    wasmExportFunctions.mandelbulb_etape_x &&
-    wasmExportFunctions.mandelbulb_etape_y &&
-    wasmExportFunctions.mandelbulb_etape_z
-  ) {
-    return [
-      wasmExportFunctions.mandelbulb_etape_x(x, y, z, cx),
-      wasmExportFunctions.mandelbulb_etape_y(x, y, z, cy),
-      wasmExportFunctions.mandelbulb_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.mandelbulb_etape) {
+    return wasmExportFunctions.mandelbulb_etape(x, y, z, cx, cy);
   }
   const x2 = x * x;
   const y2 = y * y;
@@ -1525,16 +1517,8 @@ function projeterTetraedre(x, y, z) {
 // Boîte de Mandel — orbite 3D avec c lentement variable (même approche que Mandelbulb).
 // Avec scale=2 et |c| ≈ 0.2 l'orbite reste bornée et révèle la structure 3D du fractal.
 function etapeMandelbox(x, y, z, cx, cy) {
-  if (
-    wasmExportFunctions.mandelbox_etape_x &&
-    wasmExportFunctions.mandelbox_etape_y &&
-    wasmExportFunctions.mandelbox_etape_z
-  ) {
-    return [
-      wasmExportFunctions.mandelbox_etape_x(x, y, z, cx),
-      wasmExportFunctions.mandelbox_etape_y(x, y, z, cy),
-      wasmExportFunctions.mandelbox_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.mandelbox_etape) {
+    return wasmExportFunctions.mandelbox_etape(x, y, z, cx, cy);
   }
   // pli de boîte
   if (x > 1.0) x = 2.0 - x; else if (x < -1.0) x = -2.0 - x;
@@ -1553,16 +1537,8 @@ function projeterMandelbox(x, y, z) {
 }
 
 function etapeJuliaQuaternion(x, y, z) {
-  if (
-    wasmExportFunctions.julia_quaternion_etape_x &&
-    wasmExportFunctions.julia_quaternion_etape_y &&
-    wasmExportFunctions.julia_quaternion_etape_z
-  ) {
-    return [
-      wasmExportFunctions.julia_quaternion_etape_x(x, y, z),
-      wasmExportFunctions.julia_quaternion_etape_y(x, y, z),
-      wasmExportFunctions.julia_quaternion_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.julia_quaternion_etape) {
+    return wasmExportFunctions.julia_quaternion_etape(x, y, z);
   }
   const cX = -0.06;
   const cY = 0.06;
@@ -1629,14 +1605,8 @@ function projeterFractalePonctuelle(nom, x, y, z, iter, largeur) {
 }
 
 function etapeAttracteurClifford(x, y) {
-  if (
-    wasmExportFunctions.attracteur_de_clifford_etape_x &&
-    wasmExportFunctions.attracteur_de_clifford_etape_y
-  ) {
-    return [
-      wasmExportFunctions.attracteur_de_clifford_etape_x(x, y),
-      wasmExportFunctions.attracteur_de_clifford_etape_y(x, y),
-    ];
+  if (wasmExportFunctions.attracteur_de_clifford_etape) {
+    return wasmExportFunctions.attracteur_de_clifford_etape(x, y);
   }
   const a = -1.4;
   const b = 1.7;
@@ -1649,14 +1619,8 @@ function etapeAttracteurClifford(x, y) {
 }
 
 function etapeAttracteurPeterDeJong(x, y) {
-  if (
-    wasmExportFunctions.attracteur_de_peter_de_jong_etape_x &&
-    wasmExportFunctions.attracteur_de_peter_de_jong_etape_y
-  ) {
-    return [
-      wasmExportFunctions.attracteur_de_peter_de_jong_etape_x(x, y),
-      wasmExportFunctions.attracteur_de_peter_de_jong_etape_y(x, y),
-    ];
+  if (wasmExportFunctions.attracteur_de_peter_de_jong_etape) {
+    return wasmExportFunctions.attracteur_de_peter_de_jong_etape(x, y);
   }
   const a = 1.4;
   const b = -2.3;
@@ -1669,14 +1633,8 @@ function etapeAttracteurPeterDeJong(x, y) {
 }
 
 function etapeAttracteurIkeda(x, y) {
-  if (
-    wasmExportFunctions.attracteur_ikeda_etape_x &&
-    wasmExportFunctions.attracteur_ikeda_etape_y
-  ) {
-    return [
-      wasmExportFunctions.attracteur_ikeda_etape_x(x, y),
-      wasmExportFunctions.attracteur_ikeda_etape_y(x, y),
-    ];
+  if (wasmExportFunctions.attracteur_ikeda_etape) {
+    return wasmExportFunctions.attracteur_ikeda_etape(x, y);
   }
   const u = 0.9;
   const rayon = x * x + y * y;
@@ -1690,14 +1648,8 @@ function etapeAttracteurIkeda(x, y) {
 }
 
 function etapeAttracteurHenon(x, y) {
-  if (
-    wasmExportFunctions.attracteur_de_henon_etape_x &&
-    wasmExportFunctions.attracteur_de_henon_etape_y
-  ) {
-    return [
-      wasmExportFunctions.attracteur_de_henon_etape_x(x, y),
-      wasmExportFunctions.attracteur_de_henon_etape_y(x, y),
-    ];
+  if (wasmExportFunctions.attracteur_de_henon_etape) {
+    return wasmExportFunctions.attracteur_de_henon_etape(x, y);
   }
   const a = 1.4;
   const b = 0.3;
@@ -1708,16 +1660,8 @@ function etapeAttracteurHenon(x, y) {
 }
 
 function etapeLorenzAttractor(x, y, z) {
-  if (
-    wasmExportFunctions.lorenz_attractor_etape_x &&
-    wasmExportFunctions.lorenz_attractor_etape_y &&
-    wasmExportFunctions.lorenz_attractor_etape_z
-  ) {
-    return [
-      wasmExportFunctions.lorenz_attractor_etape_x(x, y, z),
-      wasmExportFunctions.lorenz_attractor_etape_y(x, y, z),
-      wasmExportFunctions.lorenz_attractor_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.lorenz_attractor_etape) {
+    return wasmExportFunctions.lorenz_attractor_etape(x, y, z);
   }
   const sigma = 10.0;
   const rho = 28.0;
@@ -1741,16 +1685,8 @@ function projeterLorenzAttractor(x, y, z) {
 }
 
 function etapeRosslerAttractor(x, y, z) {
-  if (
-    wasmExportFunctions.rossler_attractor_etape_x &&
-    wasmExportFunctions.rossler_attractor_etape_y &&
-    wasmExportFunctions.rossler_attractor_etape_z
-  ) {
-    return [
-      wasmExportFunctions.rossler_attractor_etape_x(x, y, z),
-      wasmExportFunctions.rossler_attractor_etape_y(x, y, z),
-      wasmExportFunctions.rossler_attractor_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.rossler_attractor_etape) {
+    return wasmExportFunctions.rossler_attractor_etape(x, y, z);
   }
   const a = 0.2;
   const b = 0.2;
@@ -1773,16 +1709,8 @@ function projeterRosslerAttractor(x, y, z) {
 }
 
 function etapeAizawaAttractor(x, y, z) {
-  if (
-    wasmExportFunctions.aizawa_attractor_etape_x &&
-    wasmExportFunctions.aizawa_attractor_etape_y &&
-    wasmExportFunctions.aizawa_attractor_etape_z
-  ) {
-    return [
-      wasmExportFunctions.aizawa_attractor_etape_x(x, y, z),
-      wasmExportFunctions.aizawa_attractor_etape_y(x, y, z),
-      wasmExportFunctions.aizawa_attractor_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.aizawa_attractor_etape) {
+    return wasmExportFunctions.aizawa_attractor_etape(x, y, z);
   }
   const a = 0.95;
   const b = 0.7;
@@ -1809,16 +1737,8 @@ function projeterAizawaAttractor(x, y, z) {
 }
 
 function etapeSprottAttractor(x, y, z) {
-  if (
-    wasmExportFunctions.sprott_attractor_etape_x &&
-    wasmExportFunctions.sprott_attractor_etape_y &&
-    wasmExportFunctions.sprott_attractor_etape_z
-  ) {
-    return [
-      wasmExportFunctions.sprott_attractor_etape_x(x, y, z),
-      wasmExportFunctions.sprott_attractor_etape_y(x, y, z),
-      wasmExportFunctions.sprott_attractor_etape_z(x, y, z),
-    ];
+  if (wasmExportFunctions.sprott_attractor_etape) {
+    return wasmExportFunctions.sprott_attractor_etape(x, y, z);
   }
   const dt = 0.04;
   return [
@@ -1838,14 +1758,8 @@ function projeterSprottAttractor(x, y, z) {
 }
 
 function etapeDuffingAttractor(x, y) {
-  if (
-    wasmExportFunctions.duffing_attractor_etape_x &&
-    wasmExportFunctions.duffing_attractor_etape_y
-  ) {
-    return [
-      wasmExportFunctions.duffing_attractor_etape_x(x, y),
-      wasmExportFunctions.duffing_attractor_etape_y(x, y),
-    ];
+  if (wasmExportFunctions.duffing_attractor_etape) {
+    return wasmExportFunctions.duffing_attractor_etape(x, y);
   }
   const a = 2.75;
   const b = 0.2;
@@ -3440,43 +3354,21 @@ async function loadWasm() {
       easer_cubique: typeof exports.easer_cubique === "function" ? exports.easer_cubique : null,
       interpoler_pixelsize_nav: typeof exports.interpoler_pixelsize_nav === "function" ? exports.interpoler_pixelsize_nav : null,
       interpoler_angle_nav: typeof exports.interpoler_angle_nav === "function" ? exports.interpoler_angle_nav : null,
-      barnsley_etape_x: typeof exports.barnsley_etape_x === "function" ? exports.barnsley_etape_x : null,
-      barnsley_etape_y: typeof exports.barnsley_etape_y === "function" ? exports.barnsley_etape_y : null,
-      sierpinski_etape_x: typeof exports.sierpinski_etape_x === "function" ? exports.sierpinski_etape_x : null,
-      sierpinski_etape_y: typeof exports.sierpinski_etape_y === "function" ? exports.sierpinski_etape_y : null,
-      tapis_sierpinski_etape_x: typeof exports.tapis_sierpinski_etape_x === "function" ? exports.tapis_sierpinski_etape_x : null,
-      tapis_sierpinski_etape_y: typeof exports.tapis_sierpinski_etape_y === "function" ? exports.tapis_sierpinski_etape_y : null,
-      menger_etape_x: typeof exports.menger_etape_x === "function" ? exports.menger_etape_x : null,
-      menger_etape_y: typeof exports.menger_etape_y === "function" ? exports.menger_etape_y : null,
-      menger_etape_z: typeof exports.menger_etape_z === "function" ? exports.menger_etape_z : null,
-      mandelbulb_etape_x: typeof exports.mandelbulb_etape_x === "function" ? exports.mandelbulb_etape_x : null,
-      mandelbulb_etape_y: typeof exports.mandelbulb_etape_y === "function" ? exports.mandelbulb_etape_y : null,
-      mandelbulb_etape_z: typeof exports.mandelbulb_etape_z === "function" ? exports.mandelbulb_etape_z : null,
-      vicsek_etape_x: typeof exports.vicsek_etape_x === "function" ? exports.vicsek_etape_x : null,
-      vicsek_etape_y: typeof exports.vicsek_etape_y === "function" ? exports.vicsek_etape_y : null,
-      tetraedre_etape_x: typeof exports.tetraedre_etape_x === "function" ? exports.tetraedre_etape_x : null,
-      tetraedre_etape_y: typeof exports.tetraedre_etape_y === "function" ? exports.tetraedre_etape_y : null,
-      tetraedre_etape_z: typeof exports.tetraedre_etape_z === "function" ? exports.tetraedre_etape_z : null,
-      attracteur_de_clifford_etape_x: typeof exports.attracteur_de_clifford_etape_x === "function" ? exports.attracteur_de_clifford_etape_x : null,
-      attracteur_de_clifford_etape_y: typeof exports.attracteur_de_clifford_etape_y === "function" ? exports.attracteur_de_clifford_etape_y : null,
-      attracteur_de_peter_de_jong_etape_x: typeof exports.attracteur_de_peter_de_jong_etape_x === "function" ? exports.attracteur_de_peter_de_jong_etape_x : null,
-      attracteur_de_peter_de_jong_etape_y: typeof exports.attracteur_de_peter_de_jong_etape_y === "function" ? exports.attracteur_de_peter_de_jong_etape_y : null,
-      attracteur_ikeda_etape_x: typeof exports.attracteur_ikeda_etape_x === "function" ? exports.attracteur_ikeda_etape_x : null,
-      attracteur_ikeda_etape_y: typeof exports.attracteur_ikeda_etape_y === "function" ? exports.attracteur_ikeda_etape_y : null,
-      attracteur_de_henon_etape_x: typeof exports.attracteur_de_henon_etape_x === "function" ? exports.attracteur_de_henon_etape_x : null,
-      attracteur_de_henon_etape_y: typeof exports.attracteur_de_henon_etape_y === "function" ? exports.attracteur_de_henon_etape_y : null,
-      lorenz_attractor_etape_x: typeof exports.lorenz_attractor_etape_x === "function" ? exports.lorenz_attractor_etape_x : null,
-      lorenz_attractor_etape_y: typeof exports.lorenz_attractor_etape_y === "function" ? exports.lorenz_attractor_etape_y : null,
-      lorenz_attractor_etape_z: typeof exports.lorenz_attractor_etape_z === "function" ? exports.lorenz_attractor_etape_z : null,
-      rossler_attractor_etape_x: typeof exports.rossler_attractor_etape_x === "function" ? exports.rossler_attractor_etape_x : null,
-      rossler_attractor_etape_y: typeof exports.rossler_attractor_etape_y === "function" ? exports.rossler_attractor_etape_y : null,
-      rossler_attractor_etape_z: typeof exports.rossler_attractor_etape_z === "function" ? exports.rossler_attractor_etape_z : null,
-      aizawa_attractor_etape_x: typeof exports.aizawa_attractor_etape_x === "function" ? exports.aizawa_attractor_etape_x : null,
-      aizawa_attractor_etape_y: typeof exports.aizawa_attractor_etape_y === "function" ? exports.aizawa_attractor_etape_y : null,
-      aizawa_attractor_etape_z: typeof exports.aizawa_attractor_etape_z === "function" ? exports.aizawa_attractor_etape_z : null,
-      sprott_attractor_etape_x: typeof exports.sprott_attractor_etape_x === "function" ? exports.sprott_attractor_etape_x : null,
-      sprott_attractor_etape_y: typeof exports.sprott_attractor_etape_y === "function" ? exports.sprott_attractor_etape_y : null,
-      sprott_attractor_etape_z: typeof exports.sprott_attractor_etape_z === "function" ? exports.sprott_attractor_etape_z : null,
+      barnsley_etape: typeof exports.barnsley_etape === "function" ? exports.barnsley_etape : null,
+      sierpinski_etape: typeof exports.sierpinski_etape === "function" ? exports.sierpinski_etape : null,
+      tapis_sierpinski_etape: typeof exports.tapis_sierpinski_etape === "function" ? exports.tapis_sierpinski_etape : null,
+      menger_etape: typeof exports.menger_etape === "function" ? exports.menger_etape : null,
+      mandelbulb_etape: typeof exports.mandelbulb_etape === "function" ? exports.mandelbulb_etape : null,
+      vicsek_etape: typeof exports.vicsek_etape === "function" ? exports.vicsek_etape : null,
+      tetraedre_etape: typeof exports.tetraedre_etape === "function" ? exports.tetraedre_etape : null,
+      attracteur_de_clifford_etape: typeof exports.attracteur_de_clifford_etape === "function" ? exports.attracteur_de_clifford_etape : null,
+      attracteur_de_peter_de_jong_etape: typeof exports.attracteur_de_peter_de_jong_etape === "function" ? exports.attracteur_de_peter_de_jong_etape : null,
+      attracteur_ikeda_etape: typeof exports.attracteur_ikeda_etape === "function" ? exports.attracteur_ikeda_etape : null,
+      attracteur_de_henon_etape: typeof exports.attracteur_de_henon_etape === "function" ? exports.attracteur_de_henon_etape : null,
+      lorenz_attractor_etape: typeof exports.lorenz_attractor_etape === "function" ? exports.lorenz_attractor_etape : null,
+      rossler_attractor_etape: typeof exports.rossler_attractor_etape === "function" ? exports.rossler_attractor_etape : null,
+      aizawa_attractor_etape: typeof exports.aizawa_attractor_etape === "function" ? exports.aizawa_attractor_etape : null,
+      sprott_attractor_etape: typeof exports.sprott_attractor_etape === "function" ? exports.sprott_attractor_etape : null,
       projeter_lorenz_x: typeof exports.projeter_lorenz_x === "function" ? exports.projeter_lorenz_x : null,
       projeter_lorenz_y: typeof exports.projeter_lorenz_y === "function" ? exports.projeter_lorenz_y : null,
       projeter_rossler_x: typeof exports.projeter_rossler_x === "function" ? exports.projeter_rossler_x : null,
@@ -3485,14 +3377,9 @@ async function loadWasm() {
       projeter_aizawa_y: typeof exports.projeter_aizawa_y === "function" ? exports.projeter_aizawa_y : null,
       projeter_sprott_x: typeof exports.projeter_sprott_x === "function" ? exports.projeter_sprott_x : null,
       projeter_sprott_y: typeof exports.projeter_sprott_y === "function" ? exports.projeter_sprott_y : null,
-      duffing_attractor_etape_x: typeof exports.duffing_attractor_etape_x === "function" ? exports.duffing_attractor_etape_x : null,
-      duffing_attractor_etape_y: typeof exports.duffing_attractor_etape_y === "function" ? exports.duffing_attractor_etape_y : null,
-      julia_quaternion_etape_x: typeof exports.julia_quaternion_etape_x === "function" ? exports.julia_quaternion_etape_x : null,
-      julia_quaternion_etape_y: typeof exports.julia_quaternion_etape_y === "function" ? exports.julia_quaternion_etape_y : null,
-      julia_quaternion_etape_z: typeof exports.julia_quaternion_etape_z === "function" ? exports.julia_quaternion_etape_z : null,
-      mandelbox_etape_x: typeof exports.mandelbox_etape_x === "function" ? exports.mandelbox_etape_x : null,
-      mandelbox_etape_y: typeof exports.mandelbox_etape_y === "function" ? exports.mandelbox_etape_y : null,
-      mandelbox_etape_z: typeof exports.mandelbox_etape_z === "function" ? exports.mandelbox_etape_z : null,
+      duffing_attractor_etape: typeof exports.duffing_attractor_etape === "function" ? exports.duffing_attractor_etape : null,
+      julia_quaternion_etape: typeof exports.julia_quaternion_etape === "function" ? exports.julia_quaternion_etape : null,
+      mandelbox_etape: typeof exports.mandelbox_etape === "function" ? exports.mandelbox_etape : null,
       evaluer_affine_x: typeof exports.evaluer_affine_x === "function" ? exports.evaluer_affine_x : null,
       evaluer_affine_y: typeof exports.evaluer_affine_y === "function" ? exports.evaluer_affine_y : null,
       choisir_transformee_ifs: typeof exports.choisir_transformee_ifs === "function" ? exports.choisir_transformee_ifs : null,

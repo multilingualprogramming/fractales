@@ -1,7 +1,7 @@
 "use strict";
 
 // Métadonnées des préréglages IFS intégrés.
-// type "2d" : étape WASM prend (x, y, r).
+// type "2d" : étape WASM prend (x, y, r) et retourne (x', y').
 // type "3d" : étape WASM prend (x, y, z, r) puis projection isométrique vers 2D.
 const PRESETS_IFS = {
   barnsley: {
@@ -9,50 +9,42 @@ const PRESETS_IFS = {
     fractale: "barnsley",
     type: "2d",
     x0: 0, y0: 0,
-    etapeX: "barnsley_etape_x",
-    etapeY: "barnsley_etape_y",
+    etape: "barnsley_etape",
   },
   sierpinski: {
     label: "Triangle de Sierpiński",
     fractale: "sierpinski",
     type: "2d",
     x0: 0.37, y0: 0.21,
-    etapeX: "sierpinski_etape_x",
-    etapeY: "sierpinski_etape_y",
+    etape: "sierpinski_etape",
   },
   tapis_sierpinski: {
     label: "Tapis de Sierpiński",
     fractale: "tapis_sierpinski",
     type: "2d",
     x0: 0, y0: 0,
-    etapeX: "tapis_sierpinski_etape_x",
-    etapeY: "tapis_sierpinski_etape_y",
+    etape: "tapis_sierpinski_etape",
   },
   vicsek: {
     label: "Fractale de Vicsek",
     fractale: "vicsek_fractal",
     type: "2d",
     x0: 0, y0: 0,
-    etapeX: "vicsek_etape_x",
-    etapeY: "vicsek_etape_y",
+    etape: "vicsek_etape",
   },
   menger_sponge: {
     label: "Éponge de Menger",
     fractale: "menger_sponge",
     type: "3d",
     x0: 0.11, y0: -0.17, z0: 0.23,
-    etapeX: "menger_etape_x",
-    etapeY: "menger_etape_y",
-    etapeZ: "menger_etape_z",
+    etape: "menger_etape",
   },
   tetraedre_sierpinski: {
     label: "Tétraèdre de Sierpiński",
     fractale: "tetraedre_sierpinski",
     type: "3d",
     x0: 0.25, y0: 0.20, z0: 0.10,
-    etapeX: "tetraedre_etape_x",
-    etapeY: "tetraedre_etape_y",
-    etapeZ: "tetraedre_etape_z",
+    etape: "tetraedre_etape",
     decalageX: -0.5, decalageY: -0.289, decalageZ: -0.204,
   },
 };

@@ -287,17 +287,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "attracteur_de_clifford_etape_x",
-      "arg_types": [
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "attracteur_de_clifford_etape_y",
+      "name": "attracteur_de_clifford_etape",
       "arg_types": [
         "f64",
         "f64"
@@ -318,17 +308,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "attracteur_de_peter_de_jong_etape_x",
-      "arg_types": [
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "attracteur_de_peter_de_jong_etape_y",
+      "name": "attracteur_de_peter_de_jong_etape",
       "arg_types": [
         "f64",
         "f64"
@@ -349,17 +329,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "attracteur_ikeda_etape_x",
-      "arg_types": [
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "attracteur_ikeda_etape_y",
+      "name": "attracteur_ikeda_etape",
       "arg_types": [
         "f64",
         "f64"
@@ -380,17 +350,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "attracteur_de_henon_etape_x",
-      "arg_types": [
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "attracteur_de_henon_etape_y",
+      "name": "attracteur_de_henon_etape",
       "arg_types": [
         "f64",
         "f64"
@@ -499,29 +459,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "lorenz_attractor_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "lorenz_attractor_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "lorenz_attractor_etape_z",
+      "name": "lorenz_attractor_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -543,29 +481,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "rossler_attractor_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "rossler_attractor_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "rossler_attractor_etape_z",
+      "name": "rossler_attractor_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -587,29 +503,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "aizawa_attractor_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "aizawa_attractor_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "aizawa_attractor_etape_z",
+      "name": "aizawa_attractor_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -631,29 +525,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "sprott_attractor_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "sprott_attractor_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "sprott_attractor_etape_z",
+      "name": "sprott_attractor_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -686,17 +558,7 @@
       "source_module": "fractales_dynamique"
     },
     {
-      "name": "duffing_attractor_etape_x",
-      "arg_types": [
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_dynamique"
-    },
-    {
-      "name": "duffing_attractor_etape_y",
+      "name": "duffing_attractor_etape",
       "arg_types": [
         "f64",
         "f64"
@@ -821,51 +683,7 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "barnsley_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "barnsley_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
       "name": "sierpinski_etape",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "sierpinski_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "sierpinski_etape_y",
       "arg_types": [
         "f64",
         "f64",
@@ -909,18 +727,7 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "tapis_sierpinski_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "tapis_sierpinski_etape_y",
+      "name": "tapis_sierpinski_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -965,42 +772,6 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "menger_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "menger_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "menger_etape_z",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
       "name": "menger_sponge",
       "arg_types": [
         "f64",
@@ -1023,32 +794,10 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "mandelbulb_etape_x",
+      "name": "mandelbulb_etape",
       "arg_types": [
         "f64",
         "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "mandelbulb_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "mandelbulb_etape_z",
-      "arg_types": [
         "f64",
         "f64",
         "f64"
@@ -1059,28 +808,6 @@
     },
     {
       "name": "vicsek_etape",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "vicsek_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "vicsek_etape_y",
       "arg_types": [
         "f64",
         "f64",
@@ -1114,42 +841,6 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "tetraedre_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "tetraedre_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "tetraedre_etape_z",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
       "name": "tetraedre_sierpinski",
       "arg_types": [
         "f64",
@@ -1172,29 +863,7 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "julia_quaternion_etape_x",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "julia_quaternion_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "julia_quaternion_etape_z",
+      "name": "julia_quaternion_etape",
       "arg_types": [
         "f64",
         "f64",
@@ -1214,32 +883,10 @@
       "source_module": "fractales_ifs"
     },
     {
-      "name": "mandelbox_etape_x",
+      "name": "mandelbox_etape",
       "arg_types": [
         "f64",
         "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "mandelbox_etape_y",
-      "arg_types": [
-        "f64",
-        "f64",
-        "f64",
-        "f64"
-      ],
-      "return_type": "f64",
-      "mode": "scalar_field",
-      "source_module": "fractales_ifs"
-    },
-    {
-      "name": "mandelbox_etape_z",
-      "arg_types": [
         "f64",
         "f64",
         "f64"
@@ -2976,17 +2623,13 @@
       "orbitale_de_nova",
       "collatz_complexe",
       "attracteur_de_clifford",
-      "attracteur_de_clifford_etape_x",
-      "attracteur_de_clifford_etape_y",
+      "attracteur_de_clifford_etape",
       "attracteur_de_peter_de_jong",
-      "attracteur_de_peter_de_jong_etape_x",
-      "attracteur_de_peter_de_jong_etape_y",
+      "attracteur_de_peter_de_jong_etape",
       "attracteur_ikeda",
-      "attracteur_ikeda_etape_x",
-      "attracteur_ikeda_etape_y",
+      "attracteur_ikeda_etape",
       "attracteur_de_henon",
-      "attracteur_de_henon_etape_x",
-      "attracteur_de_henon_etape_y",
+      "attracteur_de_henon_etape",
       "projeter_lorenz_x",
       "projeter_lorenz_y",
       "projeter_rossler_x",
@@ -2996,25 +2639,16 @@
       "projeter_sprott_x",
       "projeter_sprott_y",
       "lorenz_attractor",
-      "lorenz_attractor_etape_x",
-      "lorenz_attractor_etape_y",
-      "lorenz_attractor_etape_z",
+      "lorenz_attractor_etape",
       "rossler_attractor",
-      "rossler_attractor_etape_x",
-      "rossler_attractor_etape_y",
-      "rossler_attractor_etape_z",
+      "rossler_attractor_etape",
       "aizawa_attractor",
-      "aizawa_attractor_etape_x",
-      "aizawa_attractor_etape_y",
-      "aizawa_attractor_etape_z",
+      "aizawa_attractor_etape",
       "sprott_attractor",
-      "sprott_attractor_etape_x",
-      "sprott_attractor_etape_y",
-      "sprott_attractor_etape_z",
+      "sprott_attractor_etape",
       "feigenbaum_tree",
       "duffing_attractor",
-      "duffing_attractor_etape_x",
-      "duffing_attractor_etape_y"
+      "duffing_attractor_etape"
     ],
     "fractales_variantes": [
       "abs_variantes",
@@ -3030,44 +2664,25 @@
       "racine_approx",
       "abs_ifs",
       "barnsley_etape",
-      "barnsley_etape_x",
-      "barnsley_etape_y",
       "sierpinski_etape",
-      "sierpinski_etape_x",
-      "sierpinski_etape_y",
       "barnsley",
       "sierpinski",
       "tapis_sierpinski",
-      "tapis_sierpinski_etape_x",
-      "tapis_sierpinski_etape_y",
+      "tapis_sierpinski_etape",
       "projeter_menger_x",
       "projeter_menger_y",
       "menger_etape",
-      "menger_etape_x",
-      "menger_etape_y",
-      "menger_etape_z",
       "menger_sponge",
       "mandelbulb",
-      "mandelbulb_etape_x",
-      "mandelbulb_etape_y",
-      "mandelbulb_etape_z",
+      "mandelbulb_etape",
       "vicsek_etape",
-      "vicsek_etape_x",
-      "vicsek_etape_y",
       "vicsek_fractal",
       "tetraedre_etape",
-      "tetraedre_etape_x",
-      "tetraedre_etape_y",
-      "tetraedre_etape_z",
       "tetraedre_sierpinski",
       "julia_quaternion",
-      "julia_quaternion_etape_x",
-      "julia_quaternion_etape_y",
-      "julia_quaternion_etape_z",
+      "julia_quaternion_etape",
       "plier_boite",
-      "mandelbox_etape_x",
-      "mandelbox_etape_y",
-      "mandelbox_etape_z",
+      "mandelbox_etape",
       "mandelbox",
       "evaluer_affine_x",
       "evaluer_affine_y",

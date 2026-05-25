@@ -31,26 +31,26 @@ FORMULA_FUNCTION_RE = re.compile(
 # fractal formula. Entries with browser_only are explicit drawing/orchestration
 # exceptions that should not become canonical fractal definitions.
 JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
-    "renderer.js:barnsleyStep": {"backend_refs": ["barnsley_etape_x", "barnsley_etape_y"]},
-    "renderer.js:sierpinskiStep": {"backend_refs": ["sierpinski_etape_x", "sierpinski_etape_y"]},
+    "renderer.js:barnsleyStep": {"backend_refs": ["barnsley_etape"]},
+    "renderer.js:sierpinskiStep": {"backend_refs": ["sierpinski_etape"]},
     "renderer.js:etapeTapisSierpinski": {
-        "backend_refs": ["tapis_sierpinski_etape_x", "tapis_sierpinski_etape_y"]
+        "backend_refs": ["tapis_sierpinski_etape"]
     },
     "renderer.js:etapeMengerSponge": {
-        "backend_refs": ["menger_etape_x", "menger_etape_y", "menger_etape_z"]
+        "backend_refs": ["menger_etape"]
     },
     "renderer.js:projeterMengerSponge": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
-    "renderer.js:etapeVicsekFractal": {"backend_refs": ["vicsek_etape_x", "vicsek_etape_y"]},
+    "renderer.js:etapeVicsekFractal": {"backend_refs": ["vicsek_etape"]},
     "renderer.js:etapeLichtenberg": {"backend_refs": ["lichtenberg_figures"]},
     "renderer.js:etapeMandelbulb": {
-        "backend_refs": ["mandelbulb_etape_x", "mandelbulb_etape_y", "mandelbulb_etape_z"]
+        "backend_refs": ["mandelbulb_etape"]
     },
     "renderer.js:projeterPoint3D": {
         "browser_only": "view projection combines renderer camera settings and depth shading"
     },
     "renderer.js:projeterMandelbulb": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
     "renderer.js:etapeTetraedre": {
-        "backend_refs": ["tetraedre_etape_x", "tetraedre_etape_y", "tetraedre_etape_z"]
+        "backend_refs": ["tetraedre_etape"]
     },
     "renderer.js:projeterTetraedre": {"backend_refs": ["projeter_menger_x", "projeter_menger_y"]},
     "renderer.js:etapeMandelbox": {"backend_refs": ["mandelbox"]},
@@ -65,35 +65,35 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
         "browser_only": "dispatches to browser projection helpers for density rendering"
     },
     "renderer.js:etapeAttracteurClifford": {
-        "backend_refs": ["attracteur_de_clifford_etape_x", "attracteur_de_clifford_etape_y"]
+        "backend_refs": ["attracteur_de_clifford_etape"]
     },
     "renderer.js:etapeAttracteurPeterDeJong": {
-        "backend_refs": ["attracteur_de_peter_de_jong_etape_x", "attracteur_de_peter_de_jong_etape_y"]
+        "backend_refs": ["attracteur_de_peter_de_jong_etape"]
     },
     "renderer.js:etapeAttracteurIkeda": {
-        "backend_refs": ["attracteur_ikeda_etape_x", "attracteur_ikeda_etape_y"]
+        "backend_refs": ["attracteur_ikeda_etape"]
     },
     "renderer.js:etapeAttracteurHenon": {
-        "backend_refs": ["attracteur_de_henon_etape_x", "attracteur_de_henon_etape_y"]
+        "backend_refs": ["attracteur_de_henon_etape"]
     },
     "renderer.js:etapeLorenzAttractor": {
-        "backend_refs": ["lorenz_attractor_etape_x", "lorenz_attractor_etape_y", "lorenz_attractor_etape_z"]
+        "backend_refs": ["lorenz_attractor_etape"]
     },
     "renderer.js:projeterLorenzAttractor": {"backend_refs": ["projeter_lorenz_x", "projeter_lorenz_y"]},
     "renderer.js:etapeRosslerAttractor": {
-        "backend_refs": ["rossler_attractor_etape_x", "rossler_attractor_etape_y", "rossler_attractor_etape_z"]
+        "backend_refs": ["rossler_attractor_etape"]
     },
     "renderer.js:projeterRosslerAttractor": {"backend_refs": ["projeter_rossler_x", "projeter_rossler_y"]},
     "renderer.js:etapeAizawaAttractor": {
-        "backend_refs": ["aizawa_attractor_etape_x", "aizawa_attractor_etape_y", "aizawa_attractor_etape_z"]
+        "backend_refs": ["aizawa_attractor_etape"]
     },
     "renderer.js:projeterAizawaAttractor": {"backend_refs": ["projeter_aizawa_x", "projeter_aizawa_y"]},
     "renderer.js:etapeSprottAttractor": {
-        "backend_refs": ["sprott_attractor_etape_x", "sprott_attractor_etape_y", "sprott_attractor_etape_z"]
+        "backend_refs": ["sprott_attractor_etape"]
     },
     "renderer.js:projeterSprottAttractor": {"backend_refs": ["projeter_sprott_x", "projeter_sprott_y"]},
     "renderer.js:etapeDuffingAttractor": {
-        "backend_refs": ["duffing_attractor_etape_x", "duffing_attractor_etape_y"]
+        "backend_refs": ["duffing_attractor_etape"]
     },
     "renderer.js:kochGenerate": {"backend_refs": ["koch_generer"]},
     "renderer.js:genererDragonHeighway": {"backend_refs": ["dragon_heighway"]},
@@ -106,27 +106,19 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     },
     "renderer-ifs.js:etapePresetIFS": {
         "backend_refs": [
-            "barnsley_etape_x",
-            "barnsley_etape_y",
-            "sierpinski_etape_x",
-            "sierpinski_etape_y",
-            "tapis_sierpinski_etape_x",
-            "tapis_sierpinski_etape_y",
-            "vicsek_etape_x",
-            "vicsek_etape_y",
-            "menger_etape_x",
-            "menger_etape_y",
-            "menger_etape_z",
-            "tetraedre_etape_x",
-            "tetraedre_etape_y",
-            "tetraedre_etape_z",
+            "barnsley_etape",
+            "sierpinski_etape",
+            "tapis_sierpinski_etape",
+            "vicsek_etape",
+            "menger_etape",
+            "tetraedre_etape",
         ]
     },
     "renderer-lsystem.js:genererPropositionLSysteme": {
         "browser_only": "user-authored L-system preview, not a canonical fractal"
     },
     "renderer3d.js:genererMenger": {
-        "backend_refs": ["menger_etape_x", "menger_etape_y", "menger_etape_z"]
+        "backend_refs": ["menger_etape"]
     },
     "renderer3d.js:genererTetraedre": {"backend_refs": ["tetraedre_etape", "tetraedre_sierpinski"]},
     "renderer3d.js:etapeJuliaQuaternion": {"backend_refs": ["julia_quaternion"]},

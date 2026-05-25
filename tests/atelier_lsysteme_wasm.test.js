@@ -70,18 +70,17 @@ const PAS = 5;
 function lireSommets(exports, memoryRef, generations, angle) {
   exports.__ml_reset();
   const ptr = exports.tracer_lsysteme(generations, angle);
-  const base = Math.trunc(ptr);
-  const view = new DataView(memoryRef.current.buffer);
-  const np = view.getFloat64(base + 8, true);
+  const item = exports.__ml_list_item;
+  const np = item(ptr, 0);
   const pts = [];
   for (let k = 0; k < np; k++) {
-    const o = base + 8 + 8 * (1 + PAS * k);
+    const o = 1 + PAS * k;
     pts.push({
-      x: view.getFloat64(o, true),
-      y: view.getFloat64(o + 8, true),
-      move: view.getFloat64(o + 16, true),
-      profondeur: view.getFloat64(o + 24, true),
-      angle: view.getFloat64(o + 32, true),
+      x: item(ptr, o),
+      y: item(ptr, o + 1),
+      move: item(ptr, o + 2),
+      profondeur: item(ptr, o + 3),
+      angle: item(ptr, o + 4),
     });
   }
   return { np, pts };
@@ -151,18 +150,17 @@ function lireSommetsArgs(exports, memoryRef, axiom, rules, generations, angle) {
   const axPtr = ecrire(axiom);
   const ruPtr = ecrire(rules);
   const ptr = exports.tortue_lsysteme(axPtr, ruPtr, generations, angle);
-  const base = Math.trunc(ptr);
-  const view = new DataView(memoryRef.current.buffer);
-  const np = view.getFloat64(base + 8, true);
+  const item = exports.__ml_list_item;
+  const np = item(ptr, 0);
   const pts = [];
   for (let k = 0; k < np; k++) {
-    const o = base + 8 + 8 * (1 + PAS * k);
+    const o = 1 + PAS * k;
     pts.push({
-      x: view.getFloat64(o, true),
-      y: view.getFloat64(o + 8, true),
-      move: view.getFloat64(o + 16, true),
-      profondeur: view.getFloat64(o + 24, true),
-      angle: view.getFloat64(o + 32, true),
+      x: item(ptr, o),
+      y: item(ptr, o + 1),
+      move: item(ptr, o + 2),
+      profondeur: item(ptr, o + 3),
+      angle: item(ptr, o + 4),
     });
   }
   return { np, pts };
@@ -179,18 +177,17 @@ function lireSommetsChemin(exports, memoryRef, sequence, angle) {
   const p = exports.__ml_str_alloc(b.length);
   if (b.length) new Uint8Array(memoryRef.current.buffer, p, b.length).set(b);
   const ptr = exports.tortue_chemin_brut(p, angle);
-  const base = Math.trunc(ptr);
-  const view = new DataView(memoryRef.current.buffer);
-  const np = view.getFloat64(base + 8, true);
+  const item = exports.__ml_list_item;
+  const np = item(ptr, 0);
   const pts = [];
   for (let k = 0; k < np; k++) {
-    const o = base + 8 + 8 * (1 + PAS * k);
+    const o = 1 + PAS * k;
     pts.push({
-      x: view.getFloat64(o, true),
-      y: view.getFloat64(o + 8, true),
-      move: view.getFloat64(o + 16, true),
-      profondeur: view.getFloat64(o + 24, true),
-      angle: view.getFloat64(o + 32, true),
+      x: item(ptr, o),
+      y: item(ptr, o + 1),
+      move: item(ptr, o + 2),
+      profondeur: item(ptr, o + 3),
+      angle: item(ptr, o + 4),
     });
   }
   return { np, pts };

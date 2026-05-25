@@ -20,10 +20,8 @@ import {
 } from "./renderer-source-panel.js?v=20260520-formule-preview";
 import {
   animerVersVue,
-  decoderEtat,
-  initialiserPartage,
-  mettreAJourHash,
-} from "./renderer-navigation.js?v=20260520-formule-preview";
+  creerPartage,
+} from "./renderer-navigation.js?v=20260525-partage-factory";
 import {
   initialiserExploration,
 } from "./renderer-exploration.js?v=20260520-formule-preview-fix";
@@ -271,6 +269,11 @@ let wasmResetHeap = null;
  * sont déclarés en haut du fichier.
  */
 let wasmMetaPanels = null;
+// Helpers de partage liés au getter `wasmMetaPanels` — substitue l'ancien
+// singleton mutable `wasmPartageRef` (workaround W18). `creerPartage` ferme
+// sur le getter ; chaque appel récupère le bucket WASM au moment de
+// l'utilisation, sans état partagé au niveau module dans renderer-navigation.
+const { decoderEtat, initialiserPartage, mettreAJourHash } = creerPartage(() => wasmMetaPanels);
 /** True si le module WASM est disponible */
 let wasmAvailable = false;
 /** Timestamp de début du dernier rendu */
@@ -3039,18 +3042,24 @@ async function remplirMandelbrotPerturbation(w, h, data, vueCible, renduParams) 
     console.warn("[deep-zoom] noyau de perturbation indisponible :", err);
     return false;
   }
+  // Le noyau renvoie une liste multilingual [count, iter_0, iter_1, …]. Le
+  // count `user[0]` (== w·h) commence à base+8 ; les valeurs d'itération
+  // suivent. On lit count via listItem(ptr, 0) et on prend une vue typée
+  // f64 sur les itérations pour rester rapide sur ~1M pixels.
+  const listItem = wasmMetaPanels?.listItem;
   const base = Math.trunc(ptr);
-  const dv = new DataView(wasmMemory.buffer);
-  const count = dv.getFloat64(base + 8, true); // [0] = w*h
+  const count = listItem ? listItem(ptr, 0) : new DataView(wasmMemory.buffer).getFloat64(base + 8, true);
   if (!Number.isFinite(count) || count <= 0) return false;
   const n = Math.min(total, count);
+  // Vue zero-copy sur les itérations : data[1..n] dans la liste, soit
+  // octets base+16.. (header f64 à base+0, user[0]=count à base+8, user[1]=iter_0 à base+16).
+  const iters = new Float64Array(wasmMemory.buffer, base + 16, n);
 
   for (let py = 0; py < h; py++) {
     const baseRow = py * w * 4;
     for (let px = 0; px < w; px++) {
       const idx = py * w + px;
-      let iter = maxIter;
-      if (idx < n) iter = dv.getFloat64(base + 8 + 8 * (1 + idx), true);
+      const iter = idx < n ? iters[idx] : maxIter;
       const couleur = getColor(iter, maxIter, renduParams);
       const i = baseRow + px * 4;
       data[i] = couleur[0];
@@ -3150,10 +3159,12 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
     && renduParams.fractal === "mandelbrot"
     && simdPair
     && wasmMem
-    && wasmReset;
+    && wasmReset
+    && typeof wasmMetaPanels?.listItem === "function";
   if (useSimdMandelbrot) {
     itersBuffer = new Float64Array(w * h);
-    const dvSimd = new DataView(wasmMem.buffer);
+    // Lecture des deux itérations via __ml_list_item (B5) — pas d'offset brut.
+    const listItem = wasmMetaPanels?.listItem;
     for (let py = 0; py < h; py++) {
       const rawCy = cy0 + py * ps;
       let px = 0;
@@ -3168,10 +3179,8 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
         }
         wasmReset();
         const ptr = simdPair(c0x, c0y, c1x, c1y, renduParams.maxIter);
-        const base = Math.trunc(ptr);
-        // Layout : header f64 à base+0 (=2.0), iter0 à base+8, iter1 à base+16.
-        itersBuffer[py * w + px] = dvSimd.getFloat64(base + 8, true);
-        itersBuffer[py * w + px + 1] = dvSimd.getFloat64(base + 16, true);
+        itersBuffer[py * w + px] = listItem(ptr, 0);
+        itersBuffer[py * w + px + 1] = listItem(ptr, 1);
       }
       // Pixel de fin si w est impair : repli scalaire.
       if (px < w) {
@@ -3522,18 +3531,25 @@ async function loadWasm() {
         memory: exports.memory,
         reset: exports.__ml_reset,
         strLen: exports.__ml_str_len ?? null,
+        // Helpers ABI listes (B5) : remplacent les offsets bruts `base + 8 +
+        // 8 * (...)` historiquement scattérisés dans renderer.js,
+        // renderer-exploration.js, renderer-atelier-lsysteme.js, tests…
+        listCount: exports.__ml_list_count ?? null,
+        listItem: exports.__ml_list_item ?? null,
       };
       for (const { source, key, prefix } of META_PANEL_MODULES) {
         const bucket = buildMetaPanelBucket(manifest, exports, source, prefix);
         if (bucket) panels[key] = bucket;
       }
       // Le bucket `hasard` a besoin de pointeurs supplémentaires pour
-      // marshaller les chaînes côté JS (cf. renderer-lsystem.js).
+      // marshaller les chaînes côté JS et lire la liste [état, tirage]
+      // renvoyée par mulberry32 (cf. renderer-lsystem.js).
       if (panels.hasard && typeof exports.__ml_str_alloc === "function") {
         panels.hasard.memory = exports.memory;
         panels.hasard.reset = exports.__ml_reset;
         panels.hasard.strAlloc = exports.__ml_str_alloc;
         panels.hasard.strLen = exports.__ml_str_len ?? null;
+        panels.hasard.listItem = panels.listItem;
       } else if (panels.hasard) {
         // Sans __ml_str_alloc, l'API hasard n'est pas utilisable.
         delete panels.hasard;
@@ -4946,7 +4962,6 @@ async function init() {
     getView: () => view,
     getParams: () => params,
     updateStatusBar,
-    getWasmMetaPanels: () => wasmMetaPanels,
   });
 
   mettreAJourAideInteraction();

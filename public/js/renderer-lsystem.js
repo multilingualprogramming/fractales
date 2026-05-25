@@ -34,19 +34,18 @@ function creerHasardLSysteme(seed) {
 // `hash_fnv32_seed` (FNV-1a) avant chaque expansion ; mulberry32 avance pas
 // à pas via `prochain_hash_mulberry32(état) → [nouvel_état, tirage]`.
 function creerHasardLSystemeWasm(seed, hasardWasm) {
-  const { hash_fnv32_seed, prochain_hash_mulberry32, memory, reset, strLen, strAlloc } = hasardWasm;
+  const { hash_fnv32_seed, prochain_hash_mulberry32, memory, reset, strAlloc, listItem } = hasardWasm;
   const text = String(seed ?? "1").trim() || "1";
   reset();
   const bytes = new TextEncoder().encode(text);
   const ptr = strAlloc(bytes.length);
   new Uint8Array(memory.buffer, ptr, bytes.length).set(bytes);
   let state = hash_fnv32_seed(ptr);
+  // mulberry32 renvoie une liste [nouvel_état, tirage] ; lue via __ml_list_item (B5).
   return function hasard() {
     const out = prochain_hash_mulberry32(state);
-    const base = Math.trunc(out);
-    const view = new DataView(memory.buffer);
-    state = view.getFloat64(base + 8, true);
-    return view.getFloat64(base + 16, true);
+    state = listItem(out, 0);
+    return listItem(out, 1);
   };
 }
 

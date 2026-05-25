@@ -10,96 +10,97 @@
  *
  * Le formatage à précision fixe (toFixed(2/3/5/6)) et la validation
  * numérique des champs déclenchés par decoderEtat passent par WASM quand
- * `wasmPartage` est fourni (cf. src/fractales_partage.multi). Le formatage
- * exponentiel reste JS (le backend WAT ne fournit pas `.Ne`).
+ * un bucket `wasmPartage` est fourni (cf. src/fractales_partage.multi). Le
+ * formatage exponentiel reste JS (le backend WAT ne fournit pas `.Ne`).
+ *
+ * `encoderEtat`/`decoderEtat` exposent une signature à 3 arguments
+ * (`view/hash, params, wasmPartage`) pour rester appelables sans état
+ * partagé (utile en test). `creerPartage(getWasmMetaPanels)` est la
+ * fabrique utilisée par `renderer.js` : elle ferme sur le getter et
+ * renvoie des versions liées de chaque helper plus `initialiserPartage`
+ * (clic « Partager ») et `mettreAJourHash` (debounce).
  */
 
 const JULIA_FRACTALS = new Set(["julia", "burning_julia", "julia_lisse", "julia_piege_cercle"]);
 const FRACTALES_3D = new Set(["menger_sponge", "tetraedre_sierpinski", "julia_quaternion", "mandelbox"]);
 
-let hashDebounceTimer = null;
-// Module-level handle to fractales_partage WASM exports (formatter_fixe_*,
-// valider_*, memory, strLen). Set par initialiserPartage ; encoderEtat/
-// decoderEtat l'utilisent quand disponible.
-let wasmPartageRef = null;
-
-function lireChainePartage(ptrF64) {
-  if (!wasmPartageRef?.memory || !wasmPartageRef?.strLen) return null;
-  const len = wasmPartageRef.strLen();
+function lireChainePartage(partage, ptrF64) {
+  if (!partage?.memory || !partage?.strLen) return null;
+  const len = partage.strLen();
   if (len === 0) return "";
   return new TextDecoder("utf-8").decode(
-    new Uint8Array(wasmPartageRef.memory.buffer, Math.trunc(ptrF64), len),
+    new Uint8Array(partage.memory.buffer, Math.trunc(ptrF64), len),
   );
 }
 
-function fixeWasm(fn, v, n = null) {
+function fixeWasm(partage, fn, v, n = null) {
   // Préserve la sémantique de toFixed : sortie de longueur fixe, sans
   // notation exponentielle. WASM partage peut différer d'1 ULP du dernier
   // chiffre sur les milieux (round half-to-even vs JS half-away-from-zero) ;
   // pour le hash de partage c'est négligeable.
   // Signature : `n === null` ⇒ ancien chemin (fn(v) — exponentiel) ; `n !== null` ⇒
   // nouveau chemin formatter_fixe(v, n) avec n runtime depuis multilingual B4.
-  if (!wasmPartageRef?.partage || !wasmPartageRef?.reset) return null;
-  wasmPartageRef.reset();
+  if (!partage?.partage || !partage?.reset || typeof fn !== "function") return null;
+  partage.reset();
   const ptr = n === null ? fn(v) : fn(v, n);
-  return lireChainePartage(ptr);
+  return lireChainePartage(partage, ptr);
 }
 
-function formatFlottant(n) {
+function formatFlottant(n, partage) {
   if (n === 0) return "0";
   const abs = Math.abs(n);
   if (abs < 0.0001 || abs >= 100000) {
     // Chemin WASM canonique (cf. fractales_partage.multi : formatter_exponentiel_9)
     // — round-trip parseFloat-fidèle, simple normalisation des zéros de queue.
-    const fe = wasmPartageRef?.partage?.formatter_exponentiel_9;
-    const wasm = fixeWasm(fe, n);
+    const fe = partage?.partage?.formatter_exponentiel_9;
+    const wasm = fe ? fixeWasm(partage, fe, n) : null;
     if (wasm !== null) return wasm.replace(/\.?0+e/, "e").replace("e+", "e");
     return n.toExponential(10).replace(/\.?0+e/, "e").replace("e+", "e");
   }
   return n.toPrecision(12).replace(/\.?0+$/, "");
 }
 
-export function encoderEtat(view, params) {
+export function encoderEtat(view, params, partage = null) {
   const p = new URLSearchParams();
   p.set("f", params.fractal);
   if (!FRACTALES_3D.has(params.fractal)) {
-    p.set("x", formatFlottant(view.centerX));
-    p.set("y", formatFlottant(view.centerY));
-    p.set("ps", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.pixelSize) ?? view.pixelSize.toExponential(8).replace("e+", "e"));
+    p.set("x", formatFlottant(view.centerX, partage));
+    p.set("y", formatFlottant(view.centerY, partage));
+    p.set("ps", fixeWasm(partage, partage?.partage?.formatter_exponentiel_8, view.pixelSize) ?? view.pixelSize.toExponential(8).replace("e+", "e"));
     if (view.rotation !== 0) {
-      p.set("r", fixeWasm(wasmPartageRef?.partage?.formatter_fixe, view.rotation, 5) ?? view.rotation.toFixed(5));
+      p.set("r", fixeWasm(partage, partage?.partage?.formatter_fixe, view.rotation, 5) ?? view.rotation.toFixed(5));
     }
     // Partie basse double-double : ajoutée UNIQUEMENT en zoom très profond,
     // où l'addition centerX + pixelSize·offset perd des bits. Préserve la
     // précision sub-f64 lors d'un partage de lien.
-    if (view.centerX_lo) p.set("xlo", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.centerX_lo) ?? view.centerX_lo.toExponential(8).replace("e+", "e"));
-    if (view.centerY_lo) p.set("ylo", fixeWasm(wasmPartageRef?.partage?.formatter_exponentiel_8, view.centerY_lo) ?? view.centerY_lo.toExponential(8).replace("e+", "e"));
+    if (view.centerX_lo) p.set("xlo", fixeWasm(partage, partage?.partage?.formatter_exponentiel_8, view.centerX_lo) ?? view.centerX_lo.toExponential(8).replace("e+", "e"));
+    if (view.centerY_lo) p.set("ylo", fixeWasm(partage, partage?.partage?.formatter_exponentiel_8, view.centerY_lo) ?? view.centerY_lo.toExponential(8).replace("e+", "e"));
   }
   p.set("i", String(params.maxIter));
   if (params.palette && params.palette !== "aurora") p.set("p", params.palette);
   if (params.fractal === "multibrot") p.set("pr", String(params.multibrotPower));
-  const fF = wasmPartageRef?.partage?.formatter_fixe;
+  const fF = partage?.partage?.formatter_fixe;
   if (JULIA_FRACTALS.has(params.fractal)) {
-    p.set("jr", fixeWasm(fF, params.juliaCre, 6) ?? params.juliaCre.toFixed(6));
-    p.set("ji", fixeWasm(fF, params.juliaCim, 6) ?? params.juliaCim.toFixed(6));
+    p.set("jr", fixeWasm(partage, fF, params.juliaCre, 6) ?? params.juliaCre.toFixed(6));
+    p.set("ji", fixeWasm(partage, fF, params.juliaCim, 6) ?? params.juliaCim.toFixed(6));
   }
   if (params.coloringMode && params.coloringMode !== "standard") p.set("cm", params.coloringMode);
   if (params.palettePhase) {
     const v = Number(params.palettePhase);
-    p.set("ph", fixeWasm(fF, v, 3) ?? v.toFixed(3));
+    p.set("ph", fixeWasm(partage, fF, v, 3) ?? v.toFixed(3));
   }
   if (params.paletteContours) p.set("pc", "1");
   if (params.lsystemLineColor && params.lsystemLineColor !== "progression") p.set("lc", params.lsystemLineColor);
   if (params.lsystemStrokeWidth && params.lsystemStrokeWidth !== 1.35) {
     const v = Number(params.lsystemStrokeWidth);
-    p.set("lsw", fixeWasm(fF, v, 2) ?? v.toFixed(2));
+    p.set("lsw", fixeWasm(partage, fF, v, 2) ?? v.toFixed(2));
   }
   if (params.deepZoomAutoIterations) p.set("azi", "1");
   if (params.deepZoomQuality && params.deepZoomQuality !== "standard") p.set("q", params.deepZoomQuality);
   if (params.studio3dMaterial && params.studio3dMaterial !== "lumineux") p.set("mat", params.studio3dMaterial);
   if (params.studio3dFog) {
     const v = Number(params.studio3dFog);
-    p.set("fog", fixeWasm(fF, v, 2) ?? v.toFixed(2));
+    p.set("fog", fixeWasm(partage, fF, v, 2) ?? v.toFixed(2));
   }
   if (params.weatherOverlays) p.set("ov", params.weatherOverlays);
   if (params.lsystemProposalActive) {
@@ -126,7 +127,7 @@ export function encoderEtat(view, params) {
   return "#" + p.toString();
 }
 
-export function decoderEtat(hash) {
+export function decoderEtat(hash, partage = null) {
   const raw = hash && hash.startsWith("#") ? hash.slice(1) : hash;
   if (!raw) return null;
   let p;
@@ -187,7 +188,7 @@ export function decoderEtat(hash) {
   // Validation numérique : exécutée via WASM (fractales_partage) si chargé,
   // sinon JS. La sémantique est identique — un seul aller-retour WASM pour
   // l'état complet via `valider_etat_complet`.
-  const v = wasmPartageRef?.partage;
+  const v = partage?.partage;
   if (v && etat.centerX !== undefined && etat.pixelSize !== undefined && etat.maxIter !== undefined) {
     if (v.valider_etat_complet(etat.centerX, etat.centerY ?? 0, etat.pixelSize, etat.maxIter, etat.rotation ?? 0) < 0.5) {
       return null;
@@ -200,15 +201,6 @@ export function decoderEtat(hash) {
   }
 
   return etat;
-}
-
-export function mettreAJourHash(view, params) {
-  clearTimeout(hashDebounceTimer);
-  hashDebounceTimer = setTimeout(() => {
-    try {
-      history.replaceState(null, "", encoderEtat(view, params));
-    } catch {}
-  }, 400);
 }
 
 /**
@@ -291,20 +283,43 @@ export function animerVersVue(cible, { view, wasmNav, render, onComplete, dureeM
   });
 }
 
-export function initialiserPartage({ getView, getParams, updateStatusBar, getWasmMetaPanels }) {
-  if (typeof getWasmMetaPanels === "function") {
-    wasmPartageRef = getWasmMetaPanels();
-  }
-  const btn = document.getElementById("btn-partager");
-  if (!btn) return;
+/**
+ * Fabrique liant le bucket WASM partage aux helpers d'encodage/décodage.
+ * Le getter est appelé paresseusement à chaque invocation (le module
+ * partage peut être chargé après l'appel à creerPartage). Évite l'ancien
+ * singleton `wasmPartageRef` mutable au niveau module (workaround W18).
+ */
+export function creerPartage(getWasmMetaPanels) {
+  const getPartage = typeof getWasmMetaPanels === "function" ? getWasmMetaPanels : () => null;
+  let hashDebounceTimer = null;
 
-  btn.addEventListener("click", async () => {
-    const url = location.origin + location.pathname + encoderEtat(getView(), getParams());
-    try {
-      await navigator.clipboard.writeText(url);
-      updateStatusBar("Lien copié dans le presse-papiers", true);
-    } catch {
-      updateStatusBar("Lien : " + url, false);
-    }
-  });
+  function mettreAJourHash(view, params) {
+    clearTimeout(hashDebounceTimer);
+    hashDebounceTimer = setTimeout(() => {
+      try {
+        history.replaceState(null, "", encoderEtat(view, params, getPartage()));
+      } catch {}
+    }, 400);
+  }
+
+  function initialiserPartage({ getView, getParams, updateStatusBar }) {
+    const btn = document.getElementById("btn-partager");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const url = location.origin + location.pathname + encoderEtat(getView(), getParams(), getPartage());
+      try {
+        await navigator.clipboard.writeText(url);
+        updateStatusBar("Lien copié dans le presse-papiers", true);
+      } catch {
+        updateStatusBar("Lien : " + url, false);
+      }
+    });
+  }
+
+  return {
+    encoderEtat: (view, params) => encoderEtat(view, params, getPartage()),
+    decoderEtat: (hash) => decoderEtat(hash, getPartage()),
+    mettreAJourHash,
+    initialiserPartage,
+  };
 }

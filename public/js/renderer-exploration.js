@@ -165,16 +165,14 @@ const CODES_ORBITE_FAMILLE = new Map([
 ]);
 
 function lireOrbiteDepuisWasm(meta, ptrF64) {
-  const base = Math.trunc(ptrF64);
-  const view = new DataView(meta.memory.buffer);
-  // Les listes multilingual portent leur longueur i32 cachée à base+0 ;
-  // les données utilisateur démarrent à base+8.
-  const np = view.getFloat64(base + 8, true);
-  const escaped = view.getFloat64(base + 16, true);
+  // ABI listes multilingual via les helpers B5 `__ml_list_item(ptr, i)` :
+  // user[0]=np, user[1]=escaped, puis paires (re, im) à partir de user[2].
+  const item = meta.listItem;
+  const np = item(ptrF64, 0);
+  const escaped = item(ptrF64, 1);
   const points = [];
   for (let k = 0; k < np; k++) {
-    const off = base + 8 + 8 * (2 + 2 * k);
-    points.push({ re: view.getFloat64(off, true), im: view.getFloat64(off + 8, true) });
+    points.push({ re: item(ptrF64, 2 + 2 * k), im: item(ptrF64, 2 + 2 * k + 1) });
   }
   return { points, escaped: escaped > 0.5 };
 }

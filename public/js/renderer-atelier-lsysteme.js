@@ -96,19 +96,21 @@ function ecrireChaineWasm(exports, texte) {
 // Lit les sommets renvoyés (liste stride-5 [count, x,y,move,prof,ang ...]) à
 // partir d'un pointeur f64 issu d'un export tortue, et matérialise un tableau
 // d'objets { x, y, move, profondeur, angle } compatible avec le chemin JS.
+// Tout passe par __ml_list_item (B5) : le pointeur retourné par tortue_lsysteme
+// peut tomber sur un offset non aligné f64 (les __ml_str_alloc en amont
+// produisent des tailles arbitraires), ce qui interdit une vue Float64Array.
 function lireSommetsDepuisPtr(ptr) {
-  const base = Math.trunc(ptr);
-  const view = new DataView(memoryRef.current.buffer);
-  const count = view.getFloat64(base + 8, true); // élément [0] = np
+  const item = exportsRef.current.__ml_list_item;
+  const count = item(ptr, 0);
   const points = new Array(Math.max(0, count));
   for (let k = 0; k < count; k++) {
-    const o = base + 8 + 8 * (1 + PAS_SOMMET * k);
+    const o = 1 + PAS_SOMMET * k;
     points[k] = {
-      x: view.getFloat64(o, true),
-      y: view.getFloat64(o + 8, true),
-      move: view.getFloat64(o + 16, true) === 1,
-      profondeur: view.getFloat64(o + 24, true),
-      angle: view.getFloat64(o + 32, true),
+      x: item(ptr, o),
+      y: item(ptr, o + 1),
+      move: item(ptr, o + 2) === 1,
+      profondeur: item(ptr, o + 3),
+      angle: item(ptr, o + 4),
     };
   }
   return points;
@@ -153,17 +155,19 @@ async function calculerSommets(generations, angleDeg) {
   const exports = await chargerAtelierLSysteme();
   exports.__ml_reset();
   const ptr = exports.tracer_lsysteme(Number(generations) || 0, Number(angleDeg) || 0);
-  const base = Math.trunc(ptr);
-  const view = new DataView(memoryRef.current.buffer);
-  const count = view.getFloat64(base + 8, true); // élément [0] = np
+  const item = exports.__ml_list_item;
+  const count = item(ptr, 0);
+  // Copie via __ml_list_item (B5) — l'appelant garde le buffer après un éventuel
+  // __ml_reset() ultérieur ; le pointeur peut être non aligné f64.
   const sommets = new Float64Array(Math.max(0, count) * PAS_SOMMET);
   for (let k = 0; k < count; k++) {
-    const o = base + 8 + 8 * (1 + PAS_SOMMET * k);
-    sommets[PAS_SOMMET * k] = view.getFloat64(o, true);
-    sommets[PAS_SOMMET * k + 1] = view.getFloat64(o + 8, true);
-    sommets[PAS_SOMMET * k + 2] = view.getFloat64(o + 16, true);
-    sommets[PAS_SOMMET * k + 3] = view.getFloat64(o + 24, true);
-    sommets[PAS_SOMMET * k + 4] = view.getFloat64(o + 32, true);
+    const o = 1 + PAS_SOMMET * k;
+    const base = PAS_SOMMET * k;
+    sommets[base] = item(ptr, o);
+    sommets[base + 1] = item(ptr, o + 1);
+    sommets[base + 2] = item(ptr, o + 2);
+    sommets[base + 3] = item(ptr, o + 3);
+    sommets[base + 4] = item(ptr, o + 4);
   }
   return { sommets, count };
 }

@@ -54,12 +54,10 @@ function mandelbrotF64(cx, cy, maxIter) {
 }
 
 // Les fonctions multilingual qui renvoient une liste exportent un pointeur
-// f64 vers un tampon : [count_header à +0, item_0 à +8, item_1 à +16, ...].
-// Pour add_dd / mul_dd qui renvoient [hi, lo] : hi à ptr+8, lo à ptr+16.
+// f64 ; le caller hôte lit count + items via __ml_list_count / __ml_list_item.
+// add_dd / mul_dd renvoient [hi, lo] : on lit user[0]=hi, user[1]=lo.
 function lireListeDD(ptr) {
-  const base = Math.trunc(ptr);
-  const view = new DataView(exports.memory.buffer);
-  return [view.getFloat64(base + 8, true), view.getFloat64(base + 16, true)];
+  return [exports.__ml_list_item(ptr, 0), exports.__ml_list_item(ptr, 1)];
 }
 
 describe("Dekker primitives — accord avec la séquence directe", () => {
@@ -91,16 +89,11 @@ describe("mandelbrot_perturbation_pixel — parité avec f64 à zoom standard", 
   test("orbite de référence non vide et bornée", () => {
     exports.__ml_reset();
     const orbitPtr = exports.mandelbrot_reference_orbit(cx, 0, cy, 0, maxIter);
-    const memory = exports.memory;
-    const view = new DataView(memory.buffer);
-    const base = Math.trunc(orbitPtr);
-    const count = view.getFloat64(base + 8, true);
+    // user[0]=count, user[1]=Zx_0, user[2]=Zy_0.
+    const count = exports.__ml_list_item(orbitPtr, 0);
     assert.ok(count > 0 && count <= maxIter, `count ${count}`);
-    // Lire Z_0 ; doit être (0, 0).
-    const zx0 = view.getFloat64(base + 8 + 8, true);
-    const zy0 = view.getFloat64(base + 8 + 16, true);
-    assert.equal(zx0, 0);
-    assert.equal(zy0, 0);
+    assert.equal(exports.__ml_list_item(orbitPtr, 1), 0);
+    assert.equal(exports.__ml_list_item(orbitPtr, 2), 0);
   });
 
   test("perturbation_pixel == iter_natif aux pixels d'une grille 8×8 autour de (-0.5, 0)", () => {
@@ -131,10 +124,8 @@ describe("mandelbrot_perturbation_tile — un appel par tuile", () => {
     const maxIter = 256;
     exports.__ml_reset();
     const tilePtr = exports.mandelbrot_perturbation_tile(cx, 0, cy, 0, ps, w, h, maxIter);
-    const memory = exports.memory;
-    const view = new DataView(memory.buffer);
-    const base = Math.trunc(tilePtr);
-    const count = view.getFloat64(base + 8, true);
+    // user[0]=count, user[1..]=iter par pixel.
+    const count = exports.__ml_list_item(tilePtr, 0);
     assert.equal(count, w * h);
     let mismatchs = 0;
     for (let py = 0; py < h; py++) {
@@ -143,7 +134,7 @@ describe("mandelbrot_perturbation_tile — un appel par tuile", () => {
         const dcy = (py - h / 2) * ps;
         const refIter = mandelbrotF64(cx + dcx, cy + dcy, maxIter);
         const idx = py * w + px;
-        const pertIter = view.getFloat64(base + 8 + 8 * (1 + idx), true);
+        const pertIter = exports.__ml_list_item(tilePtr, 1 + idx);
         if (refIter !== pertIter) mismatchs++;
       }
     }
@@ -163,16 +154,14 @@ describe("zoom profond — DD préserve les bits perdus par f64", () => {
     const maxIter = 200;
     exports.__ml_reset();
     const tilePtr = exports.mandelbrot_perturbation_tile(cxH, cxL, cyH, cyL, ps, w, h, maxIter);
-    const memory = exports.memory;
-    const view = new DataView(memory.buffer);
-    const base = Math.trunc(tilePtr);
-    const count = view.getFloat64(base + 8, true);
+    // user[0]=count, user[1..]=iter par pixel.
+    const count = exports.__ml_list_item(tilePtr, 0);
     assert.equal(count, w * h, "le noyau retourne bien w*h itérations");
     // Au moins quelques pixels doivent différer entre eux : DD distingue les
     // positions sub-ulp que f64 fond en un seul point.
     const iters = [];
     for (let i = 0; i < w * h; i++) {
-      iters.push(view.getFloat64(base + 8 + 8 * (1 + i), true));
+      iters.push(exports.__ml_list_item(tilePtr, 1 + i));
     }
     const unique = new Set(iters);
     // f64 pur donnerait probablement 1 seule valeur ; DD doit en distinguer

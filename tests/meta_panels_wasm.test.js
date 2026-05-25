@@ -39,30 +39,14 @@ const exports = await instancier();
 // Helpers
 // ============================================================================
 
-function lireListePlate(ptr) {
-  // Layout : [count à +0, item_0 à +8, item_1 à +16, ...]
-  const base = Math.trunc(ptr);
-  const view = new DataView(exports.memory.buffer);
-  const count = view.getFloat64(base, true);
-  return { base, view, count };
-}
-
 function lireOrbitePoints(ptr) {
-  // Les listes multilingual portent une longueur cachée à base+0 (i32→f64).
-  // Données utilisateur : sortie[0] à base+8, sortie[1] à base+16, etc.
-  // Layout fractales_orbite : sortie[0]=np, sortie[1]=escaped,
-  // sortie[2 + 2k]=x_k, sortie[3 + 2k]=y_k.
-  const base = Math.trunc(ptr);
-  const view = new DataView(exports.memory.buffer);
-  const np = view.getFloat64(base + 8, true);
-  const escaped = view.getFloat64(base + 16, true);
+  // Layout fractales_orbite : user[0]=np, user[1]=escaped, user[2+2k]=x_k, user[3+2k]=y_k.
+  const item = (i) => exports.__ml_list_item(ptr, i);
+  const np = item(0);
+  const escaped = item(1);
   const points = [];
   for (let k = 0; k < np; k++) {
-    const off = base + 8 + 8 * (2 + 2 * k);
-    points.push({
-      re: view.getFloat64(off, true),
-      im: view.getFloat64(off + 8, true),
-    });
+    points.push({ re: item(2 + 2 * k), im: item(2 + 2 * k + 1) });
   }
   return { np, escaped: escaped > 0.5, points };
 }
@@ -468,10 +452,8 @@ function ecrireChaineLP(s) {
 }
 
 function lireListeF64(ptr, n) {
-  const base = Math.trunc(ptr);
-  const view = new DataView(exports.memory.buffer);
   const out = [];
-  for (let k = 0; k < n; k++) out.push(view.getFloat64(base + 8 + 8 * k, true));
+  for (let k = 0; k < n; k++) out.push(exports.__ml_list_item(ptr, k));
   return out;
 }
 
@@ -495,9 +477,7 @@ describe("fractales_simd — mandelbrot_simd_pair", () => {
     return maxIter;
   }
   function readPair(ptr) {
-    const base = Math.trunc(ptr);
-    const v = new DataView(exports.memory.buffer);
-    return [v.getFloat64(base + 8, true), v.getFloat64(base + 16, true)];
+    return [exports.__ml_list_item(ptr, 0), exports.__ml_list_item(ptr, 1)];
   }
   test("SIMD donne les mêmes itérations que le scalaire à ±1 près", () => {
     const cases = [

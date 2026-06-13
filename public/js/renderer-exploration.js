@@ -606,10 +606,21 @@ export function initialiserExploration({
         // Projection 3D portée par le WASM (src/fractales_volumetrique.multi) ;
         // le studio se rabat sur un repli JS identique si l'export manque.
         projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
+        // Partage : le studio publie son état (processus, image, relief) dans le hash.
+        setParamsPatch,
+        updateHash,
       });
+      const params = getParams();
       const selecteur = document.getElementById("process-select");
-      const cle = selecteur?.value || CATALOGUE_PROCESSUS[0].cle;
-      studioProcessus.charger(cle).catch((err) => {
+      // Lien partagé (cv/cvs/cv3) sinon sélection courante sinon premier du catalogue.
+      const cle = params.processCroissance
+        || selecteur?.value
+        || CATALOGUE_PROCESSUS[0].cle;
+      if (selecteur && CATALOGUE_PROCESSUS.some((p) => p.cle === cle)) selecteur.value = cle;
+      studioProcessus.charger(cle, {
+        step: params.processStep,
+        relief: params.process3D,
+      }).catch((err) => {
         const desc = document.getElementById("process-description");
         if (desc) desc.textContent = `Échec du chargement du processus : ${err.message}`;
       });

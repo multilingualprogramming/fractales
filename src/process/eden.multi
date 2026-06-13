@@ -1,0 +1,43 @@
+# Croissance d'Eden : la première fractale « vivante » *stochastique* de
+# l'application. Construire avec :
+#
+#     python3 scripts/build_processes.py
+#
+# Les autres processus (Turing, Gray-Scott, parité) sont déterministes. Eden
+# ajoute le hasard : un amas croît par accrétion -- à chaque pas, une cellule
+# vide qui touche l'amas le rejoint *avec une probabilité p*. À partir d'une
+# seule graine, un blob à frontière rugueuse, fractale, apparaît (le modèle
+# d'Eden : croissance de tumeur / colonie / dépôt, classe de rugosité KPZ).
+#
+# Possible grâce au prédicat `chance` ajouté à multilingual : une clause ne se
+# déclenche qu'une fraction du temps, fraction fixée par un hachage déterministe
+# de la cellule, du pas et d'un sel -- trajectoire reproductible et identique au
+# bit entre Python et JS, sans aucun état de générateur aléatoire.
+
+# La règle de croissance. Une cellule vide (alive = 0) touchant au moins une
+# cellule de l'amas (1..4 voisines von Neumann) le rejoint avec une probabilité
+# p. Pas de `repli` : une cellule sans clause reste inchangée -- l'amas est donc
+# permanent et la croissance monotone, exactement le modèle d'Eden. La clé
+# "alive" reste un nom de schéma (neutre vis-à-vis de la langue).
+déf regle_eden():
+    soit p = 0.5
+    retour reecrire(
+        clause(quand(alive=0), nombre_voisins("alive", 1, [1, 2, 3, 4]), chance(p), devient(alive=1))
+    )
+
+# Un treillis borné (sans repli toroïdal) amorcé d'une seule cellule vivante au
+# centre, pour que l'amas croisse vers l'extérieur dans l'espace libre.
+soit largeur = 81
+soit hauteur = 81
+soit cx = largeur // 2
+soit cy = hauteur // 2
+soit cellules = [{"locus": [x, y], "alive": 1 si x == cx et y == cy sinon 0} pour x dans intervalle(largeur) pour y dans intervalle(hauteur)]
+soit etat = {"loci": cellules}
+
+# La variable doit s'appeler `process` (nom littéral cherché par process-build).
+soit process = construire_noyau_processus(
+    etat,
+    topologie_treillis(largeur, hauteur, Faux, "von-neumann4"),
+    regle_eden(),
+    ordonnancement_synchrone()
+)

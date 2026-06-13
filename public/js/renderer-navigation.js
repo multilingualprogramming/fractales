@@ -130,6 +130,15 @@ export function encoderEtat(view, params, partage = null) {
     p.set("ffa", String(params.formuleParamA ?? 0));
     p.set("ffb", String(params.formuleParamB ?? 0));
   }
+  // Atelier Croissance : partage d'un processus vivant à une image donnée, en
+  // 2D ou en relief 3D. Émis uniquement quand un processus est sélectionné.
+  if (params.processCroissance) {
+    p.set("cv", params.processCroissance);
+    if (params.processStep !== undefined && params.processStep !== null) {
+      p.set("cvs", String(params.processStep));
+    }
+    if (params.process3D) p.set("cv3", "1");
+  }
   return "#" + p.toString();
 }
 
@@ -189,6 +198,11 @@ export function decoderEtat(hash, partage = null) {
     formuleMode: p.get("ffm") ?? undefined,
     formuleParamA: num("ffa"),
     formuleParamB: num("ffb"),
+    // Atelier Croissance (processus vivants) : clé du processus, image courante,
+    // relief 3D. Additif — absent des liens classiques.
+    processCroissance: p.get("cv") ?? undefined,
+    processStep: ent("cvs"),
+    process3D: p.get("cv3") === "1",
   };
 
   // Validation numérique : exécutée via WASM (fractales_partage) si chargé,

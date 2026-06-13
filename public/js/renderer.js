@@ -4823,6 +4823,12 @@ async function init() {
     if (etatHash.formuleParamA !== undefined) params.formuleParamA = etatHash.formuleParamA;
     if (etatHash.formuleParamB !== undefined) params.formuleParamB = etatHash.formuleParamB;
     if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
+    // Atelier Croissance : lien vers un processus vivant (cv/cvs/cv3).
+    if (etatHash.processCroissance) {
+      params.processCroissance = etatHash.processCroissance;
+      params.processStep = etatHash.processStep ?? 0;
+      params.process3D = etatHash.process3D ?? false;
+    }
   }
 
   syncSelectors(params.fractal);
@@ -4833,6 +4839,10 @@ async function init() {
   mettreAJourOptionsSpecifiques();
   chargerEtatControles();
   explorationModes?.syncFromParams();
+
+  // Lien partagé vers l'atelier Croissance : ouvrir directement le mode (ce qui
+  // crée le studio et charge le processus à l'image / vue partagées).
+  if (params.processCroissance) explorationModes?.setMode("croissance");
 
   // Vue initiale : preset de la fractale (point de départ de l'animation)
   const preset = VIEW_PRESETS[params.fractal] ?? VIEW_PRESETS.mandelbrot;

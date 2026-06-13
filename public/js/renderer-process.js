@@ -49,6 +49,16 @@ export const CATALOGUE_PROCESSUS = [
     pasMax: 63,
     description: "Règle XOR de von Neumann : une fractale de Sierpiński se réplique à chaque puissance de deux.",
   },
+  {
+    cle: "eden",
+    nom: "Croissance d'Eden (stochastique)",
+    fichier: "process/program.eden.v1.json",
+    champ: "alive",
+    palette: "encre",
+    pasDefaut: 40,
+    pasMax: 80,
+    description: "Accrétion aléatoire : un amas grandit cellule par cellule, frontière rugueuse fractale (classe KPZ).",
+  },
 ];
 
 export function trouverProcessus(cle) {
@@ -199,6 +209,8 @@ export function creerStudioProcessus(deps = {}) {
     description,
     boutonRelief,
     projeterVolumetrique = null, // export WASM projeter_volumetrique (sinon repli JS)
+    setParamsPatch = () => {},
+    updateHash = () => {},
     chargerManifeste = chargerManifesteParDefaut,
     requestFrame = (cb) => requestAnimationFrame(cb),
     cancelFrame = (id) => cancelAnimationFrame(id),
@@ -214,6 +226,19 @@ export function creerStudioProcessus(deps = {}) {
 
   // Projette via WASM si disponible, sinon par le repli JS. Renvoie le quadruplet
   // [sx, sy, echelle, profondeur].
+  // Publie l'état du studio dans le hash partageable (processus, image, relief)
+  // via les params de l'application. Appelé sur les actions de l'utilisateur,
+  // pas à chaque image d'animation, pour ne pas marteler l'URL.
+  function publier() {
+    if (!etat) return;
+    setParamsPatch({
+      processCroissance: etat.processus.cle,
+      processStep: imageCourante,
+      process3D: relief3D,
+    });
+    updateHash();
+  }
+
   function projeter(x, y, z, w, h, t) {
     if (projeterVolumetrique) {
       const r = projeterVolumetrique(x, y, z, w, h, t);
@@ -295,7 +320,7 @@ export function creerStudioProcessus(deps = {}) {
     }
   }
 
-  async function charger(cle) {
+  async function charger(cle, opts = {}) {
     const processus = trouverProcessus(cle);
     if (!processus) return;
     arreter();
@@ -309,11 +334,19 @@ export function creerStudioProcessus(deps = {}) {
     if (curseur) {
       curseur.min = "0";
       curseur.max = String(etat.trajectoire.length - 1);
-      curseur.value = "0";
     }
     if (description) description.textContent = processus.description;
     majTier();
-    peindre(0);
+    // Relief / image de départ (depuis un lien partagé le cas échéant).
+    if (opts.relief !== undefined && opts.relief !== relief3D) {
+      relief3D = opts.relief;
+      if (boutonRelief) {
+        boutonRelief.textContent = relief3D ? "Vue 2D" : "Relief 3D";
+        boutonRelief.setAttribute("aria-pressed", String(relief3D));
+      }
+    }
+    peindre(Number.isFinite(opts.step) ? opts.step : 0);
+    publier();
   }
 
   function pas() {
@@ -336,6 +369,7 @@ export function creerStudioProcessus(deps = {}) {
       boutonRelief.setAttribute("aria-pressed", String(relief3D));
     }
     peindre(imageCourante);
+    publier();
   }
 
   function lire() {
@@ -369,7 +403,7 @@ export function creerStudioProcessus(deps = {}) {
   if (boutonLecture) boutonLecture.addEventListener("click", basculerLecture);
   if (boutonRelief) boutonRelief.addEventListener("click", basculerRelief);
   if (curseur) {
-    curseur.addEventListener("input", () => { arreter(); peindre(Number(curseur.value)); });
+    curseur.addEventListener("input", () => { arreter(); peindre(Number(curseur.value)); publier(); });
   }
   if (champPas) {
     champPas.addEventListener("change", () => { if (etat) charger(etat.processus.cle); });

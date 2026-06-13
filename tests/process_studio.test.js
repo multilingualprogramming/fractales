@@ -98,6 +98,18 @@ describe("image + trajectory", () => {
     const calc = calculerTrajectoire(loadManifest("automate_parite"), 8, "vivant");
     assert.equal(calc.tier, 2);
   });
+
+  test("the stochastic Eden cluster grows monotonically and reproducibly", () => {
+    const a = calculerTrajectoire(loadManifest("eden"), 20, "alive").trajectoire;
+    const b = calculerTrajectoire(loadManifest("eden"), 20, "alive").trajectoire;
+    const alive = (frame) => frame.state.loci.filter((r) => r.alive).length;
+    const counts = a.map(alive);
+    assert.equal(counts[0], 1);
+    assert.ok(counts.every((c, i) => i === 0 || c >= counts[i - 1]), "monotone");
+    assert.ok(counts[20] > 50, "cluster spread");
+    // Deterministic: the chance predicate is a pure hash, so reruns match.
+    assert.deepEqual(a.map(alive), b.map(alive));
+  });
 });
 
 describe("volumetric projection (JS fallback mirrors the .multi formula)", () => {

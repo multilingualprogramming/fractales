@@ -277,4 +277,27 @@ describe("share: round-trip", () => {
     assert.ok(Math.abs(decoded.centerX_lo - view.centerX_lo) < 1e-25, `xlo ${decoded.centerX_lo}`);
     assert.ok(Math.abs(decoded.centerY_lo - view.centerY_lo) < 1e-25, `ylo ${decoded.centerY_lo}`);
   });
+
+  test("Croissance studio state round-trips (cv/cvs/cv3)", () => {
+    const view = { centerX: -0.5, centerY: 0, pixelSize: 0.004, rotation: 0 };
+    const params = {
+      fractal: "mandelbrot", maxIter: 256, palette: "aurora",
+      processCroissance: "eden", processStep: 37, process3D: true,
+    };
+    const hash = encoderEtat(view, params);
+    assert.ok(hash.includes("cv=eden"), "process key present");
+    assert.ok(hash.includes("cvs=37"), "step present");
+    assert.ok(hash.includes("cv3=1"), "relief flag present");
+    const decoded = decoderEtat(hash);
+    assert.equal(decoded.processCroissance, "eden");
+    assert.equal(decoded.processStep, 37);
+    assert.equal(decoded.process3D, true);
+  });
+
+  test("omits Croissance params when no process is selected", () => {
+    const view = { centerX: -0.5, centerY: 0, pixelSize: 0.004, rotation: 0 };
+    const hash = encoderEtat(view, { fractal: "mandelbrot", maxIter: 256, palette: "aurora" });
+    assert.ok(!hash.includes("cv="), "no process key on a normal link");
+    assert.equal(decoderEtat(hash).processCroissance, undefined);
+  });
 });

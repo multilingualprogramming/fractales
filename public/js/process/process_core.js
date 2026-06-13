@@ -121,7 +121,27 @@ function gridOf(core, topology) {
   return grid;
 }
 
-function clauseMatches(rec, nbs, grid, match, topology) {
+// A deterministic pseudo-random value in [0, 1) keyed by (x, y, step, salt).
+// The byte-identical twin of process_core._hash01: every multiply is a 32-bit
+// `Math.imul` made unsigned with `>>> 0` (matching CPython's `* … & 0xFFFFFFFF`),
+// every shift is on an unsigned 32-bit word, and the single divide by 2**32 is
+// the one float op -- identical on both runtimes. Backs the `chance` predicate.
+function hash01(x, y, step, salt) {
+  let h = Math.imul(x >>> 0, 0x9E3779B1) >>> 0;
+  h = (h ^ ((y + 0x85EBCA77) >>> 0)) >>> 0;
+  h = Math.imul(h, 0xC2B2AE3D) >>> 0;
+  h = (h ^ (Math.imul(step >>> 0, 0x27D4EB2F) >>> 0)) >>> 0;
+  h = (h ^ (salt >>> 0)) >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85EBCA6B) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xC2B2AE35) >>> 0;
+  h ^= h >>> 16;
+  h >>>= 0;
+  return h / 4294967296;
+}
+
+function clauseMatches(rec, nbs, grid, match, topology, stepIndex = 0) {
   const self = match.self ?? {};
   for (const field of Object.keys(self)) {
     if (rec[field] !== self[field]) {
@@ -140,12 +160,21 @@ function clauseMatches(rec, nbs, grid, match, topology) {
       return false;
     }
   }
+  // Stochastic predicate: fires only when a deterministic roll keyed by the
+  // locus, the step, and the clause's salt falls under the probability.
+  const chanceSpec = match.chance;
+  if (chanceSpec && rec.locus) {
+    const roll = hash01(rec.locus[0], rec.locus[1], stepIndex, chanceSpec.salt);
+    if (roll >= chanceSpec.p) {
+      return false;
+    }
+  }
   return true;
 }
 
-function produceFor(rec, nbs, grid, clauses, fallback, topology) {
+function produceFor(rec, nbs, grid, clauses, fallback, topology, stepIndex = 0) {
   for (const clause of clauses) {
-    if (clauseMatches(rec, nbs, grid, clause.match ?? {}, topology)) {
+    if (clauseMatches(rec, nbs, grid, clause.match ?? {}, topology, stepIndex)) {
       return clause.produce;
     }
   }
@@ -157,13 +186,13 @@ function isEmpty(rec, empty) {
 }
 
 // Fixed population: every declared locus persists, only its state moves.
-function stepFixed(core, topology, clauses, fallback) {
+function stepFixed(core, topology, clauses, fallback, stepIndex = 0) {
   const grid = gridOf(core, topology);
   const isLattice = topology.kind === TOPOLOGY_LATTICE;
   return core.state.loci.map((rec) => {
     const locus = adjacencyLocus(rec, topology);
     const nbs = neighbors(topology, locus);
-    const next = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology) };
+    const next = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology, stepIndex) };
     // Normalize a lattice coordinate to a list; a graph node keeps its own
     // ``locus`` view hint (if any) untouched.
     if (isLattice) next.locus = [rec.locus[0], rec.locus[1]];
@@ -174,7 +203,7 @@ function stepFixed(core, topology, clauses, fallback) {
 // Open population: rules may create and destroy loci. Only non-empty loci
 // are stored; each step considers the frontier (existing loci plus their
 // neighbours), since only those positions can change under a local rule.
-function stepOpen(core, topology, clauses, fallback) {
+function stepOpen(core, topology, clauses, fallback, stepIndex = 0) {
   const empty = core.state.empty;
   const grid = gridOf(core, topology);
 
@@ -192,7 +221,7 @@ function stepOpen(core, topology, clauses, fallback) {
   for (const locus of ordered) {
     const rec = grid.get(`${locus[0]},${locus[1]}`) ?? { locus, ...empty };
     const nbs = neighbors(topology, locus);
-    const produced = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology), locus };
+    const produced = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology, stepIndex), locus };
     if (!isEmpty(produced, empty)) {
       next.push(produced);
     }
@@ -207,7 +236,7 @@ function stepOpen(core, topology, clauses, fallback) {
 // rule's null default (no fallback), and spreading null is a no-op -- so a
 // locus matching no clause is left unchanged, the identity-on-no-match a cyclic
 // ecology rule relies on. The emitted list keeps the original loci order.
-function stepAsync(core, topology, clauses, fallback) {
+function stepAsync(core, topology, clauses, fallback, stepIndex = 0) {
   const grid = gridOf(core, topology);
   const isLattice = topology.kind === TOPOLOGY_LATTICE;
   const keys = [...grid.keys()].sort((a, b) => {
@@ -222,7 +251,7 @@ function stepAsync(core, topology, clauses, fallback) {
     const rec = grid.get(key);
     const locus = adjacencyLocus(rec, topology);
     const nbs = neighbors(topology, locus);
-    const next = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology) };
+    const next = { ...rec, ...produceFor(rec, nbs, grid, clauses, fallback, topology, stepIndex) };
     if (isLattice) next.locus = [rec.locus[0], rec.locus[1]];
     grid.set(key, next);
   }
@@ -330,8 +359,10 @@ function stepGenerative(core, clauses) {
 }
 
 // Advance the process core by one step, returning a new core. The input is
-// never mutated; topology/rule/schedule pass through unchanged.
-export function step(core) {
+// never mutated; topology/rule/schedule pass through unchanged. `stepIndex`
+// (0-based within a run) feeds the stochastic `chance` predicate; a
+// deterministic rule ignores it.
+export function step(core, stepIndex = 0) {
   if (core.schedule.kind === SCHEDULE_GENERATIVE) {
     if (core.rule.kind !== RULE_REWRITE) {
       throw new Error(`rule kind ${core.rule.kind} not yet supported`);
@@ -377,9 +408,9 @@ export function step(core) {
         `asynchronous schedule with population ${population} not yet supported`
       );
     }
-    nextLoci = stepAsync(core, topology, clauses, fallback);
+    nextLoci = stepAsync(core, topology, clauses, fallback, stepIndex);
   } else if (population === POPULATION_FIXED) {
-    nextLoci = stepFixed(core, topology, clauses, fallback);
+    nextLoci = stepFixed(core, topology, clauses, fallback, stepIndex);
   } else if (population === POPULATION_OPEN) {
     // Open population grows/prunes loci by coordinate frontier (lattice only);
     // an open graph would be full graph rewriting, not yet specified.
@@ -404,7 +435,7 @@ export function run(core, steps) {
   const trajectory = [core];
   let current = core;
   for (let i = 0; i < steps; i += 1) {
-    current = step(current);
+    current = step(current, i);
     trajectory.push(current);
   }
   return trajectory;

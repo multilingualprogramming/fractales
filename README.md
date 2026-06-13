@@ -335,7 +335,14 @@ python scripts/integration_checks.py
 python scripts/quick_checks.py
 ```
 
-Pour tester explicitement le dépôt amont `johnsamuelwrites/multilingual` :
+Pour tester explicitement la version publiée utilisée par CI :
+
+```powershell
+python -m pip install --upgrade "multilingualprogramming[wasm]==0.8.0"
+python scripts/compile_wasm.py
+```
+
+Pour tester la branche de développement amont au-delà de la version publiée :
 
 ```powershell
 python -m pip install --upgrade "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
@@ -584,8 +591,8 @@ Le workflow Actions installe Python 3.12 et la version epinglée dans
 `python scripts/quick_checks.py` (syntax checks JS, tests Node, smoke UI et contrat
 JS/source français), puis déploie `public/` sur GitHub Pages.
 
-Un workflow planifie surveille aussi la compatibilite avec la version epinglee,
-la derniere version publiee et la branche `main` du depot amont
+Un workflow planifie surveille aussi la compatibilite avec la version epinglee
+`0.8.0`, la derniere version publiee sur PyPI et la branche `main` du depot amont
 `johnsamuelwrites/multilingual`.
 
 Configurez Pages via : **Settings → Pages → Source : GitHub Actions**.

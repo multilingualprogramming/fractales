@@ -17,10 +17,12 @@ jobs:
       fail-fast: false
       matrix:
         channel:
-          - name: github-main
+          - name: pinned-0.8.0
+            install_command: pip install -r requirements-build.txt
+          - name: pypi-latest
+            install_command: pip install --upgrade "multilingualprogramming[wasm]"
+          - name: upstream-main
             install_command: pip install "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
-          - name: latest
-            install_command: pip install "multilingualprogramming[wasm]"
 
     steps:
       - name: Cloner le depot
@@ -150,7 +152,7 @@ jobs:
               `Workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
               `Date: ${new Date().toISOString()}`,
               '',
-              'Verifier en priorite les jobs `latest` et `upstream-main` pour identifier la regression.',
+              'Verifier en priorite les jobs `pypi-latest` et `upstream-main` pour identifier la regression.',
             ].join('\n');
 
             if (match) {

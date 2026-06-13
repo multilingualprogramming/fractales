@@ -3,7 +3,7 @@
 #
 # Pipeline :
 #   1. Installer Python 3.12
-#   2. pip install johnsamuelwrites/multilingual[wasm]
+#   2. pip install -r requirements-build.txt
 #   3. python scripts/compile_wasm.py
 #      → public/mandelbrot.wasm    (binaire WebAssembly)
 #      → public/benchmark.json     (résultats de benchmark)
@@ -57,10 +57,10 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Installer johnsamuelwrites/multilingual[wasm]
+      - name: Installer multilingualprogramming[wasm] épinglé
         run: |
           pip install --upgrade pip
-          pip install "multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main"
+          pip install -r requirements-build.txt
 
       - name: Vérifier l'installation WASM
         run: |

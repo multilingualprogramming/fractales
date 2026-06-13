@@ -1,1 +1,1 @@
-multilingualprogramming[wasm] @ git+https://github.com/johnsamuelwrites/multilingual.git@main
+multilingualprogramming[wasm]==0.8.0

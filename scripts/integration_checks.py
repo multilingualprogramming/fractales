@@ -353,6 +353,47 @@ def check_api_files() -> None:
         fail(f"cannot parse public/api/fractals.json: {exc}")
 
 
+def check_process_pipeline() -> None:
+    """Verify the semantic-core-v1 process pipeline (multilingual 0.8.0).
+
+    Two guarantees: (1) the vendored modality-free stepper has not drifted from
+    the language runtime it was copied from, and (2) every src/process/*.multi
+    has a freshly built manifest of the expected shape.
+    """
+    import hashlib
+    import json
+
+    core_js = PUBLIC / "js" / "process" / "process_core.js"
+    core_sha = PUBLIC / "js" / "process" / "process_core.js.sha256"
+    require_file(core_js)
+    require_file(core_sha)
+    actual = hashlib.sha256(core_js.read_bytes()).hexdigest()
+    expected = core_sha.read_text(encoding="utf-8").strip()
+    if actual != expected:
+        fail(
+            "vendored public/js/process/process_core.js has drifted from its "
+            f"pinned hash (got {actual[:12]}…, expected {expected[:12]}…). "
+            "Re-copy from multilingual and regenerate the .sha256 to upgrade."
+        )
+
+    process_src = SRC / "process"
+    sources = sorted(process_src.glob("*.multi")) if process_src.is_dir() else []
+    if not sources:
+        fail("no process programs found in src/process/*.multi")
+    for source in sources:
+        manifest = PUBLIC / "process" / f"program.{source.stem}.v1.json"
+        require_file(manifest)
+        try:
+            core = json.loads(manifest.read_text(encoding="utf-8"))
+        except Exception as exc:
+            fail(f"cannot parse {manifest.relative_to(ROOT)}: {exc}")
+        if core.get("kind") != "semantic-core-v1":
+            fail(f"{manifest.relative_to(ROOT)} is not a semantic-core-v1 manifest")
+        for axis in ("state", "topology", "rule", "schedule"):
+            if axis not in core:
+                fail(f"{manifest.relative_to(ROOT)} missing required axis: {axis}")
+
+
 def main() -> None:
     print("[integration] running checks...")
     require_file(PUBLIC / "main.multi")
@@ -366,6 +407,7 @@ def main() -> None:
     check_source_keywords()
     check_fractal_registration_consistency()
     check_api_files()
+    check_process_pipeline()
 
     print("[integration] all checks passed")
 

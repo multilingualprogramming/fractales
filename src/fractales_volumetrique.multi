@@ -1,0 +1,61 @@
+# Projection volumétrique (3D -> 2D) pour l'atelier Croissance.
+#
+# Une fractale vivante n'a pas à rester plate : la valeur d'un champ peut devenir
+# une *hauteur*, et la scène se projeter en relief 3D. Ce module porte la
+# géométrie de cette projection -- rotation autour de l'axe Y puis perspective
+# légère -- en multilingue compilé vers WASM, conformément à l'identité du
+# projet (la géométrie vit dans les .multi, pas dans le JS).
+#
+# C'est l'équivalent fractales du `project()` de la page volumetric de
+# multilingual : même formule (rotation Y + perspective douce), portée ici en
+# WASM. La trigonométrie est faite sur place par séries de Taylor à réduction
+# d'argument, comme les autres modules (sinus_dynamique, etc.), pour ne dépendre
+# d'aucune primitive trig native.
+
+# Réduit un angle dans [-pi, pi] pour que les séries de Taylor restent précises.
+# Constantes locales et littéraux inline (comme normaliser_angle_dynamique) : un
+# `soit` au niveau module ne se résout pas dans le bundle WASM aplati.
+déf normaliser_angle_volumetrique(x):
+    soit a = x
+    soit deux_pi = 6.283185307179586
+    tantque a > 3.141592653589793:
+        a = a - deux_pi
+    tantque a < -3.141592653589793:
+        a = a + deux_pi
+    retour a
+
+# sin par série de Taylor (jusqu'à x^9) sur l'angle réduit : erreur ~1e-6 sur
+# [-pi, pi], amplement suffisant pour une projection visuelle.
+déf sin_volumetrique(x):
+    soit a = normaliser_angle_volumetrique(x)
+    soit a2 = a * a
+    soit a3 = a2 * a
+    soit a5 = a3 * a2
+    soit a7 = a5 * a2
+    soit a9 = a7 * a2
+    retour a - a3 / 6.0 + a5 / 120.0 - a7 / 5040.0 + a9 / 362880.0
+
+# cos par série de Taylor (jusqu'à x^8) sur l'angle réduit.
+déf cos_volumetrique(x):
+    soit a = normaliser_angle_volumetrique(x)
+    soit a2 = a * a
+    soit a4 = a2 * a2
+    soit a6 = a4 * a2
+    soit a8 = a4 * a4
+    retour 1.0 - a2 / 2.0 + a4 / 24.0 - a6 / 720.0 + a8 / 40320.0
+
+# Projette un point de scène (x, y, z), grossièrement dans [-1, 1], vers les
+# coordonnées écran d'un canvas largeur x hauteur. On tourne autour de l'axe Y
+# de l'angle theta puis on applique une perspective douce où la profondeur rz
+# rapproche/éloigne. Renvoie le quadruplet (sx, sy, echelle, profondeur) en un
+# seul appel WASM (retour multi-valeur) : echelle dimensionne les primitives,
+# profondeur sert au tri du peintre.
+déf projeter_volumetrique(x, y, z, largeur, hauteur, theta):
+    soit c = cos_volumetrique(theta)
+    soit s = sin_volumetrique(theta)
+    soit rx = x * c - z * s
+    soit rz = x * s + z * c
+    soit persp = 1.0 / (1.8 - rz * 0.5)
+    soit sx = largeur / 2.0 + rx * largeur * 0.3 * persp
+    soit sy = hauteur / 2.0 + y * hauteur * 0.35 * persp
+    retour (sx, sy, persp, rz)

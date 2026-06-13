@@ -20,6 +20,10 @@ import {
   fractaleDePresetIFS,
   TABLEAU_IFS_BARNSLEY,
 } from "./renderer-ifs.js?v=app";
+import {
+  creerStudioProcessus,
+  CATALOGUE_PROCESSUS,
+} from "./renderer-process.js?v=20260613-croissance";
 
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
@@ -32,6 +36,7 @@ const TITRES_MODES = {
   meteo: ["Météo mathématique", "Surcouches d'analyse visuelle"],
   transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
   ifs: ["Atelier IFS", "Jeu du chaos — systèmes de fonctions itérées affines"],
+  croissance: ["Atelier Croissance", "Fractales vivantes — processus déroulés dans le temps"],
 };
 
 const PARAMETRES_FORMULE_DEFAUT = {
@@ -365,6 +370,7 @@ export function initialiserExploration({
   } = dependencies;
 
   let activeMode = null;
+  let studioProcessus = null; // atelier Croissance, créé à la première ouverture
   let capturedOrbit = [];
   let orbitEscaped = false;
   let orbitRevealIndex = 0;
@@ -563,6 +569,7 @@ export function initialiserExploration({
 
   function setMode(mode) {
     if (activeMode === "ifs") arreterJeuDuChaos();
+    if (activeMode === "croissance" && studioProcessus) studioProcessus.arreter();
     activeMode = activeMode === mode && !panel.classList.contains("hidden") ? null : mode;
     panel.classList.toggle("hidden", !activeMode);
     dock.querySelectorAll(".exploration-mode-btn").forEach((button) => {
@@ -578,6 +585,34 @@ export function initialiserExploration({
       if (activeMode === "formule") { updateFormuleProposal(); updateFormuleSaveList(); }
       if (activeMode === "transforms") updateTransformReadout();
       if (activeMode === "ifs") updateIFSProposal();
+      if (activeMode === "croissance") activerStudioProcessus();
+    }
+  }
+
+  // Crée l'atelier Croissance à la première ouverture (le canvas et les
+  // commandes existent alors dans le DOM), puis charge le processus courant.
+  function activerStudioProcessus() {
+    if (!studioProcessus) {
+      studioProcessus = creerStudioProcessus({
+        canvas: document.getElementById("process-canvas"),
+        selecteur: document.getElementById("process-select"),
+        boutonLecture: document.getElementById("btn-process-play"),
+        boutonRelief: document.getElementById("btn-process-relief"),
+        curseur: document.getElementById("process-slider"),
+        champPas: document.getElementById("process-steps-input"),
+        lectureEtape: document.getElementById("process-step-readout"),
+        lectureTier: document.getElementById("process-tier"),
+        description: document.getElementById("process-description"),
+        // Projection 3D portée par le WASM (src/fractales_volumetrique.multi) ;
+        // le studio se rabat sur un repli JS identique si l'export manque.
+        projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
+      });
+      const selecteur = document.getElementById("process-select");
+      const cle = selecteur?.value || CATALOGUE_PROCESSUS[0].cle;
+      studioProcessus.charger(cle).catch((err) => {
+        const desc = document.getElementById("process-description");
+        if (desc) desc.textContent = `Échec du chargement du processus : ${err.message}`;
+      });
     }
   }
 

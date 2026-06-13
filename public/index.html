@@ -238,6 +238,11 @@
             <span class="exploration-mode-icon" aria-hidden="true">◈</span>
             <span class="exploration-mode-label">Transforms</span>
           </button>
+          <button class="exploration-mode-btn" type="button" data-mode="croissance" aria-label="Atelier Croissance"
+            title="Atelier Croissance — fractales vivantes">
+            <span class="exploration-mode-icon" aria-hidden="true">❋</span>
+            <span class="exploration-mode-label">Croissance</span>
+          </button>
         </nav>
 
         <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
@@ -584,6 +589,29 @@
               <div class="exploration-actions">
                 <button id="btn-ifs-demarrer" class="btn" type="button">Démarrer</button>
                 <button id="btn-ifs-naviguer" class="btn btn-secondary" type="button">Naviguer vers</button>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="croissance">
+              <label class="exploration-field" for="process-select">
+                <span>Processus vivant</span>
+                <select id="process-select"></select>
+              </label>
+              <canvas id="process-canvas" width="280" height="280"
+                aria-label="Rendu du processus vivant" style="image-rendering: pixelated; width: 100%; height: auto;"></canvas>
+              <div id="process-description" class="exploration-readout">Choisissez un processus à dérouler dans le temps.</div>
+              <div id="process-tier" class="exploration-readout">—</div>
+              <label class="exploration-field" for="process-slider">
+                <span id="process-step-readout">Image 0 / 0</span>
+                <input type="range" id="process-slider" min="0" max="0" value="0" step="1" />
+              </label>
+              <div class="exploration-actions">
+                <button id="btn-process-play" class="btn" type="button">Lecture</button>
+                <button id="btn-process-relief" class="btn btn-secondary" type="button" aria-pressed="false">Relief 3D</button>
+                <label class="exploration-field" for="process-steps-input">
+                  <span>Pas</span>
+                  <input type="number" id="process-steps-input" min="1" max="600" step="1" value="240" />
+                </label>
               </div>
             </section>
 

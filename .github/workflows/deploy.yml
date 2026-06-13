@@ -78,6 +78,9 @@ jobs:
       - name: Générer l'API statique JSON
         run: python scripts/generate_api.py
 
+      - name: Construire les manifestes de processus (semantic-core-v1)
+        run: python scripts/build_processes.py
+
       - name: Exécuter les tests d'intégration
         run: python scripts/integration_checks.py
 

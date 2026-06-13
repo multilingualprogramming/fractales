@@ -2526,6 +2526,47 @@
       "source_module": "fractales_simd"
     },
     {
+      "name": "normaliser_angle_volumetrique",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_volumetrique"
+    },
+    {
+      "name": "sin_volumetrique",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_volumetrique"
+    },
+    {
+      "name": "cos_volumetrique",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_volumetrique"
+    },
+    {
+      "name": "projeter_volumetrique",
+      "arg_types": [
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_volumetrique"
+    },
+    {
       "name": "__main",
       "arg_types": [],
       "return_type": "void",
@@ -2862,6 +2903,12 @@
     ],
     "fractales_simd": [
       "mandelbrot_simd_pair"
+    ],
+    "fractales_volumetrique": [
+      "normaliser_angle_volumetrique",
+      "sin_volumetrique",
+      "cos_volumetrique",
+      "projeter_volumetrique"
     ]
   }
 }

@@ -134,6 +134,12 @@ JS_FORMULA_CONTRACT: dict[str, dict[str, object]] = {
     "render-worker.js:calculerTuile": {
         "browser_only": "Web Worker tile-dispatch orchestration — calls canonical WASM fractal exports by name, no formula"
     },
+    "renderer-process.js:projeterPointVolumetrique": {
+        "backend_refs": ["projeter_volumetrique"]
+    },
+    "renderer-process.js:calculerTrajectoire": {
+        "browser_only": "orchestrates the vendored semantic-core-v1 stepper and computes a display contrast range — the dynamics live in src/process/*.multi (regle_gray_scott, regle_turing, regle_parite), not here"
+    },
     "renderer-exploration.js:calculerOrbite": {
         "backend_refs": [
             "mandelbrot",

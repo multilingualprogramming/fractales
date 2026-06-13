@@ -1,0 +1,390 @@
+"use strict";
+
+// Atelier « Croissance » — fractales vivantes (processus semantic-core-v1).
+//
+// Une fractale n'est plus seulement une image figée : c'est un processus
+// ⟨État, Topologie, Règle, Ordonnancement⟩ écrit en multilingue, compilé en un
+// manifeste JSON, et déroulé dans le temps par le pas universel partagé
+// (process_core.js, vendu verbatim depuis multilingual). Ce module charge un
+// manifeste, calcule sa trajectoire et projette chaque image sur un canvas.
+//
+// Conformément à l'identité du projet, toute la *dynamique* (la règle de taux,
+// la réécriture) vit dans les .multi -> manifeste -> pas universel. Le JS ne
+// fait ici que du DOM et de la présentation : la rampe valeur->couleur d'un
+// champ est une affaire d'affichage, pas une primitive mathématique.
+
+import { run, tierOf, TIER_NAMES } from "./process/process_core.js";
+
+// Catalogue des processus disponibles. `fichier` est le manifeste construit par
+// scripts/build_processes.py ; `champ` est la valeur projetée ; `palette` choisit
+// la rampe ; `pasDefaut`/`pasMax` bornent la longueur de trajectoire calculée.
+export const CATALOGUE_PROCESSUS = [
+  {
+    cle: "gray_scott",
+    nom: "Gray-Scott (réaction-diffusion)",
+    fichier: "process/program.gray_scott.v1.json",
+    champ: "v",
+    palette: "thermique",
+    pasDefaut: 240,
+    pasMax: 600,
+    description: "Réaction autocatalytique U+2V→3V : des taches qui se divisent et se répliquent.",
+  },
+  {
+    cle: "reaction_diffusion",
+    nom: "Turing (instabilité linéaire)",
+    fichier: "process/program.reaction_diffusion.v1.json",
+    champ: "u",
+    palette: "thermique",
+    pasDefaut: 160,
+    pasMax: 400,
+    description: "Système activateur-inhibiteur linéarisé : une longueur d'onde de Turing émerge du bruit.",
+  },
+  {
+    cle: "automate_parite",
+    nom: "Automate de parité (Fredkin)",
+    fichier: "process/program.automate_parite.v1.json",
+    champ: "vivant",
+    palette: "encre",
+    pasDefaut: 31,
+    pasMax: 63,
+    description: "Règle XOR de von Neumann : une fractale de Sierpiński se réplique à chaque puissance de deux.",
+  },
+];
+
+export function trouverProcessus(cle) {
+  return CATALOGUE_PROCESSUS.find((p) => p.cle === cle) || null;
+}
+
+// Dimensions de la grille d'un noyau treillis, lues sur la topologie quand elles
+// existent, sinon déduites des coordonnées des loci (robuste aux manifestes sans
+// largeur/hauteur explicites).
+export function dimensionsGrille(core) {
+  const topo = core.topology || {};
+  if (Number.isFinite(topo.width) && Number.isFinite(topo.height)) {
+    return { largeur: topo.width, hauteur: topo.height };
+  }
+  let largeur = 0;
+  let hauteur = 0;
+  for (const rec of core.state.loci) {
+    if (!Array.isArray(rec.locus)) continue;
+    largeur = Math.max(largeur, rec.locus[0] + 1);
+    hauteur = Math.max(hauteur, rec.locus[1] + 1);
+  }
+  return { largeur, hauteur };
+}
+
+// Étendue [min, max] d'un champ sur une image, pour le contraste automatique.
+export function etendueChamp(core, champ) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const rec of core.state.loci) {
+    const v = rec[champ];
+    if (typeof v !== "number") continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  if (!Number.isFinite(min)) return { min: 0, max: 1 };
+  if (min === max) max = min + 1; // évite la division par zéro sur un champ plat
+  return { min, max };
+}
+
+function melange(a, b, t) {
+  return Math.round(a + (b - a) * t);
+}
+
+// Rampe thermique à 5 arrêts (bleu nuit -> cyan -> vert -> jaune -> rouge) pour
+// un champ continu normalisé t∈[0,1]. Renvoie [r, g, b].
+const ARRETS_THERMIQUE = [
+  [12, 16, 48],
+  [22, 138, 173],
+  [120, 200, 90],
+  [245, 215, 66],
+  [222, 60, 75],
+];
+
+export function couleurChamp(t, palette) {
+  const u = Math.max(0, Math.min(1, t));
+  if (palette === "encre") {
+    // Binaire : encre sombre sur fond clair (l'automate discret).
+    const vivant = u > 0.5;
+    return vivant ? [24, 26, 42] : [238, 240, 245];
+  }
+  const arrets = ARRETS_THERMIQUE;
+  const segments = arrets.length - 1;
+  const pos = u * segments;
+  const i = Math.min(segments - 1, Math.floor(pos));
+  const f = pos - i;
+  const a = arrets[i];
+  const b = arrets[i + 1];
+  return [melange(a[0], b[0], f), melange(a[1], b[1], f), melange(a[2], b[2], f)];
+}
+
+// Construit l'image RGBA (un pixel par cellule) d'une image de la trajectoire.
+// Fonction pure et testable : aucune dépendance au DOM. Le canvas l'agrandit
+// ensuite en pixels nets (image-rendering: pixelated).
+export function construireImageProcessus(core, champ, palette, etendue) {
+  const { largeur, hauteur } = dimensionsGrille(core);
+  const { min, max } = etendue || etendueChamp(core, champ);
+  const echelle = max - min || 1;
+  const rgba = new Uint8ClampedArray(largeur * hauteur * 4);
+  for (const rec of core.state.loci) {
+    if (!Array.isArray(rec.locus)) continue;
+    const x = rec.locus[0];
+    const y = rec.locus[1];
+    if (x < 0 || y < 0 || x >= largeur || y >= hauteur) continue;
+    const valeur = typeof rec[champ] === "number" ? rec[champ] : 0;
+    const [r, g, b] = couleurChamp((valeur - min) / echelle, palette);
+    const o = (y * largeur + x) * 4;
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = 255;
+  }
+  return { largeur, hauteur, rgba };
+}
+
+// Repli JS de la projection volumétrique, miroir exact de projeter_volumetrique
+// (src/fractales_volumetrique.multi) avec la trig native. Le rendu privilégie
+// l'export WASM ; ce repli sert aux tests hors navigateur et au cas où le WASM
+// n'est pas chargé. Renvoie [sx, sy, echelle, profondeur].
+export function projeterPointVolumetrique(x, y, z, largeur, hauteur, theta) {
+  const c = Math.cos(theta);
+  const s = Math.sin(theta);
+  const rx = x * c - z * s;
+  const rz = x * s + z * c;
+  const persp = 1 / (1.8 - rz * 0.5);
+  return [
+    largeur / 2 + rx * largeur * 0.3 * persp,
+    hauteur / 2 + y * hauteur * 0.35 * persp,
+    persp,
+    rz,
+  ];
+}
+
+// Calcule la trajectoire d'un processus et une étendue *globale* (sur toutes les
+// images) pour que le contraste ne saute pas pendant la lecture. Pure/testable.
+export function calculerTrajectoire(core, pas, champ) {
+  const trajectoire = run(core, pas);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const image of trajectoire) {
+    const e = etendueChamp(image, champ);
+    if (e.min < min) min = e.min;
+    if (e.max > max) max = e.max;
+  }
+  if (!Number.isFinite(min)) { min = 0; max = 1; }
+  if (min === max) max = min + 1;
+  return { trajectoire, etendue: { min, max }, tier: tierOf(core), tierNom: TIER_NAMES[tierOf(core)] };
+}
+
+// Chargeur de manifeste par défaut (navigateur). Injectable pour les tests.
+async function chargerManifesteParDefaut(fichier) {
+  const reponse = await fetch(fichier, { cache: "no-store" });
+  if (!reponse.ok) throw new Error(`manifeste introuvable: ${fichier} (${reponse.status})`);
+  return reponse.json();
+}
+
+// Contrôleur de l'atelier : relie le catalogue, le canvas et les commandes
+// (sélecteur, lecture/pause, curseur d'image, nombre de pas). Tout est tolérant
+// aux éléments absents pour que l'initialisation ne casse jamais la page.
+export function creerStudioProcessus(deps = {}) {
+  const {
+    canvas,
+    selecteur,
+    boutonLecture,
+    curseur,
+    champPas,
+    lectureEtape,
+    lectureTier,
+    description,
+    boutonRelief,
+    projeterVolumetrique = null, // export WASM projeter_volumetrique (sinon repli JS)
+    chargerManifeste = chargerManifesteParDefaut,
+    requestFrame = (cb) => requestAnimationFrame(cb),
+    cancelFrame = (id) => cancelAnimationFrame(id),
+  } = deps;
+
+  const ctx = canvas ? canvas.getContext("2d") : null;
+  let etat = null; // { processus, trajectoire, etendue, tier, tierNom }
+  let imageCourante = 0;
+  let enLecture = false;
+  let frameId = null;
+  let relief3D = false;
+  let theta = 0.6; // angle de rotation de la vue 3D
+
+  // Projette via WASM si disponible, sinon par le repli JS. Renvoie le quadruplet
+  // [sx, sy, echelle, profondeur].
+  function projeter(x, y, z, w, h, t) {
+    if (projeterVolumetrique) {
+      const r = projeterVolumetrique(x, y, z, w, h, t);
+      return Array.isArray(r) ? r : [r[0], r[1], r[2], r[3]];
+    }
+    return projeterPointVolumetrique(x, y, z, w, h, t);
+  }
+
+  function peindrePlat(core) {
+    const { largeur, hauteur, rgba } = construireImageProcessus(
+      core, etat.processus.champ, etat.processus.palette, etat.etendue,
+    );
+    // Dessine à la résolution de la grille sur un canvas hors-écran, puis
+    // agrandit en pixels nets jusqu'à la taille d'affichage du canvas.
+    const tampon = document.createElement("canvas");
+    tampon.width = largeur;
+    tampon.height = hauteur;
+    tampon.getContext("2d").putImageData(new ImageData(rgba, largeur, hauteur), 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tampon, 0, 0, canvas.width, canvas.height);
+  }
+
+  // Relief 3D : la valeur du champ devient une hauteur. Chaque cellule est posée
+  // sur le plan sol (x, z) et élevée de sa valeur normalisée ; on projette via le
+  // WASM volumétrique, on trie par profondeur (algorithme du peintre) et on peint.
+  function peindreRelief(core) {
+    const champ = etat.processus.champ;
+    const palette = etat.processus.palette;
+    const { largeur, hauteur } = dimensionsGrille(core);
+    const { min, max } = etat.etendue;
+    const echelleVal = max - min || 1;
+    const w = canvas.width;
+    const h = canvas.height;
+    const RELIEF = 0.55;
+    const tailleBase = (Math.min(w, h) / Math.max(largeur, hauteur)) * 1.7;
+
+    const points = [];
+    for (const rec of core.state.loci) {
+      if (!Array.isArray(rec.locus)) continue;
+      const gx = rec.locus[0];
+      const gy = rec.locus[1];
+      const vn = ((typeof rec[champ] === "number" ? rec[champ] : 0) - min) / echelleVal;
+      const sceneX = (gx / Math.max(1, largeur - 1)) * 2 - 1;
+      const sceneZ = (gy / Math.max(1, hauteur - 1)) * 2 - 1;
+      const sceneY = 0.35 - vn * RELIEF; // valeur haute -> vers le haut de l'écran
+      const [sx, sy, scale, depth] = projeter(sceneX, sceneY, sceneZ, w, h, theta);
+      points.push({ sx, sy, scale, depth, vn });
+    }
+    points.sort((a, b) => a.depth - b.depth); // loin -> près
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#0b0e1a";
+    ctx.fillRect(0, 0, w, h);
+    for (const p of points) {
+      const [r, g, b] = couleurChamp(p.vn, palette);
+      const taille = Math.max(0.8, tailleBase * p.scale);
+      ctx.globalAlpha = Math.max(0.35, Math.min(1, 0.55 + p.depth * 0.45));
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(p.sx - taille / 2, p.sy - taille / 2, taille, taille);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function peindre(index) {
+    if (!ctx || !etat) return;
+    imageCourante = Math.max(0, Math.min(etat.trajectoire.length - 1, index));
+    const core = etat.trajectoire[imageCourante];
+    if (relief3D) peindreRelief(core); else peindrePlat(core);
+    if (curseur) curseur.value = String(imageCourante);
+    if (lectureEtape) {
+      lectureEtape.textContent = `Image ${imageCourante} / ${etat.trajectoire.length - 1}`;
+    }
+  }
+
+  function majTier() {
+    if (lectureTier && etat) {
+      lectureTier.textContent = `Niveau ${etat.tier} · ${etat.tierNom}`;
+    }
+  }
+
+  async function charger(cle) {
+    const processus = trouverProcessus(cle);
+    if (!processus) return;
+    arreter();
+    const core = await chargerManifeste(processus.fichier);
+    const pas = champPas && Number(champPas.value) > 0
+      ? Math.min(Number(champPas.value), processus.pasMax)
+      : processus.pasDefaut;
+    if (champPas) champPas.value = String(pas);
+    const calc = calculerTrajectoire(core, pas, processus.champ);
+    etat = { processus, ...calc };
+    if (curseur) {
+      curseur.min = "0";
+      curseur.max = String(etat.trajectoire.length - 1);
+      curseur.value = "0";
+    }
+    if (description) description.textContent = processus.description;
+    majTier();
+    peindre(0);
+  }
+
+  function pas() {
+    if (!etat) return;
+    const suivant = imageCourante + 1 >= etat.trajectoire.length ? 0 : imageCourante + 1;
+    peindre(suivant);
+  }
+
+  function boucle() {
+    if (!enLecture) return;
+    if (relief3D) theta += 0.02; // la vue 3D orbite pendant la lecture
+    pas();
+    frameId = requestFrame(boucle);
+  }
+
+  function basculerRelief() {
+    relief3D = !relief3D;
+    if (boutonRelief) {
+      boutonRelief.textContent = relief3D ? "Vue 2D" : "Relief 3D";
+      boutonRelief.setAttribute("aria-pressed", String(relief3D));
+    }
+    peindre(imageCourante);
+  }
+
+  function lire() {
+    if (!etat || enLecture) return;
+    enLecture = true;
+    if (boutonLecture) boutonLecture.textContent = "Pause";
+    frameId = requestFrame(boucle);
+  }
+
+  function arreter() {
+    enLecture = false;
+    if (frameId != null) cancelFrame(frameId);
+    frameId = null;
+    if (boutonLecture) boutonLecture.textContent = "Lecture";
+  }
+
+  function basculerLecture() {
+    if (enLecture) arreter(); else lire();
+  }
+
+  // Câblage des commandes (silencieux si un élément manque).
+  if (selecteur) {
+    selecteur.replaceChildren(...CATALOGUE_PROCESSUS.map((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.cle;
+      opt.textContent = p.nom;
+      return opt;
+    }));
+    selecteur.addEventListener("change", () => { charger(selecteur.value); });
+  }
+  if (boutonLecture) boutonLecture.addEventListener("click", basculerLecture);
+  if (boutonRelief) boutonRelief.addEventListener("click", basculerRelief);
+  if (curseur) {
+    curseur.addEventListener("input", () => { arreter(); peindre(Number(curseur.value)); });
+  }
+  if (champPas) {
+    champPas.addEventListener("change", () => { if (etat) charger(etat.processus.cle); });
+  }
+
+  return {
+    charger,
+    lire,
+    arreter,
+    basculerLecture,
+    basculerRelief,
+    peindre,
+    pas,
+    etat: () => etat,
+    imageCourante: () => imageCourante,
+    relief3D: () => relief3D,
+  };
+}

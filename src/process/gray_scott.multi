@@ -1,0 +1,64 @@
+# Réaction-diffusion de Gray-Scott : la deuxième fractale « vivante » de
+# l'application, et la première *non linéaire*. Construire avec :
+#
+#     python3 scripts/build_processes.py
+#
+# Là où reaction_diffusion.multi est une instabilité de Turing *linéarisée*,
+# Gray-Scott porte la vraie réaction autocatalytique U + 2V -> 3V -- un produit
+# de champs (u·v²) que la diffusion seule ne peut exprimer. C'est devenu
+# possible grâce au terme `products` ajouté à `regle_taux` dans multilingual.
+#
+#     du/dt = Du·(moyenne_voisines(u) - u) - u·v² + F·(1 - u)
+#     dv/dt = Dv·(moyenne_voisines(v) - v) + u·v² - (F + k)·v
+#
+# V consomme U de façon autocatalytique, U est alimenté au taux F, V se vide au
+# taux F+k. Avec Du > Dv c'est le système formateur de motifs canonique : des
+# taches qui croissent, se divisent et se répliquent -- la morphogenèse à partir
+# d'un champ uniforme. Le moteur ne connaît aucune chimie : le taux est donnée.
+
+# La règle de taux. Les termes linéaires `self`/`neighbor_mean` portent la
+# diffusion ; `constant` porte l'alimentation F ; `products` porte la réaction
+# u·v². Algèbre (laplacien par moyenne = moyenne_voisines - self) :
+#   du/dt = Du·moyenne_voisines(u) - (Du + F)·u + F      - 1·u·v·v
+#   dv/dt = Dv·moyenne_voisines(v) - (Dv + F + k)·v      + 1·u·v·v
+déf regle_gray_scott():
+    soit feed = 0.037
+    soit kill = 0.06
+    soit du = 0.16
+    soit dv = 0.08
+    retour regle_taux({
+        "u": {
+            "self": {"u": -du - feed},
+            "neighbor_mean": {"u": du},
+            "constant": feed,
+            "products": [{"coeff": -1.0, "factors": ["u", "v", "v"]}]
+        },
+        "v": {
+            "self": {"v": -dv - feed - kill},
+            "neighbor_mean": {"v": dv},
+            "products": [{"coeff": 1.0, "factors": ["u", "v", "v"]}]
+        }
+    })
+
+# Indique si une coordonnée est dans le carré d'amorce central. Test de
+# coordonnées déterministe (sans aléa) pour que Python et JS s'accordent au bit.
+déf est_amorce(x, y, cx, cy):
+    retour cx - 4 <= x et x <= cx + 4 et cy - 4 <= y et y <= cy + 4
+
+# Un treillis torique inondé de substrat U (u = 1, v = 0) et amorcé d'un petit
+# carré central où V est présent (u = 0.5, v = 0.25). L'autocatalyse s'amorce et
+# le motif s'étend.
+soit largeur = 64
+soit hauteur = 64
+soit cx = largeur // 2
+soit cy = hauteur // 2
+soit cellules = [{"locus": [x, y], "u": 0.5 si est_amorce(x, y, cx, cy) sinon 1.0, "v": 0.25 si est_amorce(x, y, cx, cy) sinon 0.0} pour x dans intervalle(largeur) pour y dans intervalle(hauteur)]
+soit etat = {"loci": cellules}
+
+# La variable doit s'appeler `process` (nom littéral cherché par process-build).
+soit process = construire_noyau_processus(
+    etat,
+    topologie_treillis(largeur, hauteur, Vrai, "von-neumann4"),
+    regle_gray_scott(),
+    ordonnancement_continu(1.0)
+)

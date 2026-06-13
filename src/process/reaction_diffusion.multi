@@ -1,0 +1,73 @@
+# Réaction-diffusion (système activateur-inhibiteur de Turing) exprimé comme un
+# programme polymodal semantic-core-v1, écrit entièrement en langage
+# multilingue -- aucun Python. Construire avec :
+#
+#     python3 scripts/build_processes.py
+#
+# C'est la première fractale « vivante » de l'application : elle ne se calcule
+# pas en une image figée mais s'intègre dans le temps. Là où les fractales
+# d'échappement sont statiques, ce processus déroule une trajectoire -- le temps
+# devient un axe de navigation à part entière.
+#
+# Modèle. Deux champs continus sur un treillis torique : un activateur u et un
+# inhibiteur v. La règle de taux du noyau (process_core) est *linéaire* -- les
+# termes non linéaires (produits de champs, comme le u·v² du Gray-Scott complet)
+# sont une forme de taux future du langage, pas encore disponible en 0.8.0. On
+# exprime donc l'instabilité de Turing *linéarisée* :
+#
+#     du/dt = Du·(moyenne_voisins(u) - u) + a·u + b·v
+#     dv/dt = Dv·(moyenne_voisins(v) - v) + c·u + d·v
+#
+# Le couple (a,b,c,d) rend l'état homogène stable SANS diffusion (trace < 0,
+# déterminant > 0) mais instable AVEC diffusion lorsque l'inhibiteur diffuse
+# bien plus vite que l'activateur (Dv ≫ Du). À partir d'une petite perturbation
+# déterministe, le mode de Fourier le plus instable l'emporte : une longueur
+# d'onde caractéristique de Turing émerge -- des motifs organiques, tachetés.
+#
+# Le moteur ne connaît aucune physique : tous les coefficients vivent ici, comme
+# des données. Les clés ("u", "v", "self", "neighbor_mean") restent en anglais :
+# ce sont des noms de schéma, neutres linguistiquement.
+
+# La règle de taux. Pour chaque champ, le taux est la somme des coefficients
+# `self` fois les valeurs propres du locus, plus les coefficients
+# `neighbor_mean` fois la moyenne du champ sur les voisins existants.
+#
+#   Du = 0.05, Dv = 0.25  (l'inhibiteur diffuse 5× plus vite -> instable)
+#   a = 0.08, b = -0.10, c = 0.10, d = -0.12
+#     trace = a + d = -0.04 < 0           -> homogène stable
+#     dét   = a·d - b·c = 0.0004 > 0      -> homogène stable
+#     Dv·a + Du·d = 0.014 > 2√(Du·Dv·dét) -> instable par diffusion (Turing)
+#
+# Les coefficients `self` absorbent le terme -D du laplacien discret :
+#   self(u) = {u: a - Du, v: b},  neighbor_mean(u) = {u: Du}
+#   self(v) = {u: c, v: d - Dv},  neighbor_mean(v) = {v: Dv}
+déf regle_turing():
+    retour regle_taux({
+        "u": {"self": {"u": 0.03, "v": -0.10}, "neighbor_mean": {"u": 0.05}},
+        "v": {"self": {"u": 0.10, "v": -0.37}, "neighbor_mean": {"v": 0.25}}
+    })
+
+# Un treillis torique entièrement peuplé des deux champs. Chaque cellule existe
+# pour toujours (population fixe) ; seules ses valeurs (u, v) évoluent. L'état
+# homogène est (0, 0) ; on l'ensemence d'une petite perturbation *déterministe*
+# (arithmétique entière, donc Python et JS restent identiques au bit près) pour
+# amorcer la croissance de Turing sans générateur aléatoire.
+soit largeur = 48
+soit hauteur = 48
+soit loci = [{"locus": [x, y], "u": 0.01 * (((x * 17 + y * 31) % 7) - 3), "v": 0.0} pour x dans intervalle(largeur) pour y dans intervalle(hauteur)]
+soit etat = {"loci": loci}
+
+# On assemble les quatre axes sans modalité : un treillis torique avec le
+# voisinage de von Neumann (4), intégré par la règle de taux de Turing sous un
+# ordonnancement continu (un pas d'Euler explicite par image).
+#
+# La variable doit s'appeler `process` : process-build cherche ce nom littéral
+# après transpilation (les identifiants utilisateur ne sont pas traduits, seuls
+# les mots-clés et primitives le sont -- d'où `construire_noyau_processus` ici
+# mais `process` pour la liaison finale).
+soit process = construire_noyau_processus(
+    etat,
+    topologie_treillis(largeur, hauteur, Vrai, "von-neumann4"),
+    regle_turing(),
+    ordonnancement_continu(1.0)
+)

@@ -1,0 +1,40 @@
+# Automate de parité (Fredkin) : une fractale discrète « vivante ». Construire :
+#
+#     python3 scripts/build_processes.py
+#
+# Là où Gray-Scott et reaction_diffusion sont des dynamiques *continues*
+# (un taux intégré dans le temps), celle-ci est de la *réécriture discrète*
+# synchrone : à chaque génération, l'état suivant de chaque cellule est choisi
+# par filtrage sur ses voisines. C'est l'axe du Jeu de la vie, mais la règle
+# produit une fractale.
+#
+# Règle de Fredkin (parité de von Neumann) : une cellule est vivante à t+1 si et
+# seulement si un nombre *impair* de ses 4 voisines (von Neumann) est vivant à t
+# -- indépendamment de son propre état. Sur 4 voisines les comptes impairs sont
+# {1, 3}. À partir d'une seule cellule vivante, cette règle XOR engendre des
+# motifs auto-similaires (parents du triangle de Sierpiński / de Pascal mod 2) :
+# le motif se réplique à chaque puissance de deux. Le moteur ne connaît aucune
+# automate : la règle est donnée. Les clés ("vivant") restent un nom de schéma.
+déf regle_parite():
+    retour reecrire(
+        clause(quand(), nombre_voisins("vivant", 1, [1, 3]), devient(vivant=1)),
+        repli(vivant=0)
+    )
+
+# Un treillis NON torique (les bords sont des murs : la fractale croît vers
+# l'extérieur sans repli toroïdal qui la brouillerait), amorcé d'une seule
+# cellule vivante au centre. La taille impaire garantit un centre unique.
+soit largeur = 65
+soit hauteur = 65
+soit cx = largeur // 2
+soit cy = hauteur // 2
+soit cellules = [{"locus": [x, y], "vivant": 1 si x == cx et y == cy sinon 0} pour x dans intervalle(largeur) pour y dans intervalle(hauteur)]
+soit etat = {"loci": cellules}
+
+# La variable doit s'appeler `process` (nom littéral cherché par process-build).
+soit process = construire_noyau_processus(
+    etat,
+    topologie_treillis(largeur, hauteur, Faux, "von-neumann4"),
+    regle_parite(),
+    ordonnancement_synchrone()
+)

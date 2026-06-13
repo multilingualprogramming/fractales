@@ -17,6 +17,12 @@ du pied de page pour ne pas surcharger les contrôles globaux : carte des param�
 carnet de voyage, physique de palette, mode Abysses, studio 3D, atelier L-système
 et météo mathématique.
 
+Le mode **Atelier Croissance** déroule aussi des processus `semantic-core-v1`
+écrits en français multilingual (`src/process/*.multi`) : Turing, Gray-Scott,
+automates cellulaires (Fredkin, Jeu de la vie universel) et croissance d'Eden.
+Le navigateur charge les manifestes générés dans `public/process/` et avance la
+trajectoire avec le noyau partagé `public/js/process/process_core.js`.
+
 L'application peut aussi **exporter la zone courante en PNG**, **générer une
 vidéo WebM de zoom**, et **exporter les fractales L-système en SVG**. La planification
 d'export reste décrite en **français multilingual** dans `fractales_export.multi`, tandis

@@ -1268,6 +1268,10 @@ function capturerVueCourante() {
     formuleMode: params.formuleMode,
     formuleParamA: params.formuleParamA,
     formuleParamB: params.formuleParamB,
+    // Atelier Croissance : processus vivant, image courante, relief 3D.
+    processCroissance: params.processCroissance,
+    processStep: params.processStep,
+    process3D: params.process3D,
   };
   if (fractaleActiveEst3D()) {
     return {
@@ -4622,12 +4626,23 @@ async function appliquerSignet(signet, options = {}) {
   if (signet.formuleParamA !== undefined) params.formuleParamA = signet.formuleParamA;
   if (signet.formuleParamB !== undefined) params.formuleParamB = signet.formuleParamB;
   if (params.formulePropositionActive) { const c = compilerFormule(params.formuleIteration); formuleFnCompilee = c.fn ?? null; if (!c.fn) params.formulePropositionActive = false; }
+  // Atelier Croissance : restaurer l'état du processus vivant porté par l'étape.
+  if (signet.processCroissance) {
+    params.processCroissance = signet.processCroissance;
+    params.processStep = signet.processStep ?? 0;
+    params.process3D = signet.process3D ?? false;
+  }
   params.palette = signet.palette;
   params.paletteBackground = signet.paletteBackground;
   params.paletteInterior = signet.paletteInterior;
   params.paletteStops = [...(signet.paletteStops || params.paletteStops)];
   synchroniserControlePalette();
   explorationModes?.syncFromParams();
+  // Étape de carnet portant un processus vivant : ouvrir l'atelier Croissance
+  // sur ce processus, à son image et sa vue (2D / relief 3D).
+  if (params.processCroissance) {
+    explorationModes?.ouvrirProcessus(params.processCroissance, params.processStep ?? 0, params.process3D ?? false);
+  }
   mettreAJourOptionsSpecifiques();
   await loadSources(params.fractal);
   if (cible) {

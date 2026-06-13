@@ -1,0 +1,37 @@
+# Automate universel : Jeu de la vie de Conway, exprimé comme un programme
+# semantic-core-v1 en français multilingual. Construire avec :
+#
+#     python3 scripts/build_processes.py
+#
+# Le Jeu de la vie est l'automate cellulaire classique capable de calcul
+# universel. Le moteur n'a aucune branche spéciale pour Conway : la règle B3/S23
+# est seulement une réécriture synchrone sur un treillis de Moore (8 voisins).
+# On amorce un canon a planeurs de Gosper, motif fini qui émet périodiquement
+# des planeurs et rend visible la dynamique universelle.
+
+déf regle_vie():
+    retour reecrire(
+        # Survie : une cellule vivante avec 2 ou 3 voisines vivantes reste vive.
+        clause(quand(vivant=1), nombre_voisins("vivant", 1, [2, 3]), devient(vivant=1)),
+        # Naissance : une cellule morte avec exactement 3 voisines vivantes nait.
+        clause(quand(vivant=0), nombre_voisins("vivant", 1, [3]), devient(vivant=1)),
+        repli(vivant=0)
+    )
+
+déf est_canon_gosper(x, y):
+    retour (x == 1 et (y == 5 ou y == 6)) ou (x == 2 et (y == 5 ou y == 6)) ou (x == 11 et (y == 5 ou y == 6 ou y == 7)) ou (x == 12 et (y == 4 ou y == 8)) ou (x == 13 et (y == 3 ou y == 9)) ou (x == 14 et (y == 3 ou y == 9)) ou (x == 15 et y == 6) ou (x == 16 et (y == 4 ou y == 8)) ou (x == 17 et (y == 5 ou y == 6 ou y == 7)) ou (x == 18 et y == 6) ou (x == 21 et (y == 3 ou y == 4 ou y == 5)) ou (x == 22 et (y == 3 ou y == 4 ou y == 5)) ou (x == 23 et (y == 2 ou y == 6)) ou (x == 25 et (y == 1 ou y == 2 ou y == 6 ou y == 7)) ou (x == 35 et (y == 3 ou y == 4)) ou (x == 36 et (y == 3 ou y == 4))
+
+# Treillis assez large pour voir les premiers planeurs partir sans toucher les
+# bords. On garde wrap=Faux : le canon vit dans un plan borne par le canevas.
+soit largeur = 80
+soit hauteur = 50
+soit cellules = [{"locus": [x, y], "vivant": 1 si est_canon_gosper(x, y) sinon 0} pour x dans intervalle(largeur) pour y dans intervalle(hauteur)]
+soit etat = {"loci": cellules}
+
+# La variable doit s'appeler `process` (nom littéral cherché par process-build).
+soit process = construire_noyau_processus(
+    etat,
+    topologie_treillis(largeur, hauteur, Faux, "moore8"),
+    regle_vie(),
+    ordonnancement_synchrone()
+)

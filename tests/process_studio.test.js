@@ -40,6 +40,14 @@ describe("process studio catalogue", () => {
       assert.ok(p.pasMax >= p.pasDefaut);
     }
   });
+
+  test("universal automaton catalogue entry points at its manifest", () => {
+    const p = trouverProcessus("automate_universel");
+    assert.ok(p);
+    assert.equal(p.fichier, "process/program.automate_universel.v1.json");
+    assert.equal(p.champ, "vivant");
+    assert.equal(p.palette, "encre");
+  });
 });
 
 describe("grid + field helpers", () => {
@@ -97,6 +105,24 @@ describe("image + trajectory", () => {
   test("the parity automaton is a Tier-2 synchronous lattice rule", () => {
     const calc = calculerTrajectoire(loadManifest("automate_parite"), 8, "vivant");
     assert.equal(calc.tier, 2);
+  });
+
+  test("the universal automaton is Conway Life on a Moore lattice", () => {
+    const core = loadManifest("automate_universel");
+    assert.equal(core.kind, "semantic-core-v1");
+    assert.equal(core.source, "src/process/automate_universel.multi");
+    assert.equal(core.topology.kind, "lattice");
+    assert.equal(core.topology.neighborhood, "moore8");
+    assert.equal(core.schedule.kind, "synchronous");
+    assert.deepEqual(dimensionsGrille(core), { largeur: 80, hauteur: 50 });
+
+    const calc = calculerTrajectoire(core, 16, "vivant");
+    const alive = (frame) => frame.state.loci.filter((r) => r.vivant).length;
+    const counts = calc.trajectoire.map(alive);
+    assert.equal(calc.tier, 2);
+    assert.equal(counts[0], 36);
+    assert.ok(counts.some((c, i) => i > 0 && c !== counts[0]), "trajectory evolves");
+    assert.ok(counts[16] > 0, "pattern remains alive after a short run");
   });
 
   test("the stochastic Eden cluster grows monotonically and reproducibly", () => {

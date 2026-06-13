@@ -24,6 +24,9 @@ import {
   creerStudioProcessus,
   CATALOGUE_PROCESSUS,
 } from "./renderer-process.js?v=20260613-croissance";
+import {
+  creerStudioRelief,
+} from "./renderer-relief.js?v=20260613-relief";
 
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
@@ -37,6 +40,7 @@ const TITRES_MODES = {
   transforms: ["Transformations du plan", "Remappage du plan complexe avant itération"],
   ifs: ["Atelier IFS", "Jeu du chaos — systèmes de fonctions itérées affines"],
   croissance: ["Atelier Croissance", "Fractales vivantes — processus déroulés dans le temps"],
+  relief: ["Relief 3D", "Le compte d'itérations de la fractale comme terrain"],
 };
 
 const PARAMETRES_FORMULE_DEFAUT = {
@@ -371,6 +375,7 @@ export function initialiserExploration({
 
   let activeMode = null;
   let studioProcessus = null; // atelier Croissance, créé à la première ouverture
+  let studioRelief = null; // mode Relief 3D, créé à la première ouverture
   let capturedOrbit = [];
   let orbitEscaped = false;
   let orbitRevealIndex = 0;
@@ -570,6 +575,7 @@ export function initialiserExploration({
   function setMode(mode) {
     if (activeMode === "ifs") arreterJeuDuChaos();
     if (activeMode === "croissance" && studioProcessus) studioProcessus.arreter();
+    if (activeMode === "relief" && studioRelief) studioRelief.arreter();
     activeMode = activeMode === mode && !panel.classList.contains("hidden") ? null : mode;
     panel.classList.toggle("hidden", !activeMode);
     dock.querySelectorAll(".exploration-mode-btn").forEach((button) => {
@@ -586,7 +592,25 @@ export function initialiserExploration({
       if (activeMode === "transforms") updateTransformReadout();
       if (activeMode === "ifs") updateIFSProposal();
       if (activeMode === "croissance") activerStudioProcessus();
+      if (activeMode === "relief") activerStudioRelief();
     }
+  }
+
+  // Crée le mode Relief 3D à la première ouverture, puis échantillonne la
+  // fractale active et lance l'animation rotative.
+  function activerStudioRelief() {
+    if (!studioRelief) {
+      studioRelief = creerStudioRelief({
+        canvas: document.getElementById("relief-canvas"),
+        boutonActualiser: document.getElementById("btn-relief-refresh"),
+        lectureInfo: document.getElementById("relief-info"),
+        getView,
+        getParams,
+        getWasmFunctions,
+        projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
+      });
+    }
+    studioRelief.demarrer();
   }
 
   // Crée l'atelier Croissance à la première ouverture (le canvas et les
@@ -624,6 +648,19 @@ export function initialiserExploration({
         const desc = document.getElementById("process-description");
         if (desc) desc.textContent = `Échec du chargement du processus : ${err.message}`;
       });
+    }
+  }
+
+  // Ouvre (sans bascule) l'atelier Croissance sur un processus à une image / vue
+  // données — appelé en rejouant une étape du Carnet de voyage qui porte un état
+  // de processus. Idempotent : ré-ouvrir le mode déjà ouvert ne le referme pas.
+  function ouvrirProcessus(cle, step, relief) {
+    const dejaOuvert = activeMode === "croissance" && !panel.classList.contains("hidden");
+    const existait = studioProcessus !== null;
+    if (!dejaOuvert) setMode("croissance"); // crée + charge le studio depuis les params au 1er coup
+    if (existait && studioProcessus) {
+      // Studio déjà présent : re-cibler explicitement le processus / l'image.
+      studioProcessus.charger(cle, { step, relief }).catch(() => {});
     }
   }
 
@@ -1600,5 +1637,6 @@ export function initialiserExploration({
     drawWeather,
     lineFractals,
     setMode,
+    ouvrirProcessus,
   };
 }

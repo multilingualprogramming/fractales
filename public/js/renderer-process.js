@@ -50,6 +50,16 @@ export const CATALOGUE_PROCESSUS = [
     description: "Règle XOR de von Neumann : une fractale de Sierpiński se réplique à chaque puissance de deux.",
   },
   {
+    cle: "automate_universel",
+    nom: "Automate universel (Jeu de la vie)",
+    fichier: "process/program.automate_universel.v1.json",
+    champ: "vivant",
+    palette: "encre",
+    pasDefaut: 60,
+    pasMax: 180,
+    description: "Règle B3/S23 de Conway : un canon de Gosper émet des planeurs dans un automate universel.",
+  },
+  {
     cle: "eden",
     nom: "Croissance d'Eden (stochastique)",
     fichier: "process/program.eden.v1.json",

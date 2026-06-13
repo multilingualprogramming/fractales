@@ -6,6 +6,12 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ### Ajouts
 
+- **Atelier Croissance : automate universel (Jeu de la vie).** Nouveau
+  programme `src/process/automate_universel.multi` compilé en manifeste
+  `semantic-core-v1`, enregistré dans le catalogue UI avec le champ `vivant`.
+  La règle B3/S23 de Conway tourne sur un treillis Moore 8 voisins et démarre
+  sur un canon a planeurs de Gosper pour rendre visible la dynamique universelle.
+
 - **Adoption des améliorations multilingual de la roadmap section C
   (2026-05-23 part 2).** Chaque amélioration côté multilingual a supprimé une
   catégorie de workarounds côté fractales :

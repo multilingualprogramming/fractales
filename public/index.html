@@ -243,6 +243,11 @@
             <span class="exploration-mode-icon" aria-hidden="true">❋</span>
             <span class="exploration-mode-label">Croissance</span>
           </button>
+          <button class="exploration-mode-btn" type="button" data-mode="relief" aria-label="Relief 3D"
+            title="Relief 3D — la fractale en terrain">
+            <span class="exploration-mode-icon" aria-hidden="true">△</span>
+            <span class="exploration-mode-label">Relief</span>
+          </button>
         </nav>
 
         <section id="exploration-panel" class="hidden" aria-label="Panneau de modes d'exploration">
@@ -612,6 +617,15 @@
                   <span>Pas</span>
                   <input type="number" id="process-steps-input" min="1" max="600" step="1" value="240" />
                 </label>
+              </div>
+            </section>
+
+            <section class="exploration-view hidden" data-view="relief">
+              <canvas id="relief-canvas" width="280" height="280"
+                aria-label="Relief 3D de la fractale" style="width: 100%; height: auto;"></canvas>
+              <div id="relief-info" class="exploration-readout">Le compte d'itérations de la fractale active devient une hauteur.</div>
+              <div class="exploration-actions">
+                <button id="btn-relief-refresh" class="btn" type="button">Actualiser depuis la vue</button>
               </div>
             </section>
 

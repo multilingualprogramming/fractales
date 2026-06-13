@@ -4,6 +4,12 @@ Ce projet suit une convention inspirée de Keep a Changelog.
 
 ## [Non publié]
 
+### Modifications
+
+- **multilingual 0.8.1.** La dependance de build epinglee passe de
+  `multilingualprogramming[wasm]==0.8.0` a `0.8.1`, avec la documentation et
+  les verifications de provenance alignees.
+
 ### Ajouts
 
 - **Atelier Croissance : automate universel (Jeu de la vie).** Nouveau

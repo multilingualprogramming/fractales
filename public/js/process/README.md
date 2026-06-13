@@ -1,7 +1,7 @@
 # Vendored process runtime
 
 `process_core.js` is the **modality-free stepper** for `semantic-core-v1` — the
-runtime of multilingual's polymodal / process-calculus layer (v0.8.0). It is
+runtime of multilingual's polymodal / process-calculus layer (v0.8.1). It is
 *not* hand-written here: it is a verbatim copy of the language's own JS port,
 which is byte-for-byte equivalent to the Python engine in
 `multilingualprogramming/codegen/process_core.py`.
@@ -15,7 +15,7 @@ mapping) does live in `.multi`; only this shared engine is vendored.
 ## Provenance
 
 - Upstream: `multilingual/docs/browser/process-dynamics/process_core.js`
-- Pinned multilingual version: **0.8.0**
+- Pinned multilingual version: **0.8.1**
 - Integrity: `process_core.js.sha256` records the expected SHA-256.
   `scripts/integration_checks.py` fails the build if the file drifts from this
   hash, so a silent divergence from the language runtime cannot ship.

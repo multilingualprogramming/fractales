@@ -12,7 +12,7 @@
 # Modèle. Deux champs continus sur un treillis torique : un activateur u et un
 # inhibiteur v. La règle de taux du noyau (process_core) est *linéaire* -- les
 # termes non linéaires (produits de champs, comme le u·v² du Gray-Scott complet)
-# sont une forme de taux future du langage, pas encore disponible en 0.8.0. On
+# sont une forme de taux future du langage, pas encore disponible en 0.8.1. On
 # exprime donc l'instabilité de Turing *linéarisée* :
 #
 #     du/dt = Du·(moyenne_voisins(u) - u) + a·u + b·v

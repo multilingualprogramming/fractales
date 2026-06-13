@@ -354,7 +354,7 @@ def check_api_files() -> None:
 
 
 def check_process_pipeline() -> None:
-    """Verify the semantic-core-v1 process pipeline (multilingual 0.8.0).
+    """Verify the semantic-core-v1 process pipeline (multilingual 0.8.1).
 
     Two guarantees: (1) the vendored modality-free stepper has not drifted from
     the language runtime it was copied from, and (2) every src/process/*.multi

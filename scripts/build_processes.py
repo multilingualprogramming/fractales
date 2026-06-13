@@ -5,7 +5,7 @@ Each French Multilingual process program (one defining a `processus` variable)
 is compiled to a `program.<name>.v1.json` manifest under public/process/, which
 the vendored stepper (public/js/process/process_core.js) advances in the
 browser. This is the process-calculus / polymodal pipeline of multilingual
-0.8.0, parallel to and independent of the escape-time WASM build.
+0.8.1, parallel to and independent of the escape-time WASM build.
 
 Run from the repo root with MULTILINGUAL_DEV_PATH pointing at the multilingual
 checkout, exactly like scripts/compile_wasm.py:

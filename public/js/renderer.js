@@ -3452,6 +3452,7 @@ async function loadWasm() {
         memory: exports.memory,
         reset: exports.__ml_reset,
         strAlloc: exports.__ml_str_alloc ?? null,
+        listAlloc: exports.__ml_list_alloc ?? null,
         strLen: exports.__ml_str_len ?? null,
         // Helpers ABI listes (B5) : remplacent les offsets bruts `base + 8 +
         // 8 * (...)` historiquement scattérisés dans renderer.js,

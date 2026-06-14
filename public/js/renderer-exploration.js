@@ -721,31 +721,47 @@ export function initialiserExploration({
     studioRelief.demarrer();
   }
 
-  // Adaptateur de marshalling JS↔WASM pour les listes f64. Une liste multilingue
-  // est construite côté hôte dans un tampon __ml_str_alloc : longueur f64 à base+0,
-  // éléments à base+8, +16, … `lireListe` relit le même format (DataView, sûr face
-  // au désalignement). Renvoie null si le WASM manque. Partagé par les ateliers
-  // pour garder renderer-process.js / renderer-relief.js libres de pointeurs bruts.
+  // Adaptateur de marshalling JS↔WASM pour les listes f64 (layout multilingue :
+  // longueur f64 à base+0, éléments à base+8, +16, …). Privilégie l'export hôte
+  // `__ml_list_alloc(n)` (base 8-alignée → vues Float64Array zéro-copie dans les
+  // deux sens) ; retombe sur le détournement historique de `__ml_str_alloc` +
+  // DataView (sûr face au désalignement) si le module est antérieur à cet export.
+  // Renvoie null si le WASM manque. Partagé par les ateliers pour garder
+  // renderer-process.js / renderer-relief.js libres de pointeurs bruts.
   function obtenirMarshalWasm() {
     const mp = getWasmMetaPanels?.() || null;
     const mem = mp?.memory || null;
+    const listAlloc = mp?.listAlloc || null;
     const strAlloc = mp?.strAlloc || null;
     const reset = mp?.reset || null;
-    if (!mem || !strAlloc || !reset) return null;
-    const ecrireListe = (valeurs) => {
-      const n = valeurs.length;
-      const ptr = strAlloc(n * 8 + 8);
-      const dv = new DataView(mem.buffer);
-      dv.setFloat64(ptr, n, true); // longueur de liste à base+0
-      for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
-      return ptr;
-    };
-    const lireListe = (ptr, n) => {
-      const dv = new DataView(mem.buffer);
-      const out = new Float64Array(n);
-      for (let i = 0; i < n; i += 1) out[i] = dv.getFloat64(ptr + 8 + i * 8, true);
-      return out;
-    };
+    if (!mem || !reset || (!listAlloc && !strAlloc)) return null;
+    const ecrireListe = listAlloc
+      ? (valeurs) => {
+          // Chemin rapide : base 8-alignée, écriture en bloc via une vue typée.
+          const n = valeurs.length;
+          const ptr = listAlloc(n); // header (count) déjà écrit côté WASM
+          new Float64Array(mem.buffer, ptr + 8, n).set(valeurs);
+          return ptr;
+        }
+      : (valeurs) => {
+          // Repli : tampon chaîne détourné, écriture désalignée via DataView.
+          const n = valeurs.length;
+          const ptr = strAlloc(n * 8 + 8);
+          const dv = new DataView(mem.buffer);
+          dv.setFloat64(ptr, n, true); // longueur de liste à base+0
+          for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
+          return ptr;
+        };
+    const lireListe = listAlloc
+      // Les listes renvoyées sont 8-alignées (cf. $ml_alloc) → vue zéro-copie.
+      // On copie (slice) pour découpler du tampon WASM réutilisé au prochain reset.
+      ? (ptr, n) => new Float64Array(mem.buffer, ptr + 8, n).slice()
+      : (ptr, n) => {
+          const dv = new DataView(mem.buffer);
+          const out = new Float64Array(n);
+          for (let i = 0; i < n; i += 1) out[i] = dv.getFloat64(ptr + 8 + i * 8, true);
+          return out;
+        };
     return { reset, ecrireListe, lireListe };
   }
 

@@ -35,22 +35,16 @@ async function instancier() {
 
 const e = await instancier();
 
-// Reproduit construireNormaliseurRelief (renderer-exploration.js).
+// Reproduit construireNormaliseurRelief (renderer-exploration.js) : marshalling via
+// __ml_list_alloc (base 8-alignée → vues Float64Array zéro-copie dans les deux sens).
 function construireNormaliseur() {
   const ecrireListe = (valeurs) => {
     const n = valeurs.length;
-    const ptr = e.__ml_str_alloc(n * 8 + 8);
-    const dv = new DataView(e.memory.buffer);
-    dv.setFloat64(ptr, n, true);
-    for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
+    const ptr = e.__ml_list_alloc(n);
+    new Float64Array(e.memory.buffer, ptr + 8, n).set(valeurs);
     return ptr;
   };
-  const lireListe = (ptr, n) => {
-    const dv = new DataView(e.memory.buffer);
-    const out = new Float64Array(n);
-    for (let i = 0; i < n; i += 1) out[i] = dv.getFloat64(ptr + 8 + i * 8, true);
-    return out;
-  };
+  const lireListe = (ptr, n) => new Float64Array(e.memory.buffer, ptr + 8, n).slice();
   return (champ, maxIter) => {
     e.__ml_reset();
     const ptr = e.normaliser_hauteurs(ecrireListe(Array.from(champ)), maxIter);

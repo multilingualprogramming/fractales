@@ -45,14 +45,13 @@ async function instancier() {
 const e = await instancier();
 
 // Reproduit construireGeometrieProcessus (renderer-exploration.js) : liste
-// multilingue construite côté hôte dans un tampon __ml_str_alloc.
+// multilingue construite côté hôte via __ml_list_alloc (base 8-alignée, écriture
+// zéro-copie par vue Float64Array).
 function construireGeometrie() {
   const ecrireListe = (valeurs) => {
     const n = valeurs.length;
-    const ptr = e.__ml_str_alloc(n * 8 + 8);
-    const dv = new DataView(e.memory.buffer);
-    dv.setFloat64(ptr, n, true);
-    for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
+    const ptr = e.__ml_list_alloc(n);
+    new Float64Array(e.memory.buffer, ptr + 8, n).set(valeurs);
     return ptr;
   };
   return {

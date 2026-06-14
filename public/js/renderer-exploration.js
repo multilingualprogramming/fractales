@@ -602,10 +602,16 @@ export function initialiserExploration({
 
   function quitterPleinPanneau() {
     if (!pleinPanneauActif) return;
-    studioPour(pleinPanneauActif)?.cibler(null); // retour à l'aperçu du dock
+    const mode = pleinPanneauActif;
+    const studio = studioPour(mode);
+    pleinPanneauActif = null;
     stageCanvas?.classList.add("canvas-masque");
     boutonRetourStudio?.classList.add("hidden");
-    pleinPanneauActif = null;
+    // Si l'aperçu du dock de ce mode est encore visible, on y revient (il anime) ;
+    // sinon le studio n'a plus de surface affichée -> on arrête sa boucle.
+    const dockVisible = activeMode === mode && !panel.classList.contains("hidden");
+    studio?.cibler(null); // remet la cible sur l'aperçu du dock
+    if (!dockVisible) studio?.arreter();
   }
 
   boutonRetourStudio?.addEventListener("click", quitterPleinPanneau);
@@ -661,11 +667,22 @@ export function initialiserExploration({
   }
 
   function setMode(mode) {
+    const nouveauMode = activeMode === mode && !panel.classList.contains("hidden") ? null : mode;
+    // Fermer le dock pendant une vue plein panneau ne quitte PAS celle-ci : le
+    // studio continue d'occuper le panneau principal (on n'en sort qu'avec
+    // « Revenir à la fractale »). On masque juste le dock. Toute bascule vers un
+    // AUTRE mode quitte d'abord le plein panneau (chemin normal plus bas).
+    if (pleinPanneauActif && nouveauMode === null) {
+      panel.classList.add("hidden");
+      dock.querySelectorAll(".exploration-mode-btn").forEach((button) => button.classList.remove("active"));
+      activeMode = null;
+      return;
+    }
     quitterPleinPanneau(); // toute bascule de mode restaure la vue principale
     if (activeMode === "ifs") arreterJeuDuChaos();
     if (activeMode === "croissance" && studioProcessus) studioProcessus.arreter();
     if (activeMode === "relief" && studioRelief) studioRelief.arreter();
-    activeMode = activeMode === mode && !panel.classList.contains("hidden") ? null : mode;
+    activeMode = nouveauMode;
     panel.classList.toggle("hidden", !activeMode);
     dock.querySelectorAll(".exploration-mode-btn").forEach((button) => {
       button.classList.toggle("active", button.dataset.mode === activeMode);

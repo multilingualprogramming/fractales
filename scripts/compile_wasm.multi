@@ -316,7 +316,7 @@ déf main():
     soit exports_hasard = ["hash_fnv32_seed", "prochain_hash_mulberry32"]
     soit exports_landmark = ["detecter_periode_mandelbrot", "affiner_nucleus", "distance_estimation_mandelbrot"]
     soit exports_simd = ["mandelbrot_simd_pair"]
-    soit exports_couleur = ["couleur_thermique", "couleur_relief"]
+    soit exports_couleur = ["couleur_thermique", "couleur_relief", "couleur_palette", "colorer_champ"]
     soit exports_processus = ["etendue_champ", "combiner_etendue", "dimensions_grille"]
     soit exports_volumetrique = ["projeter_volumetrique", "normaliser_hauteurs"]
 

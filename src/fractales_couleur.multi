@@ -54,3 +54,88 @@ déf couleur_relief(t):
     si i < 2.0:
         retour (melanger_canal(30.0, 120.0, f), melanger_canal(132.0, 198.0, f), melanger_canal(160.0, 150.0, f))
     retour (melanger_canal(120.0, 240.0, f), melanger_canal(198.0, 206.0, f), melanger_canal(150.0, 110.0, f))
+
+# Coloration des fractales à temps d'échappement (le chemin chaud du canevas
+# principal). Miroir EXACT de getColorFromRatio (renderer.js) : c'est la primitive
+# d'interpolation centrale du démonstrateur, désormais en multilingue.
+#
+# `stops` est la liste plate des arrêts de palette [r0, g0, b0, r1, g1, b1, …]
+# (octets 0..255) ; `n_stops` = nombre d'arrêts. `mode` est un code numérique :
+#   0 = standard, 1 = histogramme, 2 = phase, 3 = potentiel, 4 = contours.
+# `phase` ∈ [0,1) décale la rampe (mode phase) ; `contours` (0/1) force le
+# striage des bandes (drapeau paletteContours, orthogonal au mode).
+#
+# Parité : standard / phase / contours sont bit-à-bit identiques au JS (clamp,
+# soustractions, trunc(x+0.5)). histogramme (** 0.62) et potentiel (math.cos)
+# emploient des transcendantes ⇒ parité à ±1 octet près (math.cos ~1e-6).
+déf couleur_palette(t, stops, n_stops, mode, phase, contours):
+    soit normalise = t
+    si normalise < 0.0:
+        normalise = 0.0
+    si normalise > 0.999999:
+        normalise = 0.999999
+    si mode == 1.0:
+        # histogramme : pow(normalise, 0.62). pow_f64 renvoie NaN pour base 0 ⇒
+        # garde le cas normalise == 0 (où JS Math.pow(0, 0.62) vaut 0).
+        si normalise > 0.0:
+            normalise = normalise ** 0.62
+    sinon si mode == 2.0:
+        # phase : (normalise + phase) % 1.0 (les deux opérandes ≥ 0).
+        soit somme = normalise + phase
+        normalise = somme - math.trunc(somme)
+    sinon si mode == 3.0:
+        # potentiel : 0.5 - 0.5·cos(normalise·π).
+        normalise = 0.5 - 0.5 * math.cos(normalise * math.pi)
+    soit echelle = n_stops - 1.0
+    soit scaled = normalise * echelle
+    soit lo = math.trunc(scaled)
+    soit hi = lo + 1.0
+    si hi > echelle:
+        hi = echelle
+    soit frac = scaled - lo
+    soit base_lo = lo * 3.0
+    soit base_hi = hi * 3.0
+    soit r = melanger_canal(stops[base_lo], stops[base_hi], frac)
+    soit g = melanger_canal(stops[base_lo + 1.0], stops[base_hi + 1.0], frac)
+    soit b = melanger_canal(stops[base_lo + 2.0], stops[base_hi + 2.0], frac)
+    # Striage de contours (mode 4 ou drapeau) : assombrit puis éclaircit les
+    # bandes — clampByte(value·0.58 + 255·0.22), within range donc trunc(x+0.5).
+    soit appliquer_contour = 0.0
+    si mode == 4.0:
+        appliquer_contour = 1.0
+    si contours > 0.5:
+        appliquer_contour = 1.0
+    si appliquer_contour > 0.5:
+        soit x = normalise * 36.0
+        soit bande = x - math.trunc(x) - 0.5
+        si bande < 0.0:
+            bande = -bande
+        si bande > 0.42:
+            r = math.trunc(r * 0.58 + 255.0 * 0.22 + 0.5)
+            g = math.trunc(g * 0.58 + 255.0 * 0.22 + 0.5)
+            b = math.trunc(b * 0.58 + 255.0 * 0.22 + 0.5)
+    retour (r, g, b)
+
+# Coloration par lot d'un champ de ratios : un seul aller-retour JS↔WASM par
+# image. `ratios` est la liste plate des t par pixel ; un ratio < 0 signale un
+# pixel captif (intérieur) ⇒ couleur (int_r, int_g, int_b). Renvoie la liste
+# plate RGB [r0, g0, b0, …] de longueur 3·n.
+déf colorer_champ(ratios, stops, int_r, int_g, int_b, mode, phase, contours):
+    soit n = longueur(ratios)
+    soit n_stops = longueur(stops) / 3.0
+    soit sortie = [0.0] * (n * 3.0)
+    soit i = 0.0
+    tantque i < n:
+        soit t = ratios[i]
+        soit base = i * 3.0
+        si t < 0.0:
+            sortie[base] = int_r
+            sortie[base + 1.0] = int_g
+            sortie[base + 2.0] = int_b
+        sinon:
+            soit cr, cg, cb = couleur_palette(t, stops, n_stops, mode, phase, contours)
+            sortie[base] = cr
+            sortie[base + 1.0] = cg
+            sortie[base + 2.0] = cb
+        i = i + 1.0
+    retour sortie

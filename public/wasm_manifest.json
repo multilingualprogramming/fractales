@@ -2615,6 +2615,36 @@
       "source_module": "fractales_couleur"
     },
     {
+      "name": "couleur_palette",
+      "arg_types": [
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
+      "name": "colorer_champ",
+      "arg_types": [
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
       "name": "etendue_champ",
       "arg_types": [
         "f64"
@@ -2994,7 +3024,9 @@
       "borner_unite",
       "melanger_canal",
       "couleur_thermique",
-      "couleur_relief"
+      "couleur_relief",
+      "couleur_palette",
+      "colorer_champ"
     ],
     "fractales_processus": [
       "etendue_champ",

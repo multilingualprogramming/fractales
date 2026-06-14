@@ -2990,6 +2990,57 @@ async function remplirMandelbrotPerturbation(w, h, data, vueCible, renduParams) 
   return true;
 }
 
+// Codes numériques des modes de coloration attendus par couleur_palette /
+// colorer_champ (src/fractales_couleur.multi). "distance" est intercepté en
+// amont (chemin DE dédié) et n'arrive jamais ici.
+const CODES_MODE_COULEUR = { standard: 0, histogramme: 1, phase: 2, potentiel: 3, contours: 4 };
+
+// Coloration par lot d'un champ de ratios via le WASM (colorer_champ) : un seul
+// aller-retour JS↔WASM par image. `ratios` est un Float64Array (un ratio < 0 =
+// pixel captif → couleur intérieure). Renvoie un Float64Array RGB plat de
+// longueur 3·n, ou null si le WASM/marshalling est indisponible (repli JS).
+function colorerChampWasm(ratios, source) {
+  const colorer = wasmExportFunctions.colorer_champ;
+  const mem = wasmMemory ?? wasmMetaPanels?.memory ?? null;
+  const reset = wasmResetHeap ?? wasmMetaPanels?.reset ?? null;
+  const listAlloc = wasmMetaPanels?.listAlloc ?? null;
+  const strAlloc = wasmMetaPanels?.strAlloc ?? null;
+  if (!colorer || !mem || !reset || (!listAlloc && !strAlloc)) return null;
+  // Écrit une liste f64 multilingue (longueur à base+0, éléments à base+8) :
+  // chemin rapide __ml_list_alloc (8-aligné, vue zéro-copie), repli str_alloc.
+  const ecrireListe = (valeurs) => {
+    const n = valeurs.length;
+    if (listAlloc) {
+      const ptr = listAlloc(n);
+      new Float64Array(mem.buffer, ptr + 8, n).set(valeurs);
+      return ptr;
+    }
+    const ptr = strAlloc(n * 8 + 8);
+    const dv = new DataView(mem.buffer);
+    dv.setFloat64(ptr, n, true);
+    for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
+    return ptr;
+  };
+  const stops = getPaletteStops(source);
+  const interieur = getPaletteInterior(source);
+  const flatStops = new Float64Array(stops.length * 3);
+  for (let i = 0; i < stops.length; i += 1) {
+    flatStops[i * 3] = stops[i][0];
+    flatStops[i * 3 + 1] = stops[i][1];
+    flatStops[i * 3 + 2] = stops[i][2];
+  }
+  const mode = CODES_MODE_COULEUR[source?.coloringMode ?? "standard"] ?? 0;
+  const phase = source?.palettePhase ?? 0;
+  const contours = source?.paletteContours ? 1 : 0;
+  reset();
+  const stopsPtr = ecrireListe(flatStops);
+  const ratiosPtr = ecrireListe(ratios);
+  const ptr = colorer(ratiosPtr, stopsPtr, interieur[0], interieur[1], interieur[2], mode, phase, contours);
+  // La liste renvoyée est 8-alignée (cf. $ml_alloc) → vue zéro-copie ; copiée
+  // (slice) pour découpler du tampon WASM réutilisé au prochain reset.
+  return new Float64Array(mem.buffer, ptr + 8, ratios.length * 3).slice();
+}
+
 async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vueCible = null) {
   // Mode coloration par distance (WASM DE) — interception avant le chemin standard.
   if (renduParams.coloringMode === "distance"
@@ -3123,6 +3174,96 @@ async function remplirFractaleScalaire(w, h, data, cx0, cy0, ps, renduParams, vu
       }
       if (py % 12 === 0) await attendre(0);
     }
+  }
+  // Coloration : si le noyau WASM colorer_champ est disponible (et que la
+  // fractale suit la rampe getColorFromRatio — pas les bassins, qui ont leur
+  // propre coloration), on collecte le champ de ratios par pixel puis on
+  // colore tout le champ en UN SEUL aller-retour JS↔WASM (la primitive
+  // d'interpolation vit en multilingue). Sinon, repli boucle par pixel (JS).
+  const peutBatcherCouleur = !estFractaleBassin
+    && wasmExportFunctions.colorer_champ
+    && (wasmMetaPanels?.listAlloc || wasmMetaPanels?.strAlloc)
+    && (wasmMemory ?? wasmMetaPanels?.memory)
+    && (wasmResetHeap ?? wasmMetaPanels?.reset);
+  if (peutBatcherCouleur) {
+    const max = renduParams.maxIter;
+    const ratios = new Float64Array(w * h);
+    for (let py = 0; py < h; py++) {
+      const dyBaseRot = useRotation ? (py - halfH) * ps : 0;
+      const rawCyDefault = useRotation ? 0 : cy0 + py * ps;
+      for (let px = 0; px < w; px++) {
+        let rawCx, rawCy;
+        if (useRotation) {
+          const dx = (px - halfW) * ps;
+          rawCx = centerX + dx * cosRot - dyBaseRot * sinRot;
+          rawCy = centerY + dx * sinRot + dyBaseRot * cosRot;
+        } else {
+          rawCx = cx0 + px * ps;
+          rawCy = rawCyDefault;
+        }
+        let cx = rawCx, cy = rawCy;
+        if (useTransform) { [cx, cy] = appliquerTransforme(rawCx, rawCy, renduParams); }
+        let iterValue;
+        if (itersBuffer !== null) {
+          iterValue = itersBuffer[py * w + px];
+        } else if (renduParams.fractal === "julia" || renduParams.fractal === "burning_julia" || renduParams.fractal === "julia_lisse" || renduParams.fractal === "julia_piege_cercle") {
+          iterValue = fn(cx, cy, renduParams.juliaCre, renduParams.juliaCim, renduParams.maxIter);
+        } else if (renduParams.fractal === "multibrot") {
+          iterValue = fn(cx, cy, renduParams.maxIter, renduParams.multibrotPower);
+        } else {
+          iterValue = fn(cx, cy, renduParams.maxIter);
+        }
+        let iterColor = iterValue;
+        if (renduParams.fractal === "multibrot" && iterValue < max) {
+          iterColor = Math.min(max - 1, 12 + iterValue * 14);
+        } else if (estFractaleLyapunov && iterValue < max) {
+          iterColor = Math.min(max - 1, 10 + iterValue * 1.8);
+        } else if (estFractaleMagnetique && iterValue < max) {
+          iterColor = Math.min(max - 1, 14 + iterValue * 4.2);
+        }
+        // Ratio par famille = exactement l'argument passé à getColorFromRatio /
+        // getColor dans le repli ci-dessous (ratio < 0 = pixel captif → intérieur).
+        let ratio;
+        if (estFractaleLyapunov) ratio = 0.12 + Math.pow(Math.min(0.999, iterColor / max), 0.85) * 0.82;
+        else if (estFractaleMagnetique) ratio = 0.08 + Math.pow(Math.min(0.999, iterColor / max), 0.68) * 0.88;
+        else if (estFractaleOrbitrap) ratio = Math.min(0.999, iterValue / max);
+        else if (estFractaleLisse) ratio = Math.min(0.999, iterValue / max);
+        else ratio = iterColor >= max ? -1 : Math.sqrt(iterColor / max);
+        ratios[py * w + px] = ratio;
+      }
+      if (py % 12 === 0) await attendre(0);
+    }
+    const rgb = colorerChampWasm(ratios, renduParams);
+    if (rgb) {
+      for (let py = 0; py < h; py++) {
+        const base = py * w * 4;
+        for (let px = 0; px < w; px++) {
+          const i = base + px * 4;
+          const j = (py * w + px) * 3;
+          data[i] = rgb[j];
+          data[i + 1] = rgb[j + 1];
+          data[i + 2] = rgb[j + 2];
+          data[i + 3] = 255;
+        }
+        if (py % 12 === 0) await attendre(0);
+      }
+      return;
+    }
+    // Le lot WASM a échoué : colore depuis les ratios stockés (identique au repli).
+    for (let py = 0; py < h; py++) {
+      const base = py * w * 4;
+      for (let px = 0; px < w; px++) {
+        const ratio = ratios[py * w + px];
+        const couleur = ratio < 0 ? getPaletteInterior(renduParams) : getColorFromRatio(ratio, renduParams);
+        const i = base + px * 4;
+        data[i] = couleur[0];
+        data[i + 1] = couleur[1];
+        data[i + 2] = couleur[2];
+        data[i + 3] = 255;
+      }
+      if (py % 12 === 0) await attendre(0);
+    }
+    return;
   }
   for (let py = 0; py < h; py++) {
     const base = py * w * 4;
@@ -3408,6 +3549,8 @@ async function loadWasm() {
       normaliser_hauteurs: typeof exports.normaliser_hauteurs === "function" ? exports.normaliser_hauteurs : null,
       couleur_thermique: typeof exports.couleur_thermique === "function" ? exports.couleur_thermique : null,
       couleur_relief: typeof exports.couleur_relief === "function" ? exports.couleur_relief : null,
+      couleur_palette: typeof exports.couleur_palette === "function" ? exports.couleur_palette : null,
+      colorer_champ: typeof exports.colorer_champ === "function" ? exports.colorer_champ : null,
       etendue_champ: typeof exports.etendue_champ === "function" ? exports.etendue_champ : null,
       combiner_etendue: typeof exports.combiner_etendue === "function" ? exports.combiner_etendue : null,
       dimensions_grille: typeof exports.dimensions_grille === "function" ? exports.dimensions_grille : null,

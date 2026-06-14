@@ -130,6 +130,16 @@ REQUIRED_EXPORTS = {
     "choisir_transformee_ifs",
 }
 
+REQUIRED_SUPPORT_EXPORTS = {
+    "couleur_thermique",
+    "couleur_relief",
+    "etendue_champ",
+    "combiner_etendue",
+    "dimensions_grille",
+    "projeter_volumetrique",
+    "normaliser_hauteurs",
+}
+
 
 def fail(msg: str) -> None:
     print(f"[integration] FAIL: {msg}", file=sys.stderr)
@@ -208,6 +218,9 @@ def check_wasm_exports() -> None:
     missing = sorted(REQUIRED_EXPORTS - exported)
     if missing:
         fail(f"missing wasm exports: {missing}")
+    missing_support = sorted(REQUIRED_SUPPORT_EXPORTS - exported)
+    if missing_support:
+        fail(f"missing wasm support exports: {missing_support}")
 
 
 def check_renderer_contract() -> None:

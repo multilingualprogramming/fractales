@@ -237,6 +237,10 @@ export function creerStudioProcessus(deps = {}) {
   let frameId = null;
   let relief3D = false;
   let theta = 0.6; // angle de rotation de la vue 3D
+  // Caméra pilotée par les contrôles en plein panneau (zoom/déplacement en pixels
+  // pour les deux modes ; rotation seulement en relief). `autoOrbit` se coupe à la
+  // première rotation manuelle.
+  let zoom = 1, panX = 0, panY = 0, autoOrbit = true;
 
   // Projette via WASM si disponible, sinon par le repli JS. Renvoie le quadruplet
   // [sx, sy, echelle, profondeur].
@@ -271,9 +275,18 @@ export function creerStudioProcessus(deps = {}) {
     tampon.width = largeur;
     tampon.height = hauteur;
     tampon.getContext("2d").putImageData(new ImageData(rgba, largeur, hauteur), 0, 0);
+    const w = canvasActif.width;
+    const h = canvasActif.height;
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvasActif.width, canvasActif.height);
-    ctx.drawImage(tampon, 0, 0, canvasActif.width, canvasActif.height);
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    // Zoom autour du centre + déplacement (caméra plein panneau ; identité par défaut).
+    ctx.translate(panX, panY);
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-w / 2, -h / 2);
+    ctx.drawImage(tampon, 0, 0, w, h);
+    ctx.restore();
   }
 
   // Relief 3D : la valeur du champ devient une hauteur. Chaque cellule est posée
@@ -304,15 +317,19 @@ export function creerStudioProcessus(deps = {}) {
     }
     points.sort((a, b) => a.depth - b.depth); // loin -> près
 
+    const cx = w / 2;
+    const cy = h / 2;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#0b0e1a";
     ctx.fillRect(0, 0, w, h);
     for (const p of points) {
       const [r, g, b] = couleurChamp(p.vn, palette);
-      const taille = Math.max(0.8, tailleBase * p.scale);
+      const taille = Math.max(0.8, tailleBase * p.scale * zoom);
+      const sx = (p.sx - cx) * zoom + cx + panX;
+      const sy = (p.sy - cy) * zoom + cy + panY;
       ctx.globalAlpha = Math.max(0.35, Math.min(1, 0.55 + p.depth * 0.45));
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(p.sx - taille / 2, p.sy - taille / 2, taille, taille);
+      ctx.fillRect(sx - taille / 2, sy - taille / 2, taille, taille);
     }
     ctx.globalAlpha = 1;
   }
@@ -371,7 +388,7 @@ export function creerStudioProcessus(deps = {}) {
 
   function boucle() {
     if (!enLecture) return;
-    if (relief3D) theta += 0.02; // la vue 3D orbite pendant la lecture
+    if (relief3D && autoOrbit) theta += 0.02; // la vue 3D orbite pendant la lecture
     pas();
     frameId = requestFrame(boucle);
   }
@@ -423,10 +440,18 @@ export function creerStudioProcessus(deps = {}) {
     champPas.addEventListener("change", () => { if (etat) charger(etat.processus.cle); });
   }
 
+  // Caméra : rotation manuelle (relief seulement ; coupe l'orbite auto), zoom
+  // borné et déplacement en pixels — pour les contrôles en plein panneau.
+  function tournerDe(delta) { if (!relief3D) return; autoOrbit = false; theta += delta; peindre(imageCourante); }
+  function zoomerDe(facteur) { zoom = Math.max(0.2, Math.min(8, zoom * facteur)); peindre(imageCourante); }
+  function deplacerDe(dx, dy) { panX += dx; panY += dy; peindre(imageCourante); }
+  function reinitialiserCamera() { zoom = 1; panX = 0; panY = 0; autoOrbit = true; }
+
   // Redirige le rendu vers un autre canvas (plein panneau) puis repeint l'image
   // courante. `null` rend l'aperçu du dock d'origine. L'animation en cours
   // continue : la boucle peint désormais dans la nouvelle cible.
   function cibler(nouveauCanvas) {
+    reinitialiserCamera();
     canvasActif = nouveauCanvas || canvas;
     ctx = canvasActif ? canvasActif.getContext("2d") : null;
     if (etat) peindre(imageCourante);
@@ -439,6 +464,9 @@ export function creerStudioProcessus(deps = {}) {
     basculerLecture,
     basculerRelief,
     cibler,
+    tournerDe,
+    zoomerDe,
+    deplacerDe,
     peindre,
     pas,
     etat: () => etat,

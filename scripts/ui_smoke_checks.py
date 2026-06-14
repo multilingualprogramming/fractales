@@ -104,15 +104,18 @@ def main() -> None:
         "missing shared control action helper",
     )
 
+    # Les contrôles peuvent d'abord déléguer à la caméra du studio en plein
+    # panneau (court-circuit si capté), puis retombent sur l'action fractale.
+    intercept = r'(?:if \(explorationModes\?\.controlerPleinPanneau\?\.\("[a-z-]+"\)\) return;\s*)?'
     button_expectations = {
-        "btnPanUp": r'attacherActionControle\(btnPanUp,\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\);',
-        "btnPanDown": r'attacherActionControle\(btnPanDown,\s*\(\)\s*=>\s*\{\s*deplacerVue\(0\.0,\s*canvas\.height \* view\.pixelSize \* 0\.18\);',
-        "btnPanLeft": r'attacherActionControle\(btnPanLeft,\s*\(\)\s*=>\s*\{\s*deplacerVue\(-canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
-        "btnPanRight": r'attacherActionControle\(btnPanRight,\s*\(\)\s*=>\s*\{\s*deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
-        "btnZoomIn": r'attacherActionControle\(btnZoomIn,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1\.5\);',
-        "btnZoomOut": r'attacherActionControle\(btnZoomOut,\s*\(\)\s*=>\s*\{\s*zoomerCentre\(1 / 1\.5\);',
-        "btnRotateLeft": r'attacherActionControle\(btnRotateLeft,\s*\(\)\s*=>\s*\{\s*if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation -= Math\.PI / 36;',
-        "btnRotateRight": r'attacherActionControle\(btnRotateRight,\s*\(\)\s*=>\s*\{\s*if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation \+= Math\.PI / 36;',
+        "btnPanUp": r'attacherActionControle\(btnPanUp,\s*\(\)\s*=>\s*\{\s*' + intercept + r'deplacerVue\(0\.0,\s*-canvas\.height \* view\.pixelSize \* 0\.18\);',
+        "btnPanDown": r'attacherActionControle\(btnPanDown,\s*\(\)\s*=>\s*\{\s*' + intercept + r'deplacerVue\(0\.0,\s*canvas\.height \* view\.pixelSize \* 0\.18\);',
+        "btnPanLeft": r'attacherActionControle\(btnPanLeft,\s*\(\)\s*=>\s*\{\s*' + intercept + r'deplacerVue\(-canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
+        "btnPanRight": r'attacherActionControle\(btnPanRight,\s*\(\)\s*=>\s*\{\s*' + intercept + r'deplacerVue\(canvas\.width \* view\.pixelSize \* 0\.18,\s*0\.0\);',
+        "btnZoomIn": r'attacherActionControle\(btnZoomIn,\s*\(\)\s*=>\s*\{\s*' + intercept + r'zoomerCentre\(1\.5\);',
+        "btnZoomOut": r'attacherActionControle\(btnZoomOut,\s*\(\)\s*=>\s*\{\s*' + intercept + r'zoomerCentre\(1 / 1\.5\);',
+        "btnRotateLeft": r'attacherActionControle\(btnRotateLeft,\s*\(\)\s*=>\s*\{\s*' + intercept + r'if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation -= Math\.PI / 36;',
+        "btnRotateRight": r'attacherActionControle\(btnRotateRight,\s*\(\)\s*=>\s*\{\s*' + intercept + r'if \(!fractaleActiveEst3D\(\)\)\s*\{\s*view\.rotation \+= Math\.PI / 36;',
         "btnReset": r'btnReset\.addEventListener\("click",\s*resetView\);',
         "familySelect": r'familySelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*const fractale = populateFractalSelect\(familySelect\.value,\s*null\);\s*setActiveFractal\(fractale\);',
         "fractalSelect": r'fractalSelect\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setActiveFractal\(fractalSelect\.value\);',

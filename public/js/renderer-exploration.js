@@ -612,6 +612,54 @@ export function initialiserExploration({
   document.getElementById("btn-process-plein")?.addEventListener("click", () => entrerPleinPanneau("croissance"));
   document.getElementById("btn-relief-plein")?.addEventListener("click", () => entrerPleinPanneau("relief"));
 
+  // Pilote la caméra du studio en plein panneau depuis les contrôles du panneau
+  // principal (rotation / zoom / déplacement). Renvoie true si l'action a été
+  // captée — renderer.js court-circuite alors le déplacement de la fractale.
+  function controlerPleinPanneau(action) {
+    if (!pleinPanneauActif) return false;
+    const studio = studioPour(pleinPanneauActif);
+    if (!studio) return false;
+    const w = stageCanvas?.width || 1;
+    const h = stageCanvas?.height || 1;
+    const pasPan = 0.12; // fraction de la dimension par clic
+    switch (action) {
+      case "rotate-left": studio.tournerDe(-Math.PI / 36); break;
+      case "rotate-right": studio.tournerDe(Math.PI / 36); break;
+      case "zoom-in": studio.zoomerDe(1.5); break;
+      case "zoom-out": studio.zoomerDe(1 / 1.5); break;
+      case "pan-up": studio.deplacerDe(0, -h * pasPan); break;
+      case "pan-down": studio.deplacerDe(0, h * pasPan); break;
+      case "pan-left": studio.deplacerDe(-w * pasPan, 0); break;
+      case "pan-right": studio.deplacerDe(w * pasPan, 0); break;
+      default: return false;
+    }
+    return true;
+  }
+
+  // Molette = zoom, glisser = déplacement, directement sur la scène plein panneau
+  // (la scène recouvre la fractale, donc ces gestes ne touchent jamais la vue).
+  if (stageCanvas) {
+    stageCanvas.addEventListener("wheel", (e) => {
+      if (!pleinPanneauActif) return;
+      e.preventDefault();
+      studioPour(pleinPanneauActif)?.zoomerDe(e.deltaY < 0 ? 1.5 : 1 / 1.5);
+    }, { passive: false });
+    let glisser = null;
+    stageCanvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !pleinPanneauActif) return;
+      glisser = { x: e.offsetX, y: e.offsetY };
+      stageCanvas.setPointerCapture(e.pointerId);
+    });
+    stageCanvas.addEventListener("pointermove", (e) => {
+      if (!glisser || !pleinPanneauActif) return;
+      studioPour(pleinPanneauActif)?.deplacerDe(e.offsetX - glisser.x, e.offsetY - glisser.y);
+      glisser = { x: e.offsetX, y: e.offsetY };
+    });
+    const finGlisser = () => { glisser = null; };
+    stageCanvas.addEventListener("pointerup", finGlisser);
+    stageCanvas.addEventListener("pointerleave", finGlisser);
+  }
+
   function setMode(mode) {
     quitterPleinPanneau(); // toute bascule de mode restaure la vue principale
     if (activeMode === "ifs") arreterJeuDuChaos();
@@ -1679,5 +1727,6 @@ export function initialiserExploration({
     lineFractals,
     setMode,
     ouvrirProcessus,
+    controlerPleinPanneau,
   };
 }

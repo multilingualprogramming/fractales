@@ -4198,32 +4198,42 @@ customPaletteStops.addEventListener("click", (event) => {
 
 btnReset.addEventListener("click", resetView);
 
+// Pendant une vue studio en plein panneau, les contrôles pilotent la caméra du
+// studio plutôt que la vue de la fractale (sinon ils agiraient en aveugle sur la
+// fractale masquée dessous). controlerPleinPanneau renvoie true s'il a capté.
 attacherActionControle(btnPanUp, () => {
+  if (explorationModes?.controlerPleinPanneau?.("pan-up")) return;
   deplacerVue(0.0, -canvas.height * view.pixelSize * 0.18);
 });
 
 attacherActionControle(btnPanDown, () => {
+  if (explorationModes?.controlerPleinPanneau?.("pan-down")) return;
   deplacerVue(0.0, canvas.height * view.pixelSize * 0.18);
 });
 
 attacherActionControle(btnPanLeft, () => {
+  if (explorationModes?.controlerPleinPanneau?.("pan-left")) return;
   deplacerVue(-canvas.width * view.pixelSize * 0.18, 0.0);
 });
 
 attacherActionControle(btnPanRight, () => {
+  if (explorationModes?.controlerPleinPanneau?.("pan-right")) return;
   deplacerVue(canvas.width * view.pixelSize * 0.18, 0.0);
 });
 
 attacherActionControle(btnZoomIn, () => {
+  if (explorationModes?.controlerPleinPanneau?.("zoom-in")) return;
   zoomerCentre(1.5);
 });
 
 attacherActionControle(btnZoomOut, () => {
+  if (explorationModes?.controlerPleinPanneau?.("zoom-out")) return;
   zoomerCentre(1 / 1.5);
 });
 
 if (btnRotateLeft) {
   attacherActionControle(btnRotateLeft, () => {
+    if (explorationModes?.controlerPleinPanneau?.("rotate-left")) return;
     if (!fractaleActiveEst3D()) {
       view.rotation -= Math.PI / 36;
       render();
@@ -4234,6 +4244,7 @@ if (btnRotateLeft) {
 
 if (btnRotateRight) {
   attacherActionControle(btnRotateRight, () => {
+    if (explorationModes?.controlerPleinPanneau?.("rotate-right")) return;
     if (!fractaleActiveEst3D()) {
       view.rotation += Math.PI / 36;
       render();

@@ -84,7 +84,12 @@ function couleurRelief(t) {
 
 // Dessine un champ de hauteurs n×n en relief 3D sur le contexte donné, via la
 // projection `projeter(x, y, z, w, h, theta)` (WASM ou repli JS). Tri du peintre.
-export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter) {
+// `camera` applique un zoom (autour du centre) et un déplacement en pixels après
+// projection — utilisé par la vue plein panneau pilotée par les contrôles.
+export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter, camera = {}) {
+  const { zoom = 1, panX = 0, panY = 0 } = camera;
+  const cx = largeur / 2;
+  const cy = hauteur / 2;
   const AMP = 0.6;
   const tailleBase = (Math.min(largeur, hauteur) / n) * 1.8;
   const points = [];
@@ -104,10 +109,12 @@ export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter
   ctx.fillRect(0, 0, largeur, hauteur);
   for (const p of points) {
     const [r, g, b] = couleurRelief(p.vn);
-    const taille = Math.max(0.8, tailleBase * p.scale);
+    const taille = Math.max(0.8, tailleBase * p.scale * zoom);
+    const sx = (p.sx - cx) * zoom + cx + panX;
+    const sy = (p.sy - cy) * zoom + cy + panY;
     ctx.globalAlpha = Math.max(0.35, Math.min(1, 0.55 + p.depth * 0.45));
     ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(p.sx - taille / 2, p.sy - taille / 2, taille, taille);
+    ctx.fillRect(sx - taille / 2, sy - taille / 2, taille, taille);
   }
   ctx.globalAlpha = 1;
 }
@@ -137,6 +144,9 @@ export function creerStudioRelief(deps = {}) {
   let hauteurs = null;
   let theta = 0.6;
   let frameId = null;
+  // Caméra pilotée par les contrôles en plein panneau. `autoOrbit` se coupe à la
+  // première rotation manuelle pour que l'utilisateur garde la main.
+  let zoom = 1, panX = 0, panY = 0, autoOrbit = true;
 
   function projeter(x, y, z, w, h, t) {
     if (projeterVolumetrique) {
@@ -166,13 +176,22 @@ export function creerStudioRelief(deps = {}) {
 
   function peindre() {
     if (!ctx || !hauteurs) return;
-    rendreRelief(ctx, canvasActif.width, canvasActif.height, hauteurs, resolution, theta, projeter);
+    rendreRelief(ctx, canvasActif.width, canvasActif.height, hauteurs, resolution, theta, projeter,
+      { zoom, panX, panY });
   }
+
+  // Caméra : rotation manuelle (coupe l'orbite auto), zoom borné, déplacement en
+  // pixels. Chaque action repeint immédiatement (la boucle d'animation continue).
+  function tournerDe(delta) { autoOrbit = false; theta += delta; peindre(); }
+  function zoomerDe(facteur) { zoom = Math.max(0.2, Math.min(8, zoom * facteur)); peindre(); }
+  function deplacerDe(dx, dy) { panX += dx; panY += dy; peindre(); }
+  function reinitialiserCamera() { zoom = 1; panX = 0; panY = 0; autoOrbit = true; }
 
   // Redirige le rendu vers un autre canvas (plein panneau) puis ré-échantillonne :
   // la largeur de la cible fixe la zone de la fractale couverte, donc un canvas
   // plein panneau montre la même région que la vue principale. `null` rend l'aperçu.
   function cibler(nouveauCanvas) {
+    reinitialiserCamera();
     canvasActif = nouveauCanvas || canvas;
     ctx = canvasActif ? canvasActif.getContext("2d") : null;
     echantillonner();
@@ -180,7 +199,7 @@ export function creerStudioRelief(deps = {}) {
 
   function boucle() {
     if (!hauteurs) return;
-    theta += 0.02;
+    if (autoOrbit) theta += 0.02;
     peindre();
     frameId = requestFrame(boucle);
   }
@@ -197,5 +216,9 @@ export function creerStudioRelief(deps = {}) {
 
   if (boutonActualiser) boutonActualiser.addEventListener("click", () => { arreter(); demarrer(); });
 
-  return { demarrer, arreter, echantillonner, cibler, peindre, hauteurs: () => hauteurs };
+  return {
+    demarrer, arreter, echantillonner, cibler, peindre,
+    tournerDe, zoomerDe, deplacerDe,
+    hauteurs: () => hauteurs,
+  };
 }

@@ -344,7 +344,7 @@ python scripts/quick_checks.py
 Pour tester explicitement la version publiee utilisee par CI :
 
 ```powershell
-python -m pip install --upgrade "multilingualprogramming[wasm]==0.8.1"
+python -m pip install --upgrade "multilingualprogramming[wasm]==0.8.2"
 python scripts/compile_wasm.py
 ```
 
@@ -598,7 +598,7 @@ Le workflow Actions installe Python 3.12 et la version epinglée dans
 JS/source français), puis déploie `public/` sur GitHub Pages.
 
 Un workflow planifie surveille aussi la compatibilite avec la version epinglee
-`0.8.1`, la derniere version publiee sur PyPI et la branche `main` du depot
+`0.8.2`, la derniere version publiee sur PyPI et la branche `main` du depot
 amont `johnsamuelwrites/multilingual`.
 
 Configurez Pages via : **Settings → Pages → Source : GitHub Actions**.

@@ -59,3 +59,22 @@ déf projeter_volumetrique(x, y, z, largeur, hauteur, theta):
     soit sx = largeur / 2.0 + rx * largeur * 0.3 * persp
     soit sy = hauteur / 2.0 + y * hauteur * 0.35 * persp
     retour (sx, sy, persp, rz)
+
+# Normalise un champ d'itérations en hauteurs [0, 1] pour le relief. Les points
+# captifs (it >= max_iter) sont au plancher (0) ; les autres montent avec le log
+# du compte (le log écrase la dispersion et rend la frontière lisible). Miroir de
+# normaliserHauteurs (renderer-relief.js) ; `champ` est une liste de n comptes,
+# le retour une liste de n hauteurs. `math.log` natif (~1e-6, visuel).
+déf normaliser_hauteurs(champ, max_iter):
+    soit n = longueur(champ)
+    soit lmax = math.log(max_iter + 1.0)
+    soit sortie = [0.0] * n
+    soit k = 0
+    tantque k < n:
+        soit it = champ[k]
+        si it >= max_iter:
+            sortie[k] = 0.0
+        sinon:
+            sortie[k] = math.log(it + 1.0) / lmax
+        k = k + 1
+    retour sortie

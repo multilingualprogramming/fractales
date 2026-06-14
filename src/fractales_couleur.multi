@@ -5,7 +5,7 @@
 # plus recopiée à la main dans le JS de chaque studio (renderer-process.js et
 # renderer-relief.js portaient chacun leur propre lerp RGB sur des arrêts).
 #
-# Chaque fonction prend t∈[0,1] et renvoie le triplet (r, g, b) en octets. Le
+# Chaque routine prend t∈[0,1] et renvoie le triplet (r, g, b) en octets. Le
 # mélange reproduit exactement le `Math.round(a + (b - a) * f)` du JS : pour des
 # canaux toujours positifs (0..255), `trunc(x + 0.5)` est bit-à-bit identique à
 # l'arrondi JS au demi supérieur, donc la parité avec le repli JS est exacte.

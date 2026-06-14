@@ -2567,6 +2567,16 @@
       "source_module": "fractales_volumetrique"
     },
     {
+      "name": "normaliser_hauteurs",
+      "arg_types": [
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_volumetrique"
+    },
+    {
       "name": "borner_unite",
       "arg_types": [
         "f64"
@@ -2977,7 +2987,8 @@
       "normaliser_angle_volumetrique",
       "sin_volumetrique",
       "cos_volumetrique",
-      "projeter_volumetrique"
+      "projeter_volumetrique",
+      "normaliser_hauteurs"
     ],
     "fractales_couleur": [
       "borner_unite",

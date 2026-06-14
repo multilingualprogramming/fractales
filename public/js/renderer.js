@@ -3405,6 +3405,7 @@ async function loadWasm() {
       projeter_sprott_x: typeof exports.projeter_sprott_x === "function" ? exports.projeter_sprott_x : null,
       projeter_sprott_y: typeof exports.projeter_sprott_y === "function" ? exports.projeter_sprott_y : null,
       projeter_volumetrique: typeof exports.projeter_volumetrique === "function" ? exports.projeter_volumetrique : null,
+      normaliser_hauteurs: typeof exports.normaliser_hauteurs === "function" ? exports.normaliser_hauteurs : null,
       couleur_thermique: typeof exports.couleur_thermique === "function" ? exports.couleur_thermique : null,
       couleur_relief: typeof exports.couleur_relief === "function" ? exports.couleur_relief : null,
       etendue_champ: typeof exports.etendue_champ === "function" ? exports.etendue_champ : null,

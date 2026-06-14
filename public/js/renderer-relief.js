@@ -54,7 +54,12 @@ export function appelFractalePour(fractal, fn, params) {
 // (iter >= maxIter, jamais échappés) sont mis à plat (0) ; les points échappés
 // montent avec le log du compte (le log écrase la dispersion et rend la
 // frontière lisible). Pur et testable.
-export function normaliserHauteurs(champ, maxIter) {
+// `normaliseurWasm` (optionnel) porte la normalisation logarithmique vers WASM
+// (normaliser_hauteurs dans src/fractales_volumetrique.multi) ; à défaut, repli JS
+// identique. La normalisation est une primitive mathématique : elle vit en
+// multilingue dès que le module est chargé (math.log natif, ~1e-10 vs Math.log).
+export function normaliserHauteurs(champ, maxIter, normaliseurWasm = null) {
+  if (normaliseurWasm) return normaliseurWasm(champ, maxIter);
   const n = champ.length;
   const hauteurs = new Float64Array(n);
   const lmax = Math.log(maxIter + 1);
@@ -139,6 +144,7 @@ export function creerStudioRelief(deps = {}) {
     getWasmFunctions,
     projeterVolumetrique = null,
     couleurReliefWasm = null, // export WASM couleur_relief (sinon repli JS)
+    normaliserHauteursWasm = null, // adaptateur WASM normaliser_hauteurs (sinon repli JS)
     requestFrame = (cb) => requestAnimationFrame(cb),
     cancelFrame = (id) => cancelAnimationFrame(id),
     resolution = 72,
@@ -177,7 +183,7 @@ export function creerStudioRelief(deps = {}) {
       return;
     }
     const champ = echantillonnerChamp(appel, getView(), canvasActif ? canvasActif.width : 280, resolution);
-    hauteurs = normaliserHauteurs(champ, params.maxIter || 256);
+    hauteurs = normaliserHauteurs(champ, params.maxIter || 256, normaliserHauteursWasm);
     if (lectureInfo) lectureInfo.textContent = `Relief de « ${params.fractal} » · grille ${resolution}×${resolution}`;
     peindre();
   }

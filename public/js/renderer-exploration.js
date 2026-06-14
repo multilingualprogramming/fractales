@@ -715,27 +715,23 @@ export function initialiserExploration({
         getWasmFunctions,
         projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
         couleurReliefWasm: getWasmExportFunctions?.()?.couleur_relief || null,
+        normaliserHauteursWasm: construireNormaliseurRelief(),
       });
     }
     studioRelief.demarrer();
   }
 
-  // Construit l'adaptateur de géométrie du champ (réductions portées par
-  // src/fractales_processus.multi → WASM). Les valeurs traversent JS→WASM via une
-  // liste construite côté hôte (longueur f64 à base+0, éléments à base+8, …) dans
-  // un tampon obtenu par __ml_str_alloc. Renvoie null si le WASM manque : le
-  // studio retombe alors sur le repli JS identique. Le marshalling vit ici (couche
-  // de liaison WASM) pour garder renderer-process.js libre de pointeurs bruts.
-  function construireGeometrieProcessus() {
-    const ex = getWasmExportFunctions?.() || {};
+  // Adaptateur de marshalling JS↔WASM pour les listes f64. Une liste multilingue
+  // est construite côté hôte dans un tampon __ml_str_alloc : longueur f64 à base+0,
+  // éléments à base+8, +16, … `lireListe` relit le même format (DataView, sûr face
+  // au désalignement). Renvoie null si le WASM manque. Partagé par les ateliers
+  // pour garder renderer-process.js / renderer-relief.js libres de pointeurs bruts.
+  function obtenirMarshalWasm() {
     const mp = getWasmMetaPanels?.() || null;
     const mem = mp?.memory || null;
     const strAlloc = mp?.strAlloc || null;
     const reset = mp?.reset || null;
-    if (!ex.etendue_champ || !ex.dimensions_grille || !ex.combiner_etendue
-        || !mem || !strAlloc || !reset) {
-      return null;
-    }
+    if (!mem || !strAlloc || !reset) return null;
     const ecrireListe = (valeurs) => {
       const n = valeurs.length;
       const ptr = strAlloc(n * 8 + 8);
@@ -744,6 +740,25 @@ export function initialiserExploration({
       for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
       return ptr;
     };
+    const lireListe = (ptr, n) => {
+      const dv = new DataView(mem.buffer);
+      const out = new Float64Array(n);
+      for (let i = 0; i < n; i += 1) out[i] = dv.getFloat64(ptr + 8 + i * 8, true);
+      return out;
+    };
+    return { reset, ecrireListe, lireListe };
+  }
+
+  // Construit l'adaptateur de géométrie du champ (réductions portées par
+  // src/fractales_processus.multi → WASM). Renvoie null si le WASM manque : le
+  // studio retombe alors sur le repli JS identique.
+  function construireGeometrieProcessus() {
+    const ex = getWasmExportFunctions?.() || {};
+    const m = obtenirMarshalWasm();
+    if (!ex.etendue_champ || !ex.dimensions_grille || !ex.combiner_etendue || !m) {
+      return null;
+    }
+    const { reset, ecrireListe } = m;
     return {
       // Étendue [min, max] d'un tableau JS de valeurs (numériques déjà filtrées).
       etendueChamp(valeurs) {
@@ -764,6 +779,21 @@ export function initialiserExploration({
         const r = ex.dimensions_grille(px, py);
         return [r[0], r[1]];
       },
+    };
+  }
+
+  // Construit l'adaptateur de normalisation des hauteurs du relief (log-normalisation
+  // portée par normaliser_hauteurs dans src/fractales_volumetrique.multi). Prend un
+  // champ d'itérations, renvoie un Float64Array de hauteurs [0,1]. Null si WASM absent.
+  function construireNormaliseurRelief() {
+    const ex = getWasmExportFunctions?.() || {};
+    const m = obtenirMarshalWasm();
+    if (!ex.normaliser_hauteurs || !m) return null;
+    const { reset, ecrireListe, lireListe } = m;
+    return (champ, maxIter) => {
+      reset();
+      const ptr = ex.normaliser_hauteurs(ecrireListe(Array.from(champ)), maxIter);
+      return lireListe(ptr, champ.length);
     };
   }
 

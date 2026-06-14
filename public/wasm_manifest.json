@@ -2605,6 +2605,37 @@
       "source_module": "fractales_couleur"
     },
     {
+      "name": "etendue_champ",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_processus"
+    },
+    {
+      "name": "combiner_etendue",
+      "arg_types": [
+        "f64",
+        "f64",
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_processus"
+    },
+    {
+      "name": "dimensions_grille",
+      "arg_types": [
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_processus"
+    },
+    {
       "name": "__main",
       "arg_types": [],
       "return_type": "void",
@@ -2953,6 +2984,11 @@
       "melanger_canal",
       "couleur_thermique",
       "couleur_relief"
+    ],
+    "fractales_processus": [
+      "etendue_champ",
+      "combiner_etendue",
+      "dimensions_grille"
     ]
   }
 }

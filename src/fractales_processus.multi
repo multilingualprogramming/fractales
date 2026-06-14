@@ -1,0 +1,62 @@
+# Géométrie d'un champ de processus (atelier Croissance) portée en multilingue.
+#
+# L'atelier déroule un processus ⟨État, Topologie, Règle, Ordonnancement⟩ via le
+# pas universel (process_core.js). Les *réductions géométriques* sur le champ
+# obtenu — son étendue [min, max] (contraste) et les dimensions de sa grille —
+# sont des primitives mathématiques : conformément à l'identité du projet, elles
+# vivent ici en .multi compilé vers WASM, et non plus recopiées dans le JS de
+# renderer-process.js (etendueChamp / dimensionsGrille).
+#
+# Les valeurs traversent depuis JS via une liste construite côté hôte (longueur
+# f64 à base+0, éléments à base+8, +16, …), lue ici par indexation de liste.
+
+# Étendue [min, max] d'un champ de n valeurs, avec la sémantique JS exacte :
+# champ vide -> (0, 1) ; champ plat (min == max) -> (min, min + 1) pour éviter une
+# division par zéro lors de la normalisation aval.
+déf etendue_champ(valeurs):
+    soit n = longueur(valeurs)
+    si n == 0:
+        retour (0.0, 1.0)
+    soit mn = valeurs[0]
+    soit mx = valeurs[0]
+    soit k = 1
+    tantque k < n:
+        soit v = valeurs[k]
+        si v < mn:
+            mn = v
+        si v > mx:
+            mx = v
+        k = k + 1
+    si mn == mx:
+        retour (mn, mn + 1.0)
+    retour (mn, mx)
+
+# Combine deux étendues partielles en une étendue globale (min des min, max des
+# max). Sert à agréger l'étendue sur toute une trajectoire sans rapatrier chaque
+# image (calculerTrajectoire). Renvoie (min, max).
+déf combiner_etendue(min_a, max_a, min_b, max_b):
+    soit mn = min_a
+    si min_b < mn:
+        mn = min_b
+    soit mx = max_a
+    si max_b > mx:
+        mx = max_b
+    retour (mn, mx)
+
+# Dimensions (largeur, hauteur) d'une grille déduites des coordonnées des loci :
+# max(x) + 1 et max(y) + 1. `xs` et `ys` sont deux listes parallèles de n entrées.
+# Miroir exact de la branche « déduite des loci » de dimensionsGrille.
+déf dimensions_grille(xs, ys):
+    soit n = longueur(xs)
+    soit largeur = 0.0
+    soit hauteur = 0.0
+    soit k = 0
+    tantque k < n:
+        soit lx = xs[k] + 1.0
+        soit ly = ys[k] + 1.0
+        si lx > largeur:
+            largeur = lx
+        si ly > hauteur:
+            hauteur = ly
+        k = k + 1
+    retour (largeur, hauteur)

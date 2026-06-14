@@ -720,11 +720,59 @@ export function initialiserExploration({
     studioRelief.demarrer();
   }
 
+  // Construit l'adaptateur de géométrie du champ (réductions portées par
+  // src/fractales_processus.multi → WASM). Les valeurs traversent JS→WASM via une
+  // liste construite côté hôte (longueur f64 à base+0, éléments à base+8, …) dans
+  // un tampon obtenu par __ml_str_alloc. Renvoie null si le WASM manque : le
+  // studio retombe alors sur le repli JS identique. Le marshalling vit ici (couche
+  // de liaison WASM) pour garder renderer-process.js libre de pointeurs bruts.
+  function construireGeometrieProcessus() {
+    const ex = getWasmExportFunctions?.() || {};
+    const mp = getWasmMetaPanels?.() || null;
+    const mem = mp?.memory || null;
+    const strAlloc = mp?.strAlloc || null;
+    const reset = mp?.reset || null;
+    if (!ex.etendue_champ || !ex.dimensions_grille || !ex.combiner_etendue
+        || !mem || !strAlloc || !reset) {
+      return null;
+    }
+    const ecrireListe = (valeurs) => {
+      const n = valeurs.length;
+      const ptr = strAlloc(n * 8 + 8);
+      const dv = new DataView(mem.buffer);
+      dv.setFloat64(ptr, n, true); // longueur de liste à base+0
+      for (let i = 0; i < n; i += 1) dv.setFloat64(ptr + 8 + i * 8, valeurs[i], true);
+      return ptr;
+    };
+    return {
+      // Étendue [min, max] d'un tableau JS de valeurs (numériques déjà filtrées).
+      etendueChamp(valeurs) {
+        reset();
+        const r = ex.etendue_champ(ecrireListe(valeurs));
+        return [r[0], r[1]];
+      },
+      // Agrège deux étendues partielles (scalaires : aucun marshalling).
+      combinerEtendue(minA, maxA, minB, maxB) {
+        const r = ex.combiner_etendue(minA, maxA, minB, maxB);
+        return [r[0], r[1]];
+      },
+      // Dimensions (largeur, hauteur) à partir de deux tableaux de coordonnées.
+      dimensionsGrille(xs, ys) {
+        reset();
+        const px = ecrireListe(xs);
+        const py = ecrireListe(ys);
+        const r = ex.dimensions_grille(px, py);
+        return [r[0], r[1]];
+      },
+    };
+  }
+
   // Crée l'atelier Croissance à la première ouverture (le canvas et les
   // commandes existent alors dans le DOM), puis charge le processus courant.
   function activerStudioProcessus() {
     if (!studioProcessus) {
       studioProcessus = creerStudioProcessus({
+        geometrieProcessus: construireGeometrieProcessus(),
         canvas: document.getElementById("process-canvas"),
         selecteur: document.getElementById("process-select"),
         boutonLecture: document.getElementById("btn-process-play"),

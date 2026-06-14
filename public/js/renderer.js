@@ -3407,6 +3407,9 @@ async function loadWasm() {
       projeter_volumetrique: typeof exports.projeter_volumetrique === "function" ? exports.projeter_volumetrique : null,
       couleur_thermique: typeof exports.couleur_thermique === "function" ? exports.couleur_thermique : null,
       couleur_relief: typeof exports.couleur_relief === "function" ? exports.couleur_relief : null,
+      etendue_champ: typeof exports.etendue_champ === "function" ? exports.etendue_champ : null,
+      combiner_etendue: typeof exports.combiner_etendue === "function" ? exports.combiner_etendue : null,
+      dimensions_grille: typeof exports.dimensions_grille === "function" ? exports.dimensions_grille : null,
       duffing_attractor_etape: typeof exports.duffing_attractor_etape === "function" ? exports.duffing_attractor_etape : null,
       julia_quaternion_etape: typeof exports.julia_quaternion_etape === "function" ? exports.julia_quaternion_etape : null,
       mandelbox_etape: typeof exports.mandelbox_etape === "function" ? exports.mandelbox_etape : null,
@@ -3447,6 +3450,7 @@ async function loadWasm() {
       const panels = {
         memory: exports.memory,
         reset: exports.__ml_reset,
+        strAlloc: exports.__ml_str_alloc ?? null,
         strLen: exports.__ml_str_len ?? null,
         // Helpers ABI listes (B5) : remplacent les offsets bruts `base + 8 +
         // 8 * (...)` historiquement scattérisés dans renderer.js,

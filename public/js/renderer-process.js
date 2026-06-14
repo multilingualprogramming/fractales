@@ -78,30 +78,53 @@ export function trouverProcessus(cle) {
 // Dimensions de la grille d'un noyau treillis, lues sur la topologie quand elles
 // existent, sinon déduites des coordonnées des loci (robuste aux manifestes sans
 // largeur/hauteur explicites).
-export function dimensionsGrille(core) {
+// `geometrieWasm` (optionnel) porte les réductions vers WASM (fractales_processus
+// .multi) ; à défaut, repli JS identique. La géométrie d'un champ (étendue, grille)
+// est une primitive mathématique : conformément à l'identité du projet, elle vit
+// en multilingue dès que le module est chargé.
+export function dimensionsGrille(core, geometrieWasm = null) {
   const topo = core.topology || {};
   if (Number.isFinite(topo.width) && Number.isFinite(topo.height)) {
     return { largeur: topo.width, hauteur: topo.height };
   }
-  let largeur = 0;
-  let hauteur = 0;
+  const xs = [];
+  const ys = [];
   for (const rec of core.state.loci) {
     if (!Array.isArray(rec.locus)) continue;
-    largeur = Math.max(largeur, rec.locus[0] + 1);
-    hauteur = Math.max(hauteur, rec.locus[1] + 1);
+    xs.push(rec.locus[0]);
+    ys.push(rec.locus[1]);
+  }
+  if (geometrieWasm && xs.length) {
+    const [largeur, hauteur] = geometrieWasm.dimensionsGrille(xs, ys);
+    return { largeur, hauteur };
+  }
+  let largeur = 0;
+  let hauteur = 0;
+  for (let k = 0; k < xs.length; k += 1) {
+    largeur = Math.max(largeur, xs[k] + 1);
+    hauteur = Math.max(hauteur, ys[k] + 1);
   }
   return { largeur, hauteur };
 }
 
 // Étendue [min, max] d'un champ sur une image, pour le contraste automatique.
-export function etendueChamp(core, champ) {
-  let min = Infinity;
-  let max = -Infinity;
+export function etendueChamp(core, champ, geometrieWasm = null) {
+  const valeurs = [];
   for (const rec of core.state.loci) {
     const v = rec[champ];
-    if (typeof v !== "number") continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
+    if (typeof v === "number") valeurs.push(v);
+  }
+  if (valeurs.length === 0) return { min: 0, max: 1 };
+  if (geometrieWasm) {
+    const [min, max] = geometrieWasm.etendueChamp(valeurs);
+    if (!Number.isFinite(min)) return { min: 0, max: 1 }; // champ tout-NaN, comme le JS
+    return { min, max };
+  }
+  let min = Infinity;
+  let max = -Infinity;
+  for (let k = 0; k < valeurs.length; k += 1) {
+    if (valeurs[k] < min) min = valeurs[k];
+    if (valeurs[k] > max) max = valeurs[k];
   }
   if (!Number.isFinite(min)) return { min: 0, max: 1 };
   if (min === max) max = min + 1; // évite la division par zéro sur un champ plat
@@ -151,9 +174,9 @@ export function couleurChamp(t, palette, rampeWasm = null) {
 // Construit l'image RGBA (un pixel par cellule) d'une image de la trajectoire.
 // Fonction pure et testable : aucune dépendance au DOM. Le canvas l'agrandit
 // ensuite en pixels nets (image-rendering: pixelated).
-export function construireImageProcessus(core, champ, palette, etendue, rampeWasm = null) {
-  const { largeur, hauteur } = dimensionsGrille(core);
-  const { min, max } = etendue || etendueChamp(core, champ);
+export function construireImageProcessus(core, champ, palette, etendue, rampeWasm = null, geometrieWasm = null) {
+  const { largeur, hauteur } = dimensionsGrille(core, geometrieWasm);
+  const { min, max } = etendue || etendueChamp(core, champ, geometrieWasm);
   const echelle = max - min || 1;
   const rgba = new Uint8ClampedArray(largeur * hauteur * 4);
   for (const rec of core.state.loci) {
@@ -192,14 +215,18 @@ export function projeterPointVolumetrique(x, y, z, largeur, hauteur, theta) {
 
 // Calcule la trajectoire d'un processus et une étendue *globale* (sur toutes les
 // images) pour que le contraste ne saute pas pendant la lecture. Pure/testable.
-export function calculerTrajectoire(core, pas, champ) {
+export function calculerTrajectoire(core, pas, champ, geometrieWasm = null) {
   const trajectoire = run(core, pas);
   let min = Infinity;
   let max = -Infinity;
   for (const image of trajectoire) {
-    const e = etendueChamp(image, champ);
-    if (e.min < min) min = e.min;
-    if (e.max > max) max = e.max;
+    const e = etendueChamp(image, champ, geometrieWasm);
+    if (geometrieWasm) {
+      [min, max] = geometrieWasm.combinerEtendue(min, max, e.min, e.max);
+    } else {
+      if (e.min < min) min = e.min;
+      if (e.max > max) max = e.max;
+    }
   }
   if (!Number.isFinite(min)) { min = 0; max = 1; }
   if (min === max) max = min + 1;
@@ -229,6 +256,7 @@ export function creerStudioProcessus(deps = {}) {
     boutonRelief,
     projeterVolumetrique = null, // export WASM projeter_volumetrique (sinon repli JS)
     couleurThermique = null, // export WASM couleur_thermique (sinon repli JS)
+    geometrieProcessus = null, // réductions géométriques WASM (fractales_processus.multi)
     setParamsPatch = () => {},
     updateHash = () => {},
     chargerManifeste = chargerManifesteParDefaut,
@@ -277,7 +305,7 @@ export function creerStudioProcessus(deps = {}) {
 
   function peindrePlat(core) {
     const { largeur, hauteur, rgba } = construireImageProcessus(
-      core, etat.processus.champ, etat.processus.palette, etat.etendue, couleurThermique,
+      core, etat.processus.champ, etat.processus.palette, etat.etendue, couleurThermique, geometrieProcessus,
     );
     // Dessine à la résolution de la grille sur un canvas hors-écran, puis
     // agrandit en pixels nets jusqu'à la taille d'affichage du canvas.
@@ -370,7 +398,7 @@ export function creerStudioProcessus(deps = {}) {
       ? Math.min(Number(champPas.value), processus.pasMax)
       : processus.pasDefaut;
     if (champPas) champPas.value = String(pas);
-    const calc = calculerTrajectoire(core, pas, processus.champ);
+    const calc = calculerTrajectoire(core, pas, processus.champ, geometrieProcessus);
     etat = { processus, ...calc };
     if (curseur) {
       curseur.min = "0";

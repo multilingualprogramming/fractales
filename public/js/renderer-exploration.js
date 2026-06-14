@@ -714,6 +714,7 @@ export function initialiserExploration({
         getParams,
         getWasmFunctions,
         projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
+        couleurReliefWasm: getWasmExportFunctions?.()?.couleur_relief || null,
       });
     }
     studioRelief.demarrer();
@@ -736,6 +737,8 @@ export function initialiserExploration({
         // Projection 3D portée par le WASM (src/fractales_volumetrique.multi) ;
         // le studio se rabat sur un repli JS identique si l'export manque.
         projeterVolumetrique: getWasmExportFunctions?.()?.projeter_volumetrique || null,
+        // Rampe couleur portée par le WASM (src/fractales_couleur.multi) ; repli JS sinon.
+        couleurThermique: getWasmExportFunctions?.()?.couleur_thermique || null,
         // Partage : le studio publie son état (processus, image, relief) dans le hash.
         setParamsPatch,
         updateHash,

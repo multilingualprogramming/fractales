@@ -65,9 +65,16 @@ export function normaliserHauteurs(champ, maxIter) {
   return hauteurs;
 }
 
-function couleurRelief(t) {
+// `rampeWasm` est l'export WASM couleur_relief (src/fractales_couleur.multi) :
+// l'interpolation RGB topographique vit en multilingue. À défaut, repli JS
+// identique ci-dessous (parité bit-à-bit vérifiée). Exporté pour le test de parité.
+export function couleurRelief(t, rampeWasm = null) {
   // Bleu profond (bas) -> turquoise -> ambre (haut) : un dégradé « topographique ».
   const u = Math.max(0, Math.min(1, t));
+  if (rampeWasm) {
+    const c = rampeWasm(u);
+    return [c[0], c[1], c[2]];
+  }
   const arrets = [[18, 24, 64], [30, 132, 160], [120, 198, 150], [240, 206, 110]];
   const seg = arrets.length - 1;
   const p = u * seg;
@@ -86,7 +93,7 @@ function couleurRelief(t) {
 // projection `projeter(x, y, z, w, h, theta)` (WASM ou repli JS). Tri du peintre.
 // `camera` applique un zoom (autour du centre) et un déplacement en pixels après
 // projection — utilisé par la vue plein panneau pilotée par les contrôles.
-export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter, camera = {}) {
+export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter, camera = {}, rampeWasm = null) {
   const { zoom = 1, panX = 0, panY = 0 } = camera;
   const cx = largeur / 2;
   const cy = hauteur / 2;
@@ -108,7 +115,7 @@ export function rendreRelief(ctx, largeur, hauteur, hauteurs, n, theta, projeter
   ctx.fillStyle = "#070a16";
   ctx.fillRect(0, 0, largeur, hauteur);
   for (const p of points) {
-    const [r, g, b] = couleurRelief(p.vn);
+    const [r, g, b] = couleurRelief(p.vn, rampeWasm);
     const taille = Math.max(0.8, tailleBase * p.scale * zoom);
     const sx = (p.sx - cx) * zoom + cx + panX;
     const sy = (p.sy - cy) * zoom + cy + panY;
@@ -131,6 +138,7 @@ export function creerStudioRelief(deps = {}) {
     getParams,
     getWasmFunctions,
     projeterVolumetrique = null,
+    couleurReliefWasm = null, // export WASM couleur_relief (sinon repli JS)
     requestFrame = (cb) => requestAnimationFrame(cb),
     cancelFrame = (id) => cancelAnimationFrame(id),
     resolution = 72,
@@ -177,7 +185,7 @@ export function creerStudioRelief(deps = {}) {
   function peindre() {
     if (!ctx || !hauteurs) return;
     rendreRelief(ctx, canvasActif.width, canvasActif.height, hauteurs, resolution, theta, projeter,
-      { zoom, panX, panY });
+      { zoom, panX, panY }, couleurReliefWasm);
   }
 
   // Caméra : rotation manuelle (coupe l'orbite auto), zoom borné, déplacement en

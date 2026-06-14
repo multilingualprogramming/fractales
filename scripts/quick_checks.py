@@ -36,6 +36,7 @@ COMMANDS = [
     ["node", "--test", "tests/process_reaction_diffusion.test.js"],
     ["node", "--test", "tests/process_studio.test.js"],
     ["node", "--test", "tests/relief.test.js"],
+    ["node", "--test", "tests/couleur_wasm.test.js"],
     [sys.executable, "scripts/js_backend_contract_checks.py"],
     [sys.executable, "scripts/advanced_workflow_checks.py"],
     [sys.executable, "scripts/ui_smoke_checks.py"],

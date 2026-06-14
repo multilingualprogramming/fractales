@@ -23,6 +23,7 @@ importer fractales_hasard
 importer fractales_landmark
 importer fractales_simd
 importer fractales_volumetrique
+importer fractales_couleur
 #
 # Module orienté objet (transpilation Python uniquement) :
 # Démontre : classe, héritage, soi (self), super().__init__

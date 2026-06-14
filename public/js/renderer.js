@@ -3405,6 +3405,8 @@ async function loadWasm() {
       projeter_sprott_x: typeof exports.projeter_sprott_x === "function" ? exports.projeter_sprott_x : null,
       projeter_sprott_y: typeof exports.projeter_sprott_y === "function" ? exports.projeter_sprott_y : null,
       projeter_volumetrique: typeof exports.projeter_volumetrique === "function" ? exports.projeter_volumetrique : null,
+      couleur_thermique: typeof exports.couleur_thermique === "function" ? exports.couleur_thermique : null,
+      couleur_relief: typeof exports.couleur_relief === "function" ? exports.couleur_relief : null,
       duffing_attractor_etape: typeof exports.duffing_attractor_etape === "function" ? exports.duffing_attractor_etape : null,
       julia_quaternion_etape: typeof exports.julia_quaternion_etape === "function" ? exports.julia_quaternion_etape : null,
       mandelbox_etape: typeof exports.mandelbox_etape === "function" ? exports.mandelbox_etape : null,

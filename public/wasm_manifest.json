@@ -2567,6 +2567,44 @@
       "source_module": "fractales_volumetrique"
     },
     {
+      "name": "borner_unite",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
+      "name": "melanger_canal",
+      "arg_types": [
+        "f64",
+        "f64",
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
+      "name": "couleur_thermique",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
+      "name": "couleur_relief",
+      "arg_types": [
+        "f64"
+      ],
+      "return_type": "f64",
+      "mode": "scalar_field",
+      "source_module": "fractales_couleur"
+    },
+    {
       "name": "__main",
       "arg_types": [],
       "return_type": "void",
@@ -2909,6 +2947,12 @@
       "sin_volumetrique",
       "cos_volumetrique",
       "projeter_volumetrique"
+    ],
+    "fractales_couleur": [
+      "borner_unite",
+      "melanger_canal",
+      "couleur_thermique",
+      "couleur_relief"
     ]
   }
 }

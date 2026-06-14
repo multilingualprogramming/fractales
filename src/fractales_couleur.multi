@@ -1,0 +1,56 @@
+# Rampes de couleur (interpolation RGB) pour les ateliers Croissance et Relief.
+#
+# L'interpolation de couleur est une primitive mathématique : conformément à
+# l'identité du projet, elle vit ici en multilingue compilé vers WASM, et non
+# plus recopiée à la main dans le JS de chaque studio (renderer-process.js et
+# renderer-relief.js portaient chacun leur propre lerp RGB sur des arrêts).
+#
+# Chaque fonction prend t∈[0,1] et renvoie le triplet (r, g, b) en octets. Le
+# mélange reproduit exactement le `Math.round(a + (b - a) * f)` du JS : pour des
+# canaux toujours positifs (0..255), `trunc(x + 0.5)` est bit-à-bit identique à
+# l'arrondi JS au demi supérieur, donc la parité avec le repli JS est exacte.
+
+# Borne t dans l'unité [0, 1] (même clamp que Math.max(0, Math.min(1, t))).
+déf borner_unite(t):
+    soit u = t
+    si u < 0.0:
+        u = 0.0
+    si u > 1.0:
+        u = 1.0
+    retour u
+
+# Mélange un canal entre a et b à la fraction f, arrondi à l'octet le plus proche.
+déf melanger_canal(a, b, f):
+    retour math.trunc(a + (b - a) * f + 0.5)
+
+# Rampe thermique à 5 arrêts (bleu nuit -> cyan -> vert -> jaune -> rouge) de
+# l'atelier Croissance. Miroir de ARRETS_THERMIQUE dans renderer-process.js.
+déf couleur_thermique(t):
+    soit u = borner_unite(t)
+    soit pos = u * 4.0
+    soit i = math.trunc(pos)
+    si i > 3.0:
+        i = 3.0
+    soit f = pos - i
+    si i < 1.0:
+        retour (melanger_canal(12.0, 22.0, f), melanger_canal(16.0, 138.0, f), melanger_canal(48.0, 173.0, f))
+    si i < 2.0:
+        retour (melanger_canal(22.0, 120.0, f), melanger_canal(138.0, 200.0, f), melanger_canal(173.0, 90.0, f))
+    si i < 3.0:
+        retour (melanger_canal(120.0, 245.0, f), melanger_canal(200.0, 215.0, f), melanger_canal(90.0, 66.0, f))
+    retour (melanger_canal(245.0, 222.0, f), melanger_canal(215.0, 60.0, f), melanger_canal(66.0, 75.0, f))
+
+# Rampe topographique à 4 arrêts (bleu profond -> turquoise -> vert -> ambre) de
+# l'atelier Relief 3D. Miroir des arrêts dans couleurRelief (renderer-relief.js).
+déf couleur_relief(t):
+    soit u = borner_unite(t)
+    soit pos = u * 3.0
+    soit i = math.trunc(pos)
+    si i > 2.0:
+        i = 2.0
+    soit f = pos - i
+    si i < 1.0:
+        retour (melanger_canal(18.0, 30.0, f), melanger_canal(24.0, 132.0, f), melanger_canal(64.0, 160.0, f))
+    si i < 2.0:
+        retour (melanger_canal(30.0, 120.0, f), melanger_canal(132.0, 198.0, f), melanger_canal(160.0, 150.0, f))
+    retour (melanger_canal(120.0, 240.0, f), melanger_canal(198.0, 206.0, f), melanger_canal(150.0, 110.0, f))

@@ -122,12 +122,21 @@ const ARRETS_THERMIQUE = [
   [222, 60, 75],
 ];
 
-export function couleurChamp(t, palette) {
+// `rampeWasm` est l'export WASM couleur_thermique (src/fractales_couleur.multi) :
+// l'interpolation RGB vit en multilingue. À défaut (tests hors navigateur, WASM
+// non chargé), on retombe sur le repli JS identique ci-dessous — parité bit-à-bit
+// vérifiée (trunc(x+0.5) == Math.round sur des canaux toujours positifs).
+export function couleurChamp(t, palette, rampeWasm = null) {
   const u = Math.max(0, Math.min(1, t));
   if (palette === "encre") {
-    // Binaire : encre sombre sur fond clair (l'automate discret).
+    // Binaire : encre sombre sur fond clair (l'automate discret). Pas une
+    // interpolation — reste en JS (simple aiguillage de deux constantes).
     const vivant = u > 0.5;
     return vivant ? [24, 26, 42] : [238, 240, 245];
+  }
+  if (rampeWasm) {
+    const c = rampeWasm(u);
+    return [c[0], c[1], c[2]];
   }
   const arrets = ARRETS_THERMIQUE;
   const segments = arrets.length - 1;
@@ -142,7 +151,7 @@ export function couleurChamp(t, palette) {
 // Construit l'image RGBA (un pixel par cellule) d'une image de la trajectoire.
 // Fonction pure et testable : aucune dépendance au DOM. Le canvas l'agrandit
 // ensuite en pixels nets (image-rendering: pixelated).
-export function construireImageProcessus(core, champ, palette, etendue) {
+export function construireImageProcessus(core, champ, palette, etendue, rampeWasm = null) {
   const { largeur, hauteur } = dimensionsGrille(core);
   const { min, max } = etendue || etendueChamp(core, champ);
   const echelle = max - min || 1;
@@ -153,7 +162,7 @@ export function construireImageProcessus(core, champ, palette, etendue) {
     const y = rec.locus[1];
     if (x < 0 || y < 0 || x >= largeur || y >= hauteur) continue;
     const valeur = typeof rec[champ] === "number" ? rec[champ] : 0;
-    const [r, g, b] = couleurChamp((valeur - min) / echelle, palette);
+    const [r, g, b] = couleurChamp((valeur - min) / echelle, palette, rampeWasm);
     const o = (y * largeur + x) * 4;
     rgba[o] = r;
     rgba[o + 1] = g;
@@ -219,6 +228,7 @@ export function creerStudioProcessus(deps = {}) {
     description,
     boutonRelief,
     projeterVolumetrique = null, // export WASM projeter_volumetrique (sinon repli JS)
+    couleurThermique = null, // export WASM couleur_thermique (sinon repli JS)
     setParamsPatch = () => {},
     updateHash = () => {},
     chargerManifeste = chargerManifesteParDefaut,
@@ -267,7 +277,7 @@ export function creerStudioProcessus(deps = {}) {
 
   function peindrePlat(core) {
     const { largeur, hauteur, rgba } = construireImageProcessus(
-      core, etat.processus.champ, etat.processus.palette, etat.etendue,
+      core, etat.processus.champ, etat.processus.palette, etat.etendue, couleurThermique,
     );
     // Dessine à la résolution de la grille sur un canvas hors-écran, puis
     // agrandit en pixels nets jusqu'à la taille d'affichage du canvas.

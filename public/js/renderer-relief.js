@@ -11,7 +11,7 @@
 // vit dans le .multi -> WASM ; ce module ne fait que de l'échantillonnage et du
 // dessin (présentation). La rampe valeur->couleur est un choix d'affichage.
 
-import { projeterPointVolumetrique } from "./renderer-process.js?v=20260613-croissance";
+import { projeterPointVolumetrique } from "./renderer-process.js?v=20260614-plein-panneau";
 
 // Fractales scalaires d'évasion dont la signature d'appel WASM est connue ici
 // (cf. la boucle de remplissage de renderer.js). Les familles 3D / IFS / lignes
@@ -129,7 +129,11 @@ export function creerStudioRelief(deps = {}) {
     resolution = 72,
   } = deps;
 
-  const ctx = canvas ? canvas.getContext("2d") : null;
+  // Cible de rendu active : l'aperçu du dock par défaut, ou le canvas plein
+  // panneau quand l'utilisateur agrandit le studio (cibler()). Le dessin et le
+  // ré-échantillonnage suivent `canvasActif` (la largeur fixe la zone couverte).
+  let canvasActif = canvas;
+  let ctx = canvasActif ? canvasActif.getContext("2d") : null;
   let hauteurs = null;
   let theta = 0.6;
   let frameId = null;
@@ -151,10 +155,10 @@ export function creerStudioRelief(deps = {}) {
       if (lectureInfo) {
         lectureInfo.textContent = "Relief disponible pour les fractales d'évasion scalaires (Mandelbrot, Julia, …).";
       }
-      if (ctx) { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#070a16"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+      if (ctx) { ctx.clearRect(0, 0, canvasActif.width, canvasActif.height); ctx.fillStyle = "#070a16"; ctx.fillRect(0, 0, canvasActif.width, canvasActif.height); }
       return;
     }
-    const champ = echantillonnerChamp(appel, getView(), canvas ? canvas.width : 280, resolution);
+    const champ = echantillonnerChamp(appel, getView(), canvasActif ? canvasActif.width : 280, resolution);
     hauteurs = normaliserHauteurs(champ, params.maxIter || 256);
     if (lectureInfo) lectureInfo.textContent = `Relief de « ${params.fractal} » · grille ${resolution}×${resolution}`;
     peindre();
@@ -162,7 +166,16 @@ export function creerStudioRelief(deps = {}) {
 
   function peindre() {
     if (!ctx || !hauteurs) return;
-    rendreRelief(ctx, canvas.width, canvas.height, hauteurs, resolution, theta, projeter);
+    rendreRelief(ctx, canvasActif.width, canvasActif.height, hauteurs, resolution, theta, projeter);
+  }
+
+  // Redirige le rendu vers un autre canvas (plein panneau) puis ré-échantillonne :
+  // la largeur de la cible fixe la zone de la fractale couverte, donc un canvas
+  // plein panneau montre la même région que la vue principale. `null` rend l'aperçu.
+  function cibler(nouveauCanvas) {
+    canvasActif = nouveauCanvas || canvas;
+    ctx = canvasActif ? canvasActif.getContext("2d") : null;
+    echantillonner();
   }
 
   function boucle() {
@@ -184,5 +197,5 @@ export function creerStudioRelief(deps = {}) {
 
   if (boutonActualiser) boutonActualiser.addEventListener("click", () => { arreter(); demarrer(); });
 
-  return { demarrer, arreter, echantillonner, peindre, hauteurs: () => hauteurs };
+  return { demarrer, arreter, echantillonner, cibler, peindre, hauteurs: () => hauteurs };
 }

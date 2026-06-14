@@ -226,7 +226,11 @@ export function creerStudioProcessus(deps = {}) {
     cancelFrame = (id) => cancelAnimationFrame(id),
   } = deps;
 
-  const ctx = canvas ? canvas.getContext("2d") : null;
+  // Cible de rendu active : l'aperçu du dock par défaut, ou le canvas plein
+  // panneau quand l'utilisateur agrandit le studio (cibler()). Tout le dessin
+  // passe par `canvasActif`/`ctx` pour suivre la bascule sans dupliquer le code.
+  let canvasActif = canvas;
+  let ctx = canvasActif ? canvasActif.getContext("2d") : null;
   let etat = null; // { processus, trajectoire, etendue, tier, tierNom }
   let imageCourante = 0;
   let enLecture = false;
@@ -268,8 +272,8 @@ export function creerStudioProcessus(deps = {}) {
     tampon.height = hauteur;
     tampon.getContext("2d").putImageData(new ImageData(rgba, largeur, hauteur), 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(tampon, 0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvasActif.width, canvasActif.height);
+    ctx.drawImage(tampon, 0, 0, canvasActif.width, canvasActif.height);
   }
 
   // Relief 3D : la valeur du champ devient une hauteur. Chaque cellule est posée
@@ -281,8 +285,8 @@ export function creerStudioProcessus(deps = {}) {
     const { largeur, hauteur } = dimensionsGrille(core);
     const { min, max } = etat.etendue;
     const echelleVal = max - min || 1;
-    const w = canvas.width;
-    const h = canvas.height;
+    const w = canvasActif.width;
+    const h = canvasActif.height;
     const RELIEF = 0.55;
     const tailleBase = (Math.min(w, h) / Math.max(largeur, hauteur)) * 1.7;
 
@@ -419,12 +423,22 @@ export function creerStudioProcessus(deps = {}) {
     champPas.addEventListener("change", () => { if (etat) charger(etat.processus.cle); });
   }
 
+  // Redirige le rendu vers un autre canvas (plein panneau) puis repeint l'image
+  // courante. `null` rend l'aperçu du dock d'origine. L'animation en cours
+  // continue : la boucle peint désormais dans la nouvelle cible.
+  function cibler(nouveauCanvas) {
+    canvasActif = nouveauCanvas || canvas;
+    ctx = canvasActif ? canvasActif.getContext("2d") : null;
+    if (etat) peindre(imageCourante);
+  }
+
   return {
     charger,
     lire,
     arreter,
     basculerLecture,
     basculerRelief,
+    cibler,
     peindre,
     pas,
     etat: () => etat,

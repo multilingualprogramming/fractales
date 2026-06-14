@@ -67,6 +67,10 @@
         <canvas id="fractal-canvas-3d" class="canvas-masque" aria-label="Vue 3D WebGL">
           Votre navigateur ne supporte pas WebGL.
         </canvas>
+        <!-- Scène plein panneau des studios (Croissance / Relief 3D) : masquée
+             tant que l'utilisateur n'a pas demandé « Afficher en grand ». -->
+        <canvas id="studio-stage-canvas" class="canvas-masque" aria-label="Rendu plein panneau du studio"></canvas>
+        <button id="btn-studio-return" class="btn hidden" type="button">↩ Revenir à la fractale</button>
         <canvas id="fractal-overlay-canvas" aria-label="Surcouche d'analyse mathématique"></canvas>
 
         <!-- Indicateur de statut du rendu -->
@@ -612,6 +616,7 @@
               </label>
               <div class="exploration-actions">
                 <button id="btn-process-play" class="btn" type="button">Lecture</button>
+                <button id="btn-process-plein" class="btn btn-secondary" type="button">Afficher en grand</button>
                 <button id="btn-process-relief" class="btn btn-secondary" type="button" aria-pressed="false">Relief 3D</button>
                 <label class="exploration-field" for="process-steps-input">
                   <span>Pas</span>
@@ -626,6 +631,7 @@
               <div id="relief-info" class="exploration-readout">Le compte d'itérations de la fractale active devient une hauteur.</div>
               <div class="exploration-actions">
                 <button id="btn-relief-refresh" class="btn" type="button">Actualiser depuis la vue</button>
+                <button id="btn-relief-plein" class="btn btn-secondary" type="button">Afficher en grand</button>
               </div>
             </section>
 

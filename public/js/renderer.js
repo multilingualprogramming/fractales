@@ -24,7 +24,7 @@ import {
 } from "./renderer-navigation.js?v=20260525-partage-factory";
 import {
   initialiserExploration,
-} from "./renderer-exploration.js?v=20260520-formule-preview-fix";
+} from "./renderer-exploration.js?v=20260614-plein-panneau";
 import {
   pointsPropositionLSysteme,
   parserReglesLSysteme,

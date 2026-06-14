@@ -23,10 +23,10 @@ import {
 import {
   creerStudioProcessus,
   CATALOGUE_PROCESSUS,
-} from "./renderer-process.js?v=20260613-croissance";
+} from "./renderer-process.js?v=20260614-plein-panneau";
 import {
   creerStudioRelief,
-} from "./renderer-relief.js?v=20260613-relief";
+} from "./renderer-relief.js?v=20260614-plein-panneau";
 
 const TITRES_MODES = {
   parametres: ["Carte des paramètres", "Explorer le plan du paramètre c"],
@@ -572,7 +572,48 @@ export function initialiserExploration({
     }
   }
 
+  // === Plein panneau (« Afficher en grand ») =================================
+  // Les studios Croissance et Relief 3D dessinent normalement dans un petit
+  // aperçu du dock. Ici on redirige leur rendu vivant vers une scène qui couvre
+  // le panneau principal ; l'animation continue à pleine taille. Un bouton de
+  // retour restaure la vue de la fractale.
+  const stageCanvas = document.getElementById("studio-stage-canvas");
+  const boutonRetourStudio = document.getElementById("btn-studio-return");
+  const conteneurCanvas = document.getElementById("canvas-container");
+  let pleinPanneauActif = null; // "croissance" | "relief" | null
+
+  function studioPour(mode) {
+    return mode === "relief" ? studioRelief : studioProcessus;
+  }
+
+  function entrerPleinPanneau(mode) {
+    const studio = studioPour(mode);
+    if (!stageCanvas || !conteneurCanvas || !studio) return;
+    if (pleinPanneauActif && pleinPanneauActif !== mode) quitterPleinPanneau();
+    // Taille du tampon = pixels affichés du panneau, pour un rendu net et (côté
+    // Relief) pour couvrir la même région de la fractale que la vue principale.
+    stageCanvas.width = conteneurCanvas.clientWidth;
+    stageCanvas.height = conteneurCanvas.clientHeight;
+    stageCanvas.classList.remove("canvas-masque");
+    boutonRetourStudio?.classList.remove("hidden");
+    studio.cibler(stageCanvas);
+    pleinPanneauActif = mode;
+  }
+
+  function quitterPleinPanneau() {
+    if (!pleinPanneauActif) return;
+    studioPour(pleinPanneauActif)?.cibler(null); // retour à l'aperçu du dock
+    stageCanvas?.classList.add("canvas-masque");
+    boutonRetourStudio?.classList.add("hidden");
+    pleinPanneauActif = null;
+  }
+
+  boutonRetourStudio?.addEventListener("click", quitterPleinPanneau);
+  document.getElementById("btn-process-plein")?.addEventListener("click", () => entrerPleinPanneau("croissance"));
+  document.getElementById("btn-relief-plein")?.addEventListener("click", () => entrerPleinPanneau("relief"));
+
   function setMode(mode) {
+    quitterPleinPanneau(); // toute bascule de mode restaure la vue principale
     if (activeMode === "ifs") arreterJeuDuChaos();
     if (activeMode === "croissance" && studioProcessus) studioProcessus.arreter();
     if (activeMode === "relief" && studioRelief) studioRelief.arreter();

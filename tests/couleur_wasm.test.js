@@ -90,6 +90,129 @@ describe("couleur_thermique == couleurChamp(t, 'thermique') JS", () => {
   });
 });
 
+// --- Marshalling hôte→WASM des listes f64 (layout multilingue) ---
+const memoire = exports.memory;
+function ecrireListe(valeurs) {
+  const n = valeurs.length;
+  const ptr = exports.__ml_list_alloc(n);
+  new Float64Array(memoire.buffer, ptr + 8, n).set(valeurs);
+  return ptr;
+}
+function lireListe(ptr, n) {
+  return new Float64Array(memoire.buffer, ptr + 8, n).slice();
+}
+
+// --- Référence JS : miroir exact de getColorFromRatio + melangerCouleurs ---
+const clampByte = (v) => Math.max(0, Math.min(255, Math.round(v)));
+const melangerRef = (a, b, t) => {
+  const f = Math.max(0, Math.min(1, t));
+  return [clampByte(a[0] + (b[0] - a[0]) * f), clampByte(a[1] + (b[1] - a[1]) * f), clampByte(a[2] + (b[2] - a[2]) * f)];
+};
+function couleurRef(t, stops, mode, phase, contours) {
+  let normalise = Math.max(0, Math.min(0.999999, t));
+  if (mode === "histogramme") normalise = Math.pow(normalise, 0.62);
+  else if (mode === "phase") normalise = (normalise + phase) % 1.0;
+  else if (mode === "potentiel") normalise = 0.5 - 0.5 * Math.cos(normalise * Math.PI);
+  const scaled = normalise * (stops.length - 1);
+  const lo = Math.floor(scaled) | 0;
+  const hi = Math.min(lo + 1, stops.length - 1);
+  const frac = scaled - lo;
+  let color = melangerRef(stops[lo], stops[hi], frac);
+  if (mode === "contours" || contours) {
+    const band = Math.abs(((normalise * 36) % 1) - 0.5);
+    if (band > 0.42) color = color.map((v) => clampByte(v * 0.58 + 255 * 0.22));
+  }
+  return color;
+}
+const CODE_MODE = { standard: 0, histogramme: 1, phase: 2, potentiel: 3, contours: 4 };
+const aplatir = (stops) => stops.flatMap((s) => [s[0], s[1], s[2]]);
+const STOPS_TEST = [[12, 16, 48], [22, 138, 173], [120, 200, 90], [245, 215, 66], [222, 60, 75]];
+
+function paletteWasm(t, stops, mode, phase, contours) {
+  exports.__ml_reset();
+  const sp = ecrireListe(aplatir(stops));
+  const c = exports.couleur_palette(t, sp, stops.length, CODE_MODE[mode], phase, contours ? 1 : 0);
+  return [c[0], c[1], c[2]];
+}
+
+describe("fractales_couleur : couleur_palette / colorer_champ exportés", () => {
+  test("exports présents", () => {
+    assert.equal(typeof exports.couleur_palette, "function");
+    assert.equal(typeof exports.colorer_champ, "function");
+    assert.equal(typeof exports.__ml_list_alloc, "function");
+  });
+});
+
+describe("couleur_palette == getColorFromRatio JS (tous modes)", () => {
+  for (const mode of ["standard", "histogramme", "phase", "potentiel", "contours"]) {
+    test(`mode ${mode} : parité (≤1 octet) sur une grille fine`, () => {
+      let maxDiff = 0;
+      let aberrants = 0;
+      for (let k = 0; k <= 3000; k += 1) {
+        const t = k / 3000;
+        const ref = couleurRef(t, STOPS_TEST, mode, 0.31, false);
+        const w = paletteWasm(t, STOPS_TEST, mode, 0.31, false);
+        for (let c = 0; c < 3; c += 1) {
+          const d = Math.abs(ref[c] - w[c]);
+          if (d > maxDiff) maxDiff = d;
+          if (d > 1) aberrants += 1;
+        }
+      }
+      // standard/phase/contours sont bit-exacts ; histogramme/potentiel ≤1 octet.
+      if (mode === "standard" || mode === "phase") assert.equal(maxDiff, 0);
+      assert.equal(aberrants, 0, `${aberrants} écarts > 1 octet en mode ${mode} (max ${maxDiff})`);
+    });
+  }
+
+  test("drapeau contours (orthogonal au mode standard) bit-exact", () => {
+    for (let k = 0; k <= 1500; k += 1) {
+      const t = k / 1500;
+      assert.deepEqual(paletteWasm(t, STOPS_TEST, "standard", 0, true), couleurRef(t, STOPS_TEST, "standard", 0, true));
+    }
+  });
+
+  test("palette à 2 arrêts (cas limite n_stops minimal)", () => {
+    const deux = [[0, 0, 0], [255, 255, 255]];
+    for (const t of [0, 0.25, 0.5, 0.75, 0.999]) {
+      assert.deepEqual(paletteWasm(t, deux, "standard", 0, false), couleurRef(t, deux, "standard", 0, false));
+    }
+  });
+});
+
+describe("colorer_champ : coloration par lot == couleur_palette point par point", () => {
+  function champWasm(ratios, interieur, stops, mode, phase, contours) {
+    exports.__ml_reset();
+    const sp = ecrireListe(aplatir(stops));
+    const rp = ecrireListe(Float64Array.from(ratios));
+    const ptr = exports.colorer_champ(rp, sp, interieur[0], interieur[1], interieur[2], CODE_MODE[mode], phase, contours ? 1 : 0);
+    return lireListe(ptr, ratios.length * 3);
+  }
+
+  test("ratios escapés + sentinelle intérieur (< 0)", () => {
+    const interieur = [255, 245, 180];
+    const ratios = [];
+    for (let k = 0; k < 600; k += 1) ratios.push(k % 37 === 0 ? -1 : k / 600);
+    const out = champWasm(ratios, interieur, STOPS_TEST, "standard", 0, false);
+    for (let i = 0; i < ratios.length; i += 1) {
+      const ref = ratios[i] < 0 ? interieur : couleurRef(ratios[i], STOPS_TEST, "standard", 0, false);
+      assert.deepEqual([out[i * 3], out[i * 3 + 1], out[i * 3 + 2]], ref);
+    }
+  });
+
+  test("le lot == le point à point (mode potentiel, ≤1 octet)", () => {
+    const interieur = [10, 10, 10];
+    const ratios = [];
+    for (let k = 0; k < 400; k += 1) ratios.push(k / 400);
+    const out = champWasm(ratios, interieur, STOPS_TEST, "potentiel", 0.2, true);
+    let maxDiff = 0;
+    for (let i = 0; i < ratios.length; i += 1) {
+      const pt = paletteWasm(ratios[i], STOPS_TEST, "potentiel", 0.2, true);
+      for (let c = 0; c < 3; c += 1) maxDiff = Math.max(maxDiff, Math.abs(pt[c] - out[i * 3 + c]));
+    }
+    assert.equal(maxDiff, 0, "le lot doit reproduire exactement couleur_palette");
+  });
+});
+
 describe("couleur_relief == couleurRelief(t) JS", () => {
   test("arrêts exacts", () => {
     assert.deepEqual(tripletWasm(exports.couleur_relief, 0), [18, 24, 64]);
